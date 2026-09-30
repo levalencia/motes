@@ -260,8 +260,17 @@
 	<!-- Messages -->
 	<div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
 		{#if messages.length === 0}
-			<div class="flex items-center justify-center h-full">
-				<p class="text-gray-500">Start a conversation...</p>
+			<div class="flex flex-col items-center justify-center h-full gap-4">
+				<img src="/mascot.png" alt="Motes" class="w-32 h-32 object-contain drop-shadow-lg animate-bounce" style="animation-duration: 3s;" />
+				<h2 class="text-xl font-semibold text-gray-300">{agentName}</h2>
+				<p class="text-gray-500 text-sm">How can I help you today?</p>
+				<div class="flex flex-wrap justify-center gap-2 mt-2 max-w-md">
+					<button onclick={() => { input = 'What\'s on my calendar today?'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">📅 What's on my calendar?</button>
+					<button onclick={() => { input = 'Show me my unread emails'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">📧 Unread emails</button>
+					<button onclick={() => { input = 'Search the web for latest AI news'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">🔍 Search the web</button>
+					<button onclick={() => { input = 'What time is it?'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">🕐 What time is it?</button>
+					<button onclick={() => { input = 'Find my most recent PowerPoint file'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">📁 Recent files</button>
+				</div>
 			</div>
 		{/if}
 
