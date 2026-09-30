@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 # Ensure all models are registered with Base.metadata
 import app.approvals  # noqa: F401
+import app.mcp_connector  # noqa: F401
 import app.memory  # noqa: F401
 import app.scheduler  # noqa: F401
 import app.voice  # noqa: F401

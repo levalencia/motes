@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Import models so Base.metadata includes them
 import app.approvals  # noqa: F401
+import app.mcp_connector  # noqa: F401
 import app.memory  # noqa: F401
 import app.scheduler  # noqa: F401
 import app.voice  # noqa: F401
@@ -100,6 +101,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from app.routes.approvals import router as approvals_router
     from app.routes.auth import router as auth_router
     from app.routes.chat import router as chat_router
+    from app.routes.mcp import router as mcp_router
     from app.routes.memory import router as memory_router
     from app.routes.providers import router as providers_router
     from app.routes.scheduler import router as scheduler_router
@@ -113,6 +115,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(approvals_router)
     app.include_router(scheduler_router)
     app.include_router(voice_router)
+    app.include_router(mcp_router)
 
     return app
 
