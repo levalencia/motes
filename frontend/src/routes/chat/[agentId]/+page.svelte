@@ -96,7 +96,12 @@
 				// Store last notification so agent can reference it
 				lastProactiveNotification = notifText;
 			});
-		} catch { goto('/login'); }
+		} catch (err: any) {
+			// Only redirect to login on auth failures, not all errors
+			if (err?.message?.includes('401') || err?.message?.includes('auth')) {
+				goto('/login');
+			}
+		}
 	});
 
 	async function sendMessage(text?: string) {
