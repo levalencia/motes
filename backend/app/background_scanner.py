@@ -20,6 +20,9 @@ from app.token_refresh import get_valid_token
 
 logger = structlog.get_logger()
 
+# Track notified email IDs to avoid duplicates (per-process, cleared on restart)
+_notified_email_ids: set[str] = set()
+
 
 async def _notify(
     session: AsyncSession,
@@ -43,7 +46,7 @@ async def _notify(
             category=category,
         ))
 
-SCAN_INTERVAL_SECONDS = 300  # 5 minutes
+SCAN_INTERVAL_SECONDS = 60  # 1 minute
 
 
 async def scan_gmail(
@@ -68,35 +71,41 @@ async def scan_gmail(
             if not messages:
                 return
 
-            # Get details of first unread
-            msg_id = messages[0]["id"]
-            detail_resp = await client.get(
-                f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_id}",
-                headers={"Authorization": f"Bearer {access_token}"},
-                params={"format": "metadata", "metadataHeaders": ["From", "Subject"]},
-            )
-            if detail_resp.status_code != 200:
-                return
+            # Check each unread for new ones we haven't notified about
+            for msg_entry in messages[:3]:
+                msg_id = msg_entry["id"]
+                if msg_id in _notified_email_ids:
+                    continue
 
-            detail = detail_resp.json()
-            headers = {
-                h["name"]: h["value"]
-                for h in detail.get("payload", {}).get("headers", [])
-            }
-            sender = headers.get("From", "Unknown")
-            subject = headers.get("Subject", "No subject")
+                detail_resp = await client.get(
+                    f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_id}",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                    params={"format": "metadata", "metadataHeaders": ["From", "Subject"]},
+                )
+                if detail_resp.status_code != 200:
+                    continue
 
-            await _notify(
-                session, event_bus, user_id, agent_id,
-                title=f"📧 New email from {sender.split('<')[0].strip()}",
-                body=subject,
-                category="email",
-            )
-            logger.info(
-                "scanner_gmail_notification",
-                user_id=user_id,
-                unread=len(messages),
-            )
+                detail = detail_resp.json()
+                hdrs = {
+                    h["name"]: h["value"]
+                    for h in detail.get("payload", {}).get("headers", [])
+                }
+                sender = hdrs.get("From", "Unknown")
+                subject = hdrs.get("Subject", "No subject")
+
+                _notified_email_ids.add(msg_id)
+
+                await _notify(
+                    session, event_bus, user_id, agent_id,
+                    title=f"📧 New email from {sender.split('<')[0].strip()}",
+                    body=subject,
+                    category="email",
+                )
+                logger.info(
+                    "scanner_gmail_notification",
+                    user_id=user_id,
+                    msg_id=msg_id,
+                )
     except Exception:
         logger.warning("scanner_gmail_error", exc_info=True)
 

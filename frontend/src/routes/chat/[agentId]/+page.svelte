@@ -94,10 +94,10 @@
 
 		const token = localStorage.getItem('motes_token');
 		try {
-			const res = await fetch('http://localhost:8001/api/chat', {
+			const res = await fetch(`http://localhost:8001/api/agents/${agentId}/chat`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-				body: JSON.stringify({ message: msg, conversation_id: conversationId, agent_id: agentId }),
+				body: JSON.stringify({ message: msg, conversation_id: conversationId }),
 			});
 
 			if (!res.ok) {
