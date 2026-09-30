@@ -30,6 +30,7 @@
 	let recording = $state(false);
 	let drawerOpen = $state(false);
 	let unreadCount = $state(0);
+	let lastProactiveNotification = $state('');
 	let hasVoiceProvider = $state(false);
 	let voiceProviderId = $state('');
 	let mediaRecorder: MediaRecorder | null = null;
@@ -78,17 +79,26 @@
 			const es = new EventSource(`http://localhost:8001/api/events/stream?token=${token}`);
 			es.addEventListener('notification', (e) => {
 				const data = JSON.parse(e.data);
-				messages = [...messages, { role: 'assistant', content: `💡 **${data.title}**\n\n${data.body}` }];
-				unreadCount += 1;
+				const notifText = `💡 **${data.title}**\n\n${data.body}`;
+				messages = [...messages, { role: 'assistant', content: notifText }];
+				// Store last notification so agent can reference it
+				lastProactiveNotification = notifText;
 			});
 		} catch { goto('/login'); }
 	});
 
 	async function sendMessage(text?: string) {
-		const msg = text || input;
+		let msg = text || input;
 		if (!msg.trim() || streaming) return;
 		input = '';
-		messages = [...messages, { role: 'user', content: msg }];
+
+		// If there's a recent proactive notification, inject context
+		if (lastProactiveNotification) {
+			msg = `[Context: Motes just proactively notified me: "${lastProactiveNotification}"]\n\n${msg}`;
+			lastProactiveNotification = '';
+		}
+
+		messages = [...messages, { role: 'user', content: text || msg.split('\n\n').pop() || msg }];
 		streaming = true;
 		error = '';
 
