@@ -1,2 +1,57 @@
 @import 'tailwindcss';
 @import '@tailwindcss/typography';
+
+/* Motes brand colors */
+:root {
+  --motes-blue: #4D5BF9;
+  --motes-bright-blue: #2EA3F2;
+  --motes-teal: #2DD4A8;
+  --motes-purple: #8B5CF6;
+  --motes-magenta: #C45EF0;
+  --motes-navy: #0F1B3D;
+}
+
+/* Dark theme (default) */
+:root[data-theme="dark"] {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #111118;
+  --bg-card: #16161e;
+  --bg-input: #1e1e28;
+  --border: #2a2a3a;
+  --border-hover: #3a3a4a;
+  --text-primary: #f0f0f5;
+  --text-secondary: #9090a0;
+  --text-muted: #606070;
+  --accent: #4D5BF9;
+  --accent-hover: #3d4be9;
+}
+
+/* Light theme */
+:root[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5fa;
+  --bg-card: #ffffff;
+  --bg-input: #f0f0f5;
+  --border: #e0e0ea;
+  --border-hover: #c0c0d0;
+  --text-primary: #0F1B3D;
+  --text-secondary: #505070;
+  --text-muted: #8080a0;
+  --accent: #4D5BF9;
+  --accent-hover: #3d4be9;
+}
+
+/* Default to dark */
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #111118;
+  --bg-card: #16161e;
+  --bg-input: #1e1e28;
+  --border: #2a2a3a;
+  --border-hover: #3a3a4a;
+  --text-primary: #f0f0f5;
+  --text-secondary: #9090a0;
+  --text-muted: #606070;
+  --accent: #4D5BF9;
+  --accent-hover: #3d4be9;
+}
