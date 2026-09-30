@@ -386,13 +386,13 @@
 				📞 End Call
 			</button>
 		{:else}
-			<button
-				onclick={startCall}
+			<a
+				href="/call/{agentId}"
 				class="px-4 py-1.5 bg-green-600 hover:bg-green-700 rounded-full text-sm font-medium flex items-center gap-2"
 				title="Start a voice call with this agent"
 			>
 				📞 Call
-			</button>
+			</a>
 		{/if}
 	</nav>
 

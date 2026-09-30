@@ -29,6 +29,7 @@ dependencies = [
     "openpyxl>=3.1.5",
     "faster-whisper>=1.2.1",
     "av>=14.0.0",
+    "websockets>=17.1",
 ]
 
 [project.optional-dependencies]

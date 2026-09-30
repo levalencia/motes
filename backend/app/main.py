@@ -109,6 +109,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from app.routes.notifications import router as notifications_router
     from app.routes.oauth import router as oauth_router
     from app.routes.providers import router as providers_router
+
+    # Realtime voice call (Azure OpenAI Realtime API)
+    from app.routes.realtime_call import router as realtime_call_router
     from app.routes.scheduler import router as scheduler_router
     from app.routes.voice import router as voice_router
     from app.routes.voice_call import router as voice_call_router
@@ -126,6 +129,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(oauth_router)
     app.include_router(notifications_router)
     app.include_router(voice_call_router)
+    app.include_router(realtime_call_router)
 
     return app
 
