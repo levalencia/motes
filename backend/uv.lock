@@ -1421,6 +1421,11 @@ llm = [
     { name = "openai" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest-asyncio" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.22.1" },
@@ -1460,6 +1465,9 @@ requires-dist = [
     { name = "websockets", specifier = ">=17.1" },
 ]
 provides-extras = ["dev", "llm"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest-asyncio", specifier = ">=1.4.0" }]
 
 [[package]]
 name = "multidict"

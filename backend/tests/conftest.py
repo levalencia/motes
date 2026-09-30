@@ -44,3 +44,9 @@ async def session(engine) -> AsyncSession:
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with factory() as sess:
         yield sess
+
+
+@pytest.fixture
+async def async_session(session) -> AsyncSession:
+    """Alias for session (used by newer tests)."""
+    yield session
