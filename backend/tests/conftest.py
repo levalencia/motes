@@ -5,6 +5,9 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+# Ensure all models are registered with Base.metadata
+import app.approvals  # noqa: F401
+import app.memory  # noqa: F401
 from app.config import Settings
 from app.models import Base
 
