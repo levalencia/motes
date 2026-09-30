@@ -47,7 +47,7 @@ class VoiceProviderResponse(BaseModel):
 
 class TTSRequest(BaseModel):
     text: str = Field(min_length=1, max_length=4096)
-    voice_provider_id: str
+    voice_provider_id: str | None = None  # None = use Edge TTS (free)
     voice: str | None = None
     response_format: str = "mp3"
 
@@ -102,7 +102,19 @@ async def text_to_speech(
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    """Convert text to speech audio."""
+    """Convert text to speech audio. Uses Edge TTS (free) if no provider specified."""
+    # Edge TTS — free, no provider needed
+    if not body.voice_provider_id:
+        from app.edge_tts_provider import edge_tts_synthesize
+
+        voice = body.voice or "en-US-AriaNeural"
+        try:
+            audio = await edge_tts_synthesize(body.text, voice)
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"Edge TTS error: {exc}") from None
+        return Response(content=audio, media_type="audio/mpeg")
+
+    # Custom voice provider
     provider = await get_voice_provider(session, body.voice_provider_id, user.id)
     if provider is None:
         raise HTTPException(status_code=404, detail="Voice provider not found")

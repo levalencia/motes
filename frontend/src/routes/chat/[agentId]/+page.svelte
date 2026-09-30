@@ -126,28 +126,24 @@
 	}
 
 	async function playTTS(text: string, msgId: string) {
-		if (!hasVoiceProvider) {
-			error = 'No voice provider configured.';
-			return;
-		}
 		if (playingTTS === msgId) {
-			// Stop playing
 			playingTTS = null;
 			return;
 		}
 		playingTTS = msgId;
 		const token = localStorage.getItem('motes_token');
 		try {
+			const body: any = { text: text.slice(0, 4096) };
+			if (voiceProviderId) body.voice_provider_id = voiceProviderId;
+			// No voice_provider_id = Edge TTS (free, no setup needed)
+
 			const res = await fetch('http://localhost:8001/api/voice/tts', {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${token}`,
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({
-					text: text.slice(0, 4096),
-					voice_provider_id: voiceProviderId,
-				}),
+				body: JSON.stringify(body),
 			});
 			if (res.ok) {
 				const audioBlob = await res.blob();
@@ -289,7 +285,7 @@
 					<div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 max-w-xl prose prose-invert prose-sm max-w-none">
 						<div>{@html renderMarkdown(msg.content)}</div>
 						{#if streaming && msg === messages[messages.length - 1]}<span class="animate-pulse">▊</span>{/if}
-						{#if !streaming && msg.content && hasVoiceProvider}
+						{#if !streaming && msg.content}
 							<button
 								onclick={() => playTTS(msg.content, msg.content.slice(0, 20))}
 								class="mt-2 text-xs text-gray-500 hover:text-blue-400 flex items-center gap-1"
