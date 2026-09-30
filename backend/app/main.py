@@ -9,6 +9,8 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Import memory model so Base.metadata includes it
+import app.memory  # noqa: F401
 from app.config import Settings, get_settings
 from app.database import create_engine, create_session_factory
 from app.logging import setup_logging
@@ -94,12 +96,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from app.routes.agents import router as agents_router
     from app.routes.auth import router as auth_router
     from app.routes.chat import router as chat_router
+    from app.routes.memory import router as memory_router
     from app.routes.providers import router as providers_router
 
     app.include_router(auth_router)
     app.include_router(providers_router)
     app.include_router(agents_router)
     app.include_router(chat_router)
+    app.include_router(memory_router)
 
     return app
 

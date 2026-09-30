@@ -85,7 +85,26 @@ async def chat(
     session.add(user_msg)
     await session.commit()
 
-    # Build message history
+    # Build message history with memory injection
+    # Fetch agent memories to inject into system prompt
+    from app.memory import Memory
+
+    mem_result = await session.execute(
+        select(Memory)
+        .where(Memory.agent_id == agent_id)
+        .order_by(Memory.created_at.desc())
+        .limit(50)
+    )
+    memories = mem_result.scalars().all()
+    memory_context = ""
+    if memories:
+        memory_lines = [f"- [{m.category}] {m.content}" for m in memories]
+        memory_context = (
+            "\n\n## Your Memories\n"
+            "You have the following memories from past interactions:\n"
+            + "\n".join(memory_lines)
+        )
+
     msg_result = await session.execute(
         select(Message)
         .where(Message.conversation_id == conversation.id)
@@ -93,7 +112,7 @@ async def chat(
     )
     history = msg_result.scalars().all()
 
-    messages = [{"role": "system", "content": agent.system_prompt}]
+    messages = [{"role": "system", "content": agent.system_prompt + memory_context}]
     for msg in history:
         entry: dict = {"role": msg.role, "content": msg.content}
         if msg.tool_call_id:
