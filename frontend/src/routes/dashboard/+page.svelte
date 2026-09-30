@@ -1,217 +1,86 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { listAgents, listProviders, api, type Agent, type Provider } from '$lib/api/client';
-	import { clearAuth, username } from '$lib/stores/auth';
-	import { theme, toggleTheme } from '$lib/stores/theme';
 	import { onMount } from 'svelte';
+	import Sidebar from '$lib/components/Sidebar.svelte';
+	import MobileHeader from '$lib/components/MobileHeader.svelte';
+	import MobileDrawer from '$lib/components/MobileDrawer.svelte';
+	import WelcomeScreen from '$lib/components/WelcomeScreen.svelte';
+	import ChatComposer from '$lib/components/ChatComposer.svelte';
 
 	let agents = $state<Agent[]>([]);
 	let providers = $state<Provider[]>([]);
 	let connectedServices = $state(0);
-	let unreadNotifications = $state(0);
-	let notifications = $state<{id: string; title: string; body: string; category: string; is_read: boolean}[]>([]);
-	let showNotifications = $state(false);
+	let unreadCount = $state(0);
 	let loading = $state(true);
+	let drawerOpen = $state(false);
 
 	onMount(async () => {
 		try {
-			const [a, p, svc, notifCount, notifList] = await Promise.all([
+			const [a, p, svc, notif] = await Promise.all([
 				listAgents(),
 				listProviders(),
 				api<{ service: string }[]>('/oauth/connected'),
 				api<{ count: number }>('/notifications/unread-count'),
-				api<typeof notifications>('/notifications'),
 			]);
 			agents = a;
 			providers = p;
-			unreadNotifications = notifCount.count;
-			notifications = notifList;
 			connectedServices = svc.length;
+			unreadCount = notif.count;
 		} catch {
 			goto('/login');
 		} finally {
 			loading = false;
 		}
 	});
+
+	function handleSend(msg: string) {
+		if (agents.length > 0) {
+			goto(`/chat/${agents[0].id}`);
+		} else {
+			goto('/agents');
+		}
+	}
 </script>
 
-<div class="min-h-screen transition-colors duration-200" style="background: var(--bg-primary); color: var(--text-primary);">
-	<!-- Top nav -->
-	<nav class="px-6 py-4 flex justify-between items-center" style="border-bottom: 1px solid var(--border);">
-		<div class="flex items-center gap-3">
-			<img src="/logo.png" alt="Motes" class="h-8" />
-		</div>
-		<div class="flex items-center gap-4">
-			<a href="/providers" class="text-sm hover:opacity-100 opacity-60 transition-opacity" style="color: var(--text-secondary);">Providers</a>
-			<a href="/agents" class="text-sm hover:opacity-100 opacity-60 transition-opacity" style="color: var(--text-secondary);">Agents</a>
-			<a href="/services" class="text-sm hover:opacity-100 opacity-60 transition-opacity" style="color: var(--text-secondary);">Services</a>
-			<a href="/settings" class="text-sm hover:opacity-100 opacity-60 transition-opacity" style="color: var(--text-secondary);">Settings</a>
-			<!-- Notification bell -->
-			<div class="relative">
-				<button
-					onclick={() => { showNotifications = !showNotifications; }}
-					class="text-lg hover:opacity-80 transition-opacity relative"
-				>
-					🔔
-					{#if unreadNotifications > 0}
-						<span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">{unreadNotifications}</span>
-					{/if}
-				</button>
-				{#if showNotifications}
-					<div class="absolute right-0 top-8 w-80 max-h-96 overflow-y-auto rounded-xl shadow-2xl z-50" style="background: var(--bg-card); border: 1px solid var(--border-color);">
-						<div class="px-4 py-3 font-semibold" style="border-bottom: 1px solid var(--border-color);">Notifications</div>
-						{#if notifications.length === 0}
-							<div class="px-4 py-6 text-center text-sm" style="color: var(--text-muted);">No notifications yet</div>
-						{:else}
-							{#each notifications.slice(0, 10) as n}
-								<div class="px-4 py-3 hover:opacity-80 cursor-pointer" style="border-bottom: 1px solid var(--border-color); opacity: {n.is_read ? 0.5 : 1};">
-									<div class="text-sm font-medium">{n.title}</div>
-									<div class="text-xs mt-0.5" style="color: var(--text-muted);">{n.body.slice(0, 80)}</div>
-								</div>
-							{/each}
-						{/if}
-					</div>
-				{/if}
-			</div>
-			<span style="color: var(--border);">|</span>
-			<!-- Theme toggle -->
-			<button
-				onclick={toggleTheme}
-				class="text-lg hover:opacity-80 transition-opacity"
-				title="Toggle dark/light theme"
-			>
-				{$theme === 'dark' ? '☀️' : '🌙'}
-			</button>
-			<span class="text-sm" style="color: var(--text-secondary);">{$username}</span>
-			<button onclick={() => { clearAuth(); goto('/login'); }} class="text-sm hover:opacity-100 opacity-60" style="color: var(--text-muted);">
-				Sign out
-			</button>
-		</div>
-	</nav>
-
-	<main class="max-w-6xl mx-auto px-6 py-8">
-		{#if loading}
-			<div class="flex items-center justify-center h-64">
-				<div style="color: var(--text-muted);">Loading...</div>
-			</div>
-		{:else}
-			<!-- Stats row -->
-			<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-				<div class="rounded-xl p-5" style="background: var(--bg-card); border: 1px solid var(--border);">
-					<div class="flex items-center justify-between">
-						<span class="text-xs uppercase tracking-wider" style="color: var(--text-muted);">Agents</span>
-						<span class="text-2xl">🤖</span>
-					</div>
-					<p class="text-3xl font-bold mt-1">{agents.length}</p>
-					<a href="/agents" class="text-xs mt-2 inline-block hover:underline" style="color: var(--motes-blue, #4D5BF9);">Manage →</a>
-				</div>
-				<div class="rounded-xl p-5" style="background: var(--bg-card); border: 1px solid var(--border);">
-					<div class="flex items-center justify-between">
-						<span class="text-xs uppercase tracking-wider" style="color: var(--text-muted);">Providers</span>
-						<span class="text-2xl">⚡</span>
-					</div>
-					<p class="text-3xl font-bold mt-1">{providers.length}</p>
-					<a href="/providers" class="text-xs mt-2 inline-block hover:underline" style="color: var(--motes-blue, #4D5BF9);">Manage →</a>
-				</div>
-				<div class="rounded-xl p-5" style="background: var(--bg-card); border: 1px solid var(--border);">
-					<div class="flex items-center justify-between">
-						<span class="text-xs uppercase tracking-wider" style="color: var(--text-muted);">Services</span>
-						<span class="text-2xl">🔌</span>
-					</div>
-					<p class="text-3xl font-bold mt-1">{connectedServices}</p>
-					<a href="/services" class="text-xs mt-2 inline-block hover:underline" style="color: var(--motes-blue, #4D5BF9);">Connect →</a>
-				</div>
-				<div class="rounded-xl p-5" style="background: var(--bg-card); border: 1px solid var(--border);">
-					<div class="flex items-center justify-between">
-						<span class="text-xs uppercase tracking-wider" style="color: var(--text-muted);">Status</span>
-						<span class="text-2xl">🟢</span>
-					</div>
-					<p class="text-xl font-bold mt-1" style="color: var(--motes-teal, #2DD4A8);">All systems online</p>
-				</div>
-			</div>
-
-			<!-- Agents section -->
-			<div class="mb-8">
-				<div class="flex items-center justify-between mb-4">
-					<h2 class="text-xl font-semibold">Your Agents</h2>
-					<a href="/agents" class="text-sm hover:underline" style="color: var(--motes-blue, #4D5BF9);">+ Create Agent</a>
-				</div>
-
-				{#if agents.length === 0}
-					<div class="rounded-xl p-12 text-center" style="background: var(--bg-card); border: 1px dashed var(--border);">
-						<p class="text-4xl mb-3">🤖</p>
-						<p class="font-medium" style="color: var(--text-secondary);">No agents yet</p>
-						<p class="text-sm mt-1" style="color: var(--text-muted);">
-							{#if providers.length === 0}
-								<a href="/providers" class="hover:underline" style="color: var(--motes-blue);">Add a provider</a> first, then create an agent.
-							{:else}
-								<a href="/agents" class="hover:underline" style="color: var(--motes-blue);">Create your first agent</a> to get started.
-							{/if}
-						</p>
-					</div>
-				{:else}
-					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-						{#each agents as agent}
-							<a
-								href="/chat/{agent.id}"
-								class="rounded-xl p-5 transition-all group"
-								style="background: var(--bg-card); border: 1px solid var(--border);"
-								onmouseenter={(e) => e.currentTarget.style.borderColor = 'var(--motes-blue)'}
-								onmouseleave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-							>
-								<div class="flex items-start gap-3">
-									<div class="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0 text-white" style="background: linear-gradient(135deg, var(--motes-blue), var(--motes-purple));">
-										{agent.name[0]}
-									</div>
-									<div class="flex-1 min-w-0">
-										<h3 class="font-semibold">{agent.name}</h3>
-										<p class="text-xs mt-0.5" style="color: var(--text-muted);">{agent.model || 'Unknown model'}</p>
-									</div>
-									<div class="w-2 h-2 rounded-full mt-2 flex-shrink-0" style="background: var(--motes-teal);" title="Online"></div>
-								</div>
-								<p class="text-xs mt-3 line-clamp-2" style="color: var(--text-muted);">{agent.system_prompt}</p>
-								<div class="flex items-center gap-3 mt-3 text-xs" style="color: var(--text-muted);">
-									<span>💬 Chat</span>
-									<span>🧠 Memory</span>
-									<span>🔧 Tools</span>
-									<span>🎤 Voice</span>
-								</div>
-							</a>
-						{/each}
-					</div>
-				{/if}
-			</div>
-
-			<!-- Quick actions -->
-			<div>
-				<h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-					<a href="/services" class="rounded-xl p-5 transition-all" style="background: var(--bg-card); border: 1px solid var(--border);"
-						onmouseenter={(e) => e.currentTarget.style.borderColor = 'var(--border-hover)'}
-						onmouseleave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-					>
-						<p class="text-2xl mb-2">📧</p>
-						<h3 class="font-medium">Connect Gmail</h3>
-						<p class="text-xs mt-1" style="color: var(--text-muted);">Let your agents read and send emails</p>
-					</a>
-					<a href="/services" class="rounded-xl p-5 transition-all" style="background: var(--bg-card); border: 1px solid var(--border);"
-						onmouseenter={(e) => e.currentTarget.style.borderColor = 'var(--border-hover)'}
-						onmouseleave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-					>
-						<p class="text-2xl mb-2">📅</p>
-						<h3 class="font-medium">Connect Calendar</h3>
-						<p class="text-xs mt-1" style="color: var(--text-muted);">Schedule meetings and check availability</p>
-					</a>
-					<a href="/services" class="rounded-xl p-5 transition-all" style="background: var(--bg-card); border: 1px solid var(--border);"
-						onmouseenter={(e) => e.currentTarget.style.borderColor = 'var(--border-hover)'}
-						onmouseleave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-					>
-						<p class="text-2xl mb-2">📁</p>
-						<h3 class="font-medium">Access Files</h3>
-						<p class="text-xs mt-1" style="color: var(--text-muted);">Browse and edit files on your computer</p>
-					</a>
-				</div>
-			</div>
-		{/if}
-	</main>
+<!-- Desktop sidebar -->
+<div class="hidden md:block">
+	<Sidebar agents={agents.map(a => ({id: a.id, name: a.name}))} {unreadCount} onNewChat={() => { if (agents[0]) goto(`/chat/${agents[0].id}`); }} />
 </div>
+
+<!-- Mobile -->
+<MobileHeader onMenu={() => { drawerOpen = true; }} />
+<MobileDrawer bind:open={drawerOpen} />
+
+<!-- Main -->
+<main class="min-h-dvh flex flex-col md:ml-[var(--sidebar-width)]" style="background: var(--bg-app);">
+	{#if loading}
+		<div class="flex-1 flex items-center justify-center">
+			<div class="stream-dot w-3 h-3 rounded-full" style="background: var(--accent);"></div>
+		</div>
+	{:else}
+		<!-- Welcome / Quick stats -->
+		<div class="flex-1 flex flex-col">
+			<WelcomeScreen onSend={handleSend} />
+
+			<!-- Stats cards -->
+			<div class="max-w-lg mx-auto w-full px-4 pb-8 grid grid-cols-3 gap-3">
+				<a href="/agents" class="px-4 py-3 rounded-2xl text-center transition-all duration-200 hover:-translate-y-0.5" style="background: var(--bg-card); border: 1px solid var(--border);">
+					<div class="text-2xl font-semibold" style="color: var(--text-primary);">{agents.length}</div>
+					<div class="text-xs mt-0.5" style="color: var(--text-muted);">Agents</div>
+				</a>
+				<a href="/providers" class="px-4 py-3 rounded-2xl text-center transition-all duration-200 hover:-translate-y-0.5" style="background: var(--bg-card); border: 1px solid var(--border);">
+					<div class="text-2xl font-semibold" style="color: var(--text-primary);">{providers.length}</div>
+					<div class="text-xs mt-0.5" style="color: var(--text-muted);">Providers</div>
+				</a>
+				<a href="/services" class="px-4 py-3 rounded-2xl text-center transition-all duration-200 hover:-translate-y-0.5" style="background: var(--bg-card); border: 1px solid var(--border);">
+					<div class="text-2xl font-semibold" style="color: var(--text-primary);">{connectedServices}</div>
+					<div class="text-xs mt-0.5" style="color: var(--text-muted);">Services</div>
+				</a>
+			</div>
+		</div>
+
+		<!-- Composer (routes to chat) -->
+		<ChatComposer placeholder="Message Motes..." onSend={() => handleSend('')} />
+	{/if}
+</main>

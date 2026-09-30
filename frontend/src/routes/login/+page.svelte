@@ -9,58 +9,71 @@
 	let loading = $state(false);
 
 	async function handleLogin() {
-		error = '';
+		if (!username || !password) return;
 		loading = true;
+		error = '';
 		try {
-			const result = await login(username, password);
-			setAuth(result.token, result.username);
+			const data = await login(username, password);
+			setAuth(data.token, data.username);
 			goto('/dashboard');
 		} catch (e: any) {
-			error = e.message;
+			error = e.message || 'Login failed';
 		} finally {
 			loading = false;
 		}
 	}
 </script>
 
-<div class="min-h-screen bg-gray-950 flex items-center justify-center px-4">
-	<div class="max-w-md w-full space-y-8">
-		<div class="text-center">
-			<h1 class="text-4xl font-bold text-white">Motes</h1>
-			<p class="mt-2 text-gray-400">Sign in to your account</p>
+<div class="min-h-dvh flex items-center justify-center px-4" style="background: var(--bg-secondary);">
+	<div class="w-full max-w-sm">
+		<!-- Logo -->
+		<div class="flex flex-col items-center mb-8">
+			<img src="/mascot.png" alt="Motes" class="w-20 h-20 object-contain mascot-float mb-4" />
+			<h1 class="text-2xl font-semibold" style="color: var(--text-primary);">Motes</h1>
 		</div>
 
-		<form onsubmit={(e) => { e.preventDefault(); handleLogin(); }} class="space-y-4">
-			<div>
-				<label for="username" class="block text-sm text-gray-300">Username</label>
-				<input
-					id="username"
-					type="text"
-					bind:value={username}
-					required
-					class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
-				/>
-			</div>
-			<div>
-				<label for="password" class="block text-sm text-gray-300">Password</label>
-				<input
-					id="password"
-					type="password"
-					bind:value={password}
-					required
-					class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
-				/>
-			</div>
+		<!-- Form -->
+		<div class="p-6 rounded-2xl" style="background: var(--bg-card); border: 1px solid var(--border); box-shadow: var(--shadow-md);">
 			{#if error}
-				<p class="text-red-400 text-sm">{error}</p>
+				<div class="mb-4 px-3 py-2 rounded-xl text-sm" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA;">
+					{error}
+				</div>
 			{/if}
-			<button
-				type="submit"
-				disabled={loading}
-				class="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded font-medium"
-			>
-				{loading ? 'Signing in...' : 'Sign In'}
-			</button>
-		</form>
+
+			<form onsubmit={(e) => { e.preventDefault(); handleLogin(); }} class="space-y-4">
+				<div>
+					<label for="username" class="block text-sm font-medium mb-1.5" style="color: var(--text-secondary);">Username</label>
+					<input
+						id="username"
+						bind:value={username}
+						type="text"
+						required
+						placeholder="Enter username"
+						class="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-all duration-150 focus:ring-2 focus:ring-offset-1"
+						style="background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); --tw-ring-color: var(--accent);"
+					/>
+				</div>
+				<div>
+					<label for="password" class="block text-sm font-medium mb-1.5" style="color: var(--text-secondary);">Password</label>
+					<input
+						id="password"
+						bind:value={password}
+						type="password"
+						required
+						placeholder="Enter password"
+						class="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-all duration-150 focus:ring-2 focus:ring-offset-1"
+						style="background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); --tw-ring-color: var(--accent);"
+					/>
+				</div>
+				<button
+					type="submit"
+					disabled={loading}
+					class="w-full py-2.5 rounded-xl text-sm font-medium text-white transition-all duration-200 disabled:opacity-50"
+					style="background: linear-gradient(135deg, var(--color-motes-blue), var(--color-motes-purple));"
+				>
+					{loading ? 'Signing in...' : 'Sign In'}
+				</button>
+			</form>
+		</div>
 	</div>
 </div>
