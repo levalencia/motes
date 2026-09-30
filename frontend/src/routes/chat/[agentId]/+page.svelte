@@ -31,6 +31,7 @@
 	let drawerOpen = $state(false);
 	let unreadCount = $state(0);
 	let lastProactiveNotification = $state('');
+	let conversations = $state<{id: string; title: string; conversation_type: string}[]>([]);
 	let hasVoiceProvider = $state(false);
 	let voiceProviderId = $state('');
 	let mediaRecorder: MediaRecorder | null = null;
@@ -56,10 +57,10 @@
 		if (!token) { goto('/login'); return; }
 
 		try {
-			const [agentsRes, vpRes, notifRes] = await Promise.all([
+			const [agentsRes, vpRes, convsRes] = await Promise.all([
 				fetch('http://localhost:8001/api/agents', { headers: { Authorization: `Bearer ${token}` } }),
 				fetch('http://localhost:8001/api/voice/providers', { headers: { Authorization: `Bearer ${token}` } }),
-				fetch('http://localhost:8001/api/notifications/unread-count', { headers: { Authorization: `Bearer ${token}` } }),
+				fetch(`http://localhost:8001/api/agents/${agentId}/conversations`, { headers: { Authorization: `Bearer ${token}` } }),
 			]);
 
 			if (!agentsRes.ok) { goto('/login'); return; }
@@ -71,8 +72,19 @@
 				const vps = await vpRes.json();
 				if (vps.length > 0) { hasVoiceProvider = true; voiceProviderId = vps[0].id; }
 			}
-			if (notifRes.ok) {
-				unreadCount = (await notifRes.json()).count;
+			if (convsRes.ok) {
+				conversations = await convsRes.json();
+			}
+
+			// Load existing conversation from URL param
+			const urlConvId = $page.url.searchParams.get('conversation');
+			if (urlConvId) {
+				conversationId = urlConvId;
+				const msgRes = await fetch(`http://localhost:8001/api/conversations/${urlConvId}/messages`, { headers: { Authorization: `Bearer ${token}` } });
+				if (msgRes.ok) {
+					const msgs = await msgRes.json();
+					messages = msgs.map((m: any) => ({ role: m.role, content: m.content, tool_name: m.tool_name }));
+				}
 			}
 
 			// SSE for proactive notifications
@@ -209,11 +221,20 @@
 			} else { playingTTS = null; }
 		} catch { playingTTS = null; }
 	}
+	async function renameConversation(id: string, title: string) {
+		const token = localStorage.getItem('motes_token');
+		await fetch(`http://localhost:8001/api/conversations/${id}/rename`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+			body: JSON.stringify({ title }),
+		});
+		conversations = conversations.map(c => c.id === id ? { ...c, title } : c);
+	}
 </script>
 
 <!-- Desktop sidebar (hidden on mobile) -->
 <div class="hidden md:block">
-	<Sidebar {agents} onNewChat={() => { messages = []; conversationId = null; }} />
+	<Sidebar {agents} {conversations} onNewChat={() => { messages = []; conversationId = null; goto(`/chat/${agentId}`); }} onRename={renameConversation} />
 </div>
 
 <!-- Mobile header + drawer -->

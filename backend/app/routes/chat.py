@@ -29,6 +29,12 @@ class ConversationResponse(BaseModel):
     id: str
     agent_id: str
     title: str
+    conversation_type: str = "chat"
+    updated_at: str | None = None
+
+
+class ConversationRenameRequest(BaseModel):
+    title: str
 
 
 class MessageResponse(BaseModel):
@@ -208,9 +214,32 @@ async def list_conversations(
     )
     convos = result.scalars().all()
     return [
-        ConversationResponse(id=c.id, agent_id=c.agent_id, title=c.title)
+        ConversationResponse(
+            id=c.id, agent_id=c.agent_id, title=c.title,
+            conversation_type=getattr(c, 'conversation_type', 'chat'),
+            updated_at=c.updated_at.isoformat() if getattr(c, 'updated_at', None) else None,
+        )
         for c in convos
     ]
+
+
+@router.put("/conversations/{conversation_id}/rename")
+async def rename_conversation(
+    conversation_id: str,
+    body: ConversationRenameRequest,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Rename a conversation."""
+    result = await session.execute(
+        select(Conversation).where(Conversation.id == conversation_id)
+    )
+    conv = result.scalar_one_or_none()
+    if conv is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    conv.title = body.title
+    await session.commit()
+    return {"id": conv.id, "title": conv.title}
 
 
 @router.get(
