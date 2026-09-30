@@ -1,0 +1,70 @@
+[project]
+name = "motes"
+version = "0.1.0"
+description = "Motes: Open-source, model-agnostic personal AI agents"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.8.0",
+    "pydantic-settings>=2.4.0",
+    "httpx>=0.27.0",
+    "structlog>=24.4.0",
+    "redis>=5.0.0",
+    "asyncpg>=0.29.0",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "alembic>=1.13.0",
+    "python-dotenv>=1.2.3",
+    "opentelemetry-sdk>=1.44.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.44.0",
+    "opentelemetry-instrumentation-fastapi>=0.65b0",
+    "pyjwt>=2.15.1",
+    "sse-starlette>=3.5.0",
+    "aiosqlite>=0.22.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+    "httpx",
+]
+llm = [
+    "openai>=1.40.0",
+    "anthropic>=0.34.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "unit: Unit tests (no external deps)",
+    "integration: Integration tests (needs Docker services)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+ignore = ["B008"]  # Depends() in FastAPI function signatures is idiomatic
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
