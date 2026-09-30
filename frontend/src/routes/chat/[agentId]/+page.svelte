@@ -283,12 +283,17 @@
 						</div>
 					</div>
 				{:else if msg.role === 'tool'}
-					<div class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm">
-						<span class="text-yellow-400 font-mono text-xs">🔧 {msg.tool_name}</span>
-						<pre class="text-gray-300 mt-1 whitespace-pre-wrap text-xs">{msg.content}</pre>
+					<div class="flex gap-3">
+						<img src="/mascot.png" alt="" class="w-6 h-6 object-contain flex-shrink-0 mt-1 opacity-50" />
+						<div class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm flex-1">
+							<span class="text-yellow-400 font-mono text-xs">🔧 {msg.tool_name}</span>
+							<pre class="text-gray-300 mt-1 whitespace-pre-wrap text-xs">{msg.content}</pre>
+						</div>
 					</div>
 				{:else}
-					<div class="rounded-lg px-4 py-2 max-w-xl chat-prose" style="background: var(--bg-card); border: 1px solid var(--border);">
+					<div class="flex gap-3">
+						<img src="/mascot.png" alt="" class="w-6 h-6 object-contain flex-shrink-0 mt-1" />
+						<div class="rounded-lg px-4 py-2 max-w-xl chat-prose flex-1" style="background: var(--bg-card); border: 1px solid var(--border);">
 						<div>{@html renderMarkdown(msg.content)}</div>
 						{#if streaming && msg === messages[messages.length - 1]}<span class="animate-pulse">▊</span>{/if}
 						{#if !streaming && msg.content}
@@ -304,6 +309,7 @@
 								{/if}
 							</button>
 						{/if}
+						</div>
 					</div>
 				{/if}
 			</div>
