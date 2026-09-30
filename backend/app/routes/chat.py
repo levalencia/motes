@@ -119,8 +119,37 @@ async def chat(
             entry["tool_call_id"] = msg.tool_call_id
         messages.append(entry)
 
-    # Create tool registry
+    # Create tool registry with built-in + connected service tools
     tools = create_default_registry()
+
+    # Load Google tools if user has connected Gmail/Calendar
+    from app.oauth import OAuthToken
+
+    gmail_token_result = await session.execute(
+        select(OAuthToken).where(
+            OAuthToken.user_id == user.id,
+            OAuthToken.service == "gmail",
+        )
+    )
+    gmail_token = gmail_token_result.scalar_one_or_none()
+    if gmail_token:
+        from app.google_tools import GmailReadTool, GmailSendTool
+
+        tools.register(GmailReadTool(gmail_token.access_token_encrypted))
+        tools.register(GmailSendTool(gmail_token.access_token_encrypted))
+
+    calendar_token_result = await session.execute(
+        select(OAuthToken).where(
+            OAuthToken.user_id == user.id,
+            OAuthToken.service == "calendar",
+        )
+    )
+    calendar_token = calendar_token_result.scalar_one_or_none()
+    if calendar_token:
+        from app.google_tools import CalendarCreateTool, CalendarListTool
+
+        tools.register(CalendarListTool(calendar_token.access_token_encrypted))
+        tools.register(CalendarCreateTool(calendar_token.access_token_encrypted))
 
     async def event_generator():
         full_content = ""
