@@ -10,6 +10,7 @@ import asyncio
 import base64
 import contextlib
 import json
+from pathlib import Path
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
@@ -109,21 +110,35 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                 realtime_url,
                 additional_headers=headers,
             ) as azure_ws:
-                # Configure the session (GA API requires session.type)
+                # Configure the session (GA API format from OpenAI playground)
                 await azure_ws.send(json.dumps({
                     "type": "session.update",
                     "session": {
                         "type": "realtime",
                         "instructions": agent.system_prompt,
-                        "input_audio_format": "pcm16",
-                        "output_audio_format": "pcm16",
-                        "turn_detection": {
-                            "type": "server_vad",
-                            "threshold": 0.5,
-                            "prefix_padding_ms": 300,
-                            "silence_duration_ms": 500,
-                            "create_response": True,
+                        "audio": {
+                            "input": {
+                                "format": {
+                                    "type": "audio/pcm",
+                                    "rate": 24000,
+                                },
+                                "turn_detection": {
+                                    "type": "server_vad",
+                                    "threshold": 0.5,
+                                    "prefix_padding_ms": 300,
+                                    "silence_duration_ms": 500,
+                                },
+                            },
+                            "output": {
+                                "format": {
+                                    "type": "audio/pcm",
+                                    "rate": 24000,
+                                },
+                            },
                         },
+                        "output_modalities": ["audio"],
+                        "tools": [],
+                        "max_output_tokens": "inf",
                     },
                 }))
 
@@ -135,10 +150,37 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                             if msg.get("type") == "end":
                                 break
                             if msg.get("type") == "audio":
-                                await azure_ws.send(json.dumps({
-                                    "type": "input_audio_buffer.append",
-                                    "audio": msg["data"],
-                                }))
+                                # Convert webm→PCM16 24kHz for Azure Realtime
+                                import subprocess
+                                import tempfile
+
+                                audio_bytes = base64.b64decode(msg["data"])
+                                with tempfile.NamedTemporaryFile(
+                                    suffix=".webm", delete=False
+                                ) as f:
+                                    f.write(audio_bytes)
+                                    tmp_in = f.name
+                                try:
+                                    result = subprocess.run(
+                                        [
+                                            "ffmpeg", "-y", "-i", tmp_in,
+                                            "-ar", "24000", "-ac", "1",
+                                            "-f", "s16le", "-acodec", "pcm_s16le",
+                                            "pipe:1",
+                                        ],
+                                        capture_output=True,
+                                        timeout=10,
+                                    )
+                                    if result.returncode == 0 and result.stdout:
+                                        pcm_b64 = base64.b64encode(
+                                            result.stdout
+                                        ).decode()
+                                        await azure_ws.send(json.dumps({
+                                            "type": "input_audio_buffer.append",
+                                            "audio": pcm_b64,
+                                        }))
+                                finally:
+                                    Path(tmp_in).unlink(missing_ok=True)
                     except WebSocketDisconnect:
                         pass
 
