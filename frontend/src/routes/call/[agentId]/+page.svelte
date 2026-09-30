@@ -178,43 +178,42 @@
 	function startMic() {
 		listening = true;
 		status = 'Listening...';
-		startRecordingChunk();
+		startContinuousRecording();
 	}
 
-	function startRecordingChunk() {
+	function startContinuousRecording() {
 		if (!connected) return;
 		navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
 			micStream = stream;
+			// Use timeslice: emit a chunk every 1 second while recording
 			recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-			const chunks: Blob[] = [];
-			recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-			recorder.onstop = () => {
-				stream.getTracks().forEach(t => t.stop());
-				const blob = new Blob(chunks, { type: 'audio/webm' });
-				const reader = new FileReader();
-				reader.onload = () => {
-					if (socket && socket.readyState === WebSocket.OPEN) {
+			recorder.ondataavailable = (e) => {
+				if (e.data.size > 0 && socket && socket.readyState === WebSocket.OPEN) {
+					const reader = new FileReader();
+					reader.onload = () => {
 						const base64 = (reader.result as string).split(',')[1];
-						socket.send(JSON.stringify({ type: 'audio', data: base64 }));
-						// DON'T start a new recording — wait for response
-						listening = false;
-						status = 'Processing...';
-					}
-				};
-				reader.readAsDataURL(blob);
-			};
-			recorder.start();
-			setTimeout(() => {
-				if (recorder && recorder.state === 'recording') {
-					recorder.stop();
+						socket!.send(JSON.stringify({ type: 'audio', data: base64 }));
+					};
+					reader.readAsDataURL(e.data);
 				}
-			}, 4000);
+			};
+			// Start with timeslice — sends ondataavailable every 1000ms
+			recorder.start(1000);
 		});
+	}
+
+	function startRecordingChunk() {
+		// Resume continuous recording after agent responds
+		startContinuousRecording();
 	}
 
 	function stopRecording() {
 		if (recorder && recorder.state === 'recording') {
 			recorder.stop();
+		}
+		if (micStream) {
+			micStream.getTracks().forEach(t => t.stop());
+			micStream = null;
 		}
 	}
 
