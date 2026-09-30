@@ -87,6 +87,11 @@ async def chat(
     session.add(user_msg)
     await session.commit()
 
+    # Learn from this message (proactive intelligence)
+    from app.proactive import learn_from_message
+
+    await learn_from_message(session, user.id, agent_id, body.message)
+
     # Build message history with memory injection
     # Fetch agent memories to inject into system prompt
     from app.memory import Memory

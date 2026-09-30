@@ -10,6 +10,7 @@ import app.approvals  # noqa: F401
 import app.mcp_connector  # noqa: F401
 import app.memory  # noqa: F401
 import app.oauth  # noqa: F401
+import app.proactive  # noqa: F401
 import app.scheduler  # noqa: F401
 import app.voice  # noqa: F401
 from app.config import Settings

@@ -14,6 +14,7 @@ import app.approvals  # noqa: F401
 import app.mcp_connector  # noqa: F401
 import app.memory  # noqa: F401
 import app.oauth  # noqa: F401
+import app.proactive  # noqa: F401
 import app.scheduler  # noqa: F401
 import app.voice  # noqa: F401
 from app.config import Settings, get_settings
@@ -105,6 +106,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from app.routes.files import router as files_router
     from app.routes.mcp import router as mcp_router
     from app.routes.memory import router as memory_router
+    from app.routes.notifications import router as notifications_router
     from app.routes.oauth import router as oauth_router
     from app.routes.providers import router as providers_router
     from app.routes.scheduler import router as scheduler_router
@@ -121,6 +123,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(voice_router)
     app.include_router(mcp_router)
     app.include_router(oauth_router)
+    app.include_router(notifications_router)
 
     return app
 
