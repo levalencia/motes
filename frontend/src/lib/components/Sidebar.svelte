@@ -32,7 +32,7 @@
 	<!-- New Chat button -->
 	<div class="px-3 pb-2">
 		<button
-			onclick={onNewChat}
+			onclick={() => { if (agents.length > 0) { window.location.href = `/chat/${agents[0].id}`; } else { onNewChat(); } }}
 			class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 hover:scale-[1.01]"
 			style="background: var(--accent); color: white;"
 		>
@@ -50,14 +50,6 @@
 		>
 			<svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
 			Dashboard
-		</a>
-		<a
-			href="/agents"
-			class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all duration-150"
-			style="background: {isActive('/agents') ? 'var(--bg-active)' : 'transparent'}; color: {isActive('/agents') ? 'var(--accent)' : 'var(--text-secondary)'};"
-		>
-			<svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-			Agents
 		</a>
 		<a
 			href="/services"
@@ -84,11 +76,8 @@
 			Settings
 		</a>
 
-		<!-- Agents list -->
+		<!-- Agents list (single agent = Motes) -->
 		{#if agents.length > 0}
-			<div class="pt-4 pb-1 px-3">
-				<span class="text-xs font-medium uppercase tracking-wider" style="color: var(--text-muted);">Your Agents</span>
-			</div>
 			{#each agents as agent}
 				<a
 					href="/chat/{agent.id}"
