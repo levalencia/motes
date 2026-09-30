@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -140,6 +141,12 @@ async def chat(
     tools.register(PptxInspectTool(home_dir))
     tools.register(PptxAddSlideTool(home_dir))
     tools.register(FileDownloadUrlTool(home_dir))
+
+    # Web search tool (free DuckDuckGo fallback, Brave if key configured)
+    from app.web_search_tool import WebSearchTool
+
+    brave_key = os.environ.get("BRAVE_SEARCH_API_KEY", "")
+    tools.register(WebSearchTool(brave_key))
 
     # Load Google tools if user has connected Gmail/Calendar
     from app.oauth import OAuthToken

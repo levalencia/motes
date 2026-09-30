@@ -1,13 +1,9 @@
 <script lang="ts">
 	import '../app.css';
-	import { onMount } from 'svelte';
-	import { initTheme } from '$lib/stores/theme';
-
+	import { theme, toggleTheme } from '$lib/stores/theme';
 	let { children } = $props();
-
-	onMount(() => {
-		initTheme();
-	});
 </script>
 
-{@render children()}
+<div class={$theme === 'dark' ? 'dark' : ''}>
+	{@render children()}
+</div>

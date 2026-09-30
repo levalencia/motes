@@ -2,27 +2,30 @@
  * Theme store — dark/light mode toggle.
  */
 import { writable } from 'svelte/store';
+import { browser } from '$app/environment';
 
-const stored = typeof window !== 'undefined' ? localStorage.getItem('motes_theme') : null;
+function getInitialTheme(): 'dark' | 'light' {
+	if (!browser) return 'dark';
+	const saved = localStorage.getItem('motes_theme');
+	if (saved === 'light' || saved === 'dark') return saved;
+	return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
 
-export const theme = writable<'dark' | 'light'>((stored as 'dark' | 'light') || 'dark');
+export const theme = writable<'dark' | 'light'>(getInitialTheme());
 
 export function toggleTheme() {
 	theme.update((t) => {
 		const next = t === 'dark' ? 'light' : 'dark';
-		if (typeof window !== 'undefined') {
+		if (browser) {
 			localStorage.setItem('motes_theme', next);
-			document.documentElement.setAttribute('data-theme', next);
+			document.documentElement.classList.toggle('dark', next === 'dark');
 		}
 		return next;
 	});
 }
 
-export function initTheme() {
-	if (typeof window !== 'undefined') {
-		const saved = localStorage.getItem('motes_theme') as 'dark' | 'light' | null;
-		const t = saved || 'dark';
-		document.documentElement.setAttribute('data-theme', t);
-		theme.set(t);
-	}
+// Apply on load
+if (browser) {
+	const initial = getInitialTheme();
+	document.documentElement.classList.toggle('dark', initial === 'dark');
 }
