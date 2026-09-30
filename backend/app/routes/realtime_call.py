@@ -57,9 +57,9 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
 
         user_id = payload["sub"]
 
-        # Get realtime config from app settings (set via Settings page)
-        realtime_url = settings.realtime_url
-        realtime_key = settings.realtime_key
+        # Get realtime config from app state (set via Settings page)
+        realtime_url = getattr(websocket.app.state, "realtime_url", "") or settings.realtime_url
+        realtime_key = getattr(websocket.app.state, "realtime_key", "") or settings.realtime_key
 
         async with session_factory() as session:
             # Load agent

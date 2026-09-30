@@ -206,11 +206,9 @@ async def get_realtime_config(
     user: User = Depends(get_current_user),
 ):
     """Get realtime voice call config (key is never returned)."""
-    settings = request.app.state.settings
-    return RealtimeConfigResponse(
-        realtime_url=settings.realtime_url,
-        has_key=bool(settings.realtime_key),
-    )
+    url = getattr(request.app.state, "realtime_url", "") or request.app.state.settings.realtime_url
+    key = getattr(request.app.state, "realtime_key", "") or request.app.state.settings.realtime_key
+    return RealtimeConfigResponse(realtime_url=url, has_key=bool(key))
 
 
 @router.post("/realtime-config", response_model=RealtimeConfigResponse)
@@ -220,10 +218,9 @@ async def set_realtime_config(
     user: User = Depends(get_current_user),
 ):
     """Save realtime voice call config. Stored in app state (runtime only)."""
-    settings = request.app.state.settings
-    settings.realtime_url = body.realtime_url
-    settings.realtime_key = body.realtime_key
+    request.app.state.realtime_url = body.realtime_url
+    request.app.state.realtime_key = body.realtime_key
     return RealtimeConfigResponse(
-        realtime_url=settings.realtime_url,
-        has_key=bool(settings.realtime_key),
+        realtime_url=body.realtime_url,
+        has_key=bool(body.realtime_key),
     )
