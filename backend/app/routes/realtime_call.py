@@ -228,17 +228,22 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
 
                             elif etype == "response.output_audio_transcript.done":
                                 text = event.get("transcript", full_response)
-                                await websocket.send_json({
-                                    "type": "response_done",
-                                    "text": text,
-                                })
-                                # Save to conversation
+                                # Save transcript but DON'T send response_done yet
+                                # Wait for response.done (after all audio is sent)
                                 session.add(Message(
                                     conversation_id=conversation.id,
                                     role="assistant",
                                     content=text,
                                 ))
                                 await session.commit()
+                                full_response = text
+
+                            elif etype == "response.done":
+                                # All audio sent — now tell client to play
+                                await websocket.send_json({
+                                    "type": "response_done",
+                                    "text": full_response,
+                                })
                                 full_response = ""
 
                             elif etype == "conversation.item.input_audio_transcription.completed":
