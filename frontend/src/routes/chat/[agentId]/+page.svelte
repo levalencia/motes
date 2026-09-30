@@ -52,6 +52,28 @@
 		setTimeout(scrollToBottom, 50);
 	});
 
+	// Watch URL params for conversation switching
+	const currentConvParam = $derived($page.url.searchParams.get('conversation'));
+	$effect(() => {
+		const convId = currentConvParam;
+		if (convId && convId !== conversationId) {
+			loadConversation(convId);
+		}
+	});
+
+	async function loadConversation(convId: string) {
+		const token = localStorage.getItem('motes_token');
+		if (!token) return;
+		const res = await fetch(`http://localhost:8001/api/conversations/${convId}/messages`, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		if (res.ok) {
+			const msgs = await res.json();
+			messages = msgs.map((m: any) => ({ role: m.role, content: m.content, tool_name: m.tool_name }));
+			conversationId = convId;
+		}
+	}
+
 	onMount(async () => {
 		const token = localStorage.getItem('motes_token');
 		if (!token) { goto('/login'); return; }
