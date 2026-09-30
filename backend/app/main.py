@@ -56,6 +56,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         debug=settings.debug,
     )
 
+    if not settings.secret_key:
+        import secrets
+
+        settings.__dict__["secret_key"] = secrets.token_hex(32)
+        logger.warning(
+            "motes_secret_key_generated",
+            hint="Set MOTES_SECRET_KEY env var for production",
+        )
+
     try:
         yield
     finally:

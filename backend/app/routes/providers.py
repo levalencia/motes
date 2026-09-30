@@ -41,7 +41,10 @@ class ProviderTestResponse(BaseModel):
 
 
 @router.post("/test", response_model=ProviderTestResponse)
-async def test_provider(body: ProviderTestRequest):
+async def test_provider(
+    body: ProviderTestRequest,
+    user: User = Depends(get_current_user),
+):
     """Test an OpenAI-compatible endpoint without saving it."""
     success, message = await test_provider_connection(body.base_url, body.api_key, body.model)
     return ProviderTestResponse(success=success, message=message)

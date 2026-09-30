@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     otel_exporter_endpoint: str = "http://localhost:4319"
 
     # Security
-    secret_key: str = "change-me-in-production-please"
+    secret_key: str = ""  # REQUIRED: set MOTES_SECRET_KEY env var
 
     # Azure OpenAI Realtime (voice calls)
     realtime_url: str = ""
