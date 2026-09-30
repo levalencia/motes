@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import httpx
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.oauth import OAuthToken, get_oauth_app
+
+logger = structlog.get_logger()
 
 
 async def refresh_google_token(

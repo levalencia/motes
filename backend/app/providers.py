@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import httpx
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Provider
+
+logger = structlog.get_logger()
 
 
 async def test_provider_connection(

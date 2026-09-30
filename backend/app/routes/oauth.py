@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
@@ -22,6 +23,8 @@ from app.oauth import (
     save_oauth_app,
     save_token,
 )
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/oauth", tags=["oauth"])
 

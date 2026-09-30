@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import structlog
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_user, get_session
 from app.models import User
 from app.proactive import get_notifications, get_top_patterns, get_unread_count, mark_read
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 

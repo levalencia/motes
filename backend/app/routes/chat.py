@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -16,6 +17,8 @@ from app.agent_loop import run_agent_stream
 from app.dependencies import get_current_user, get_session
 from app.models import Agent, Conversation, Message, Provider, User
 from app.tools import create_default_registry
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api", tags=["chat"])
 

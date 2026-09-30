@@ -11,11 +11,14 @@ from datetime import datetime
 from enum import StrEnum
 
 import httpx
+import structlog
 from sqlalchemy import DateTime, ForeignKey, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models import Base
+
+logger = structlog.get_logger()
 
 
 class VoiceProviderType(StrEnum):

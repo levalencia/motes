@@ -10,11 +10,14 @@ import json
 import uuid
 from datetime import UTC, datetime
 
+import structlog
 from sqlalchemy import DateTime, ForeignKey, Text, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models import Base
+
+logger = structlog.get_logger()
 
 
 class UserPattern(Base):

@@ -9,6 +9,7 @@ from __future__ import annotations
 import contextlib
 from pathlib import Path
 
+import structlog
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
@@ -19,6 +20,8 @@ from app.edge_tts_provider import edge_tts_synthesize
 from app.local_stt import transcribe_local
 from app.models import Agent, Provider
 from app.tools import create_default_registry
+
+logger = structlog.get_logger()
 
 router = APIRouter(tags=["voice-call"])
 

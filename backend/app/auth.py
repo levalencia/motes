@@ -8,10 +8,13 @@ import secrets
 from datetime import UTC, datetime, timedelta
 
 import jwt
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User
+
+logger = structlog.get_logger()
 
 _JWT_ALGORITHM = "HS256"
 _JWT_EXPIRY = timedelta(hours=24)

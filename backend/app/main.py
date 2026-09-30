@@ -32,7 +32,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan: startup and shutdown."""
     settings: Settings = app.state.settings
 
-    # Structured logging
     setup_logging(
         json_format=not settings.debug,
         log_level="DEBUG" if settings.debug else "INFO",
@@ -76,6 +75,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings
+
+    # Middleware
+    from app.middleware import CorrelationIdMiddleware
+
+    app.add_middleware(CorrelationIdMiddleware)
 
     # CORS
     app.add_middleware(

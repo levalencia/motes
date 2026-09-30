@@ -13,11 +13,14 @@ from typing import Any
 from urllib.parse import urlencode
 
 import httpx
+import structlog
 from sqlalchemy import DateTime, ForeignKey, Text, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models import Base
+
+logger = structlog.get_logger()
 
 
 class OAuthApp(Base):
