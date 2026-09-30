@@ -28,6 +28,10 @@
 	let connecting = $state<string | null>(null);
 	let error = $state('');
 
+	// Setup form state
+	let showSetupFor = $state<CatalogEntry | null>(null);
+	let envValues = $state<Record<string, string>>({});
+
 	const categoryIcons: Record<string, string> = {
 		email: '📧',
 		calendar: '📅',
@@ -35,6 +39,26 @@
 		communication: '💬',
 		utility: '📁',
 		search: '🔍',
+	};
+
+	const envVarLabels: Record<string, string> = {
+		GMAIL_OAUTH_CLIENT_ID: 'Google OAuth Client ID',
+		GMAIL_OAUTH_CLIENT_SECRET: 'Google OAuth Client Secret',
+		GOOGLE_OAUTH_CLIENT_ID: 'Google OAuth Client ID',
+		GOOGLE_OAUTH_CLIENT_SECRET: 'Google OAuth Client Secret',
+		GITHUB_PERSONAL_ACCESS_TOKEN: 'GitHub Personal Access Token',
+		SLACK_BOT_TOKEN: 'Slack Bot Token',
+		BRAVE_API_KEY: 'Brave Search API Key',
+	};
+
+	const envVarHelp: Record<string, string> = {
+		GMAIL_OAUTH_CLIENT_ID: 'Get from Google Cloud Console → APIs → Credentials',
+		GMAIL_OAUTH_CLIENT_SECRET: 'Get from Google Cloud Console → APIs → Credentials',
+		GOOGLE_OAUTH_CLIENT_ID: 'Get from Google Cloud Console → APIs → Credentials',
+		GOOGLE_OAUTH_CLIENT_SECRET: 'Get from Google Cloud Console → APIs → Credentials',
+		GITHUB_PERSONAL_ACCESS_TOKEN: 'GitHub → Settings → Developer Settings → Personal Access Tokens',
+		SLACK_BOT_TOKEN: 'Slack API → Your Apps → OAuth & Permissions → Bot Token',
+		BRAVE_API_KEY: 'Get from brave.com/search/api/',
 	};
 
 	onMount(async () => {
@@ -52,7 +76,34 @@
 		}
 	});
 
-	async function connectService(entry: CatalogEntry) {
+	function startSetup(entry: CatalogEntry) {
+		showSetupFor = entry;
+		envValues = {};
+		error = '';
+		// Pre-fill empty values
+		for (const v of entry.env_vars) {
+			envValues[v] = '';
+		}
+	}
+
+	function cancelSetup() {
+		showSetupFor = null;
+		envValues = {};
+		error = '';
+	}
+
+	async function connectService() {
+		if (!showSetupFor) return;
+		const entry = showSetupFor;
+
+		// Validate all required env vars are filled
+		for (const v of entry.env_vars) {
+			if (!envValues[v]?.trim()) {
+				error = `${envVarLabels[v] || v} is required`;
+				return;
+			}
+		}
+
 		connecting = entry.name;
 		error = '';
 		try {
@@ -63,9 +114,12 @@
 					description: entry.description,
 					transport: entry.transport,
 					command: entry.command,
+					env_json: JSON.stringify(envValues),
 				}),
 			});
 			connected = [...connected, server];
+			showSetupFor = null;
+			envValues = {};
 		} catch (e: any) {
 			error = e.message;
 		} finally {
@@ -108,9 +162,69 @@
 		{#if loading}
 			<p class="text-gray-400">Loading services...</p>
 		{:else}
-			{#if error}
+			{#if error && !showSetupFor}
 				<div class="bg-red-950 border border-red-900 rounded-lg px-4 py-3 mb-6 text-sm text-red-400">
 					{error}
+				</div>
+			{/if}
+
+			<!-- Setup modal/form -->
+			{#if showSetupFor}
+				<div class="bg-gray-900 border border-blue-500/50 rounded-xl p-6 mb-8">
+					<div class="flex items-center gap-3 mb-4">
+						<div class="w-10 h-10 bg-blue-900/50 border border-blue-800 rounded-lg flex items-center justify-center text-lg">
+							{categoryIcons[showSetupFor.category] || '🔌'}
+						</div>
+						<div>
+							<h2 class="text-lg font-semibold">Connect {showSetupFor.name}</h2>
+							<p class="text-gray-400 text-sm">{showSetupFor.description}</p>
+						</div>
+					</div>
+
+					{#if showSetupFor.env_vars.length === 0}
+						<p class="text-gray-400 text-sm mb-4">No credentials needed — this service works out of the box.</p>
+					{:else}
+						<p class="text-gray-400 text-sm mb-4">Enter your credentials. These are stored encrypted and never shared.</p>
+						<div class="space-y-4">
+							{#each showSetupFor.env_vars as envVar}
+								<div>
+									<label for={envVar} class="block text-sm text-gray-300 font-medium">
+										{envVarLabels[envVar] || envVar}
+									</label>
+									<input
+										id={envVar}
+										type="password"
+										bind:value={envValues[envVar]}
+										placeholder={envVar}
+										class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-blue-500"
+									/>
+									{#if envVarHelp[envVar]}
+										<p class="text-gray-600 text-xs mt-1">{envVarHelp[envVar]}</p>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					{/if}
+
+					{#if error}
+						<p class="text-red-400 text-sm mt-3">{error}</p>
+					{/if}
+
+					<div class="flex gap-3 mt-5">
+						<button
+							onclick={connectService}
+							disabled={connecting !== null}
+							class="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-lg text-sm font-medium"
+						>
+							{connecting ? 'Connecting...' : `Connect ${showSetupFor.name}`}
+						</button>
+						<button
+							onclick={cancelSetup}
+							class="px-6 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-gray-300"
+						>
+							Cancel
+						</button>
+					</div>
 				</div>
 			{/if}
 
@@ -178,8 +292,10 @@
 									<p class="text-gray-400 text-sm mt-1">{entry.description}</p>
 									{#if entry.env_vars.length > 0}
 										<p class="text-gray-600 text-xs mt-2">
-											Requires: {entry.env_vars.join(', ')}
+											Requires: {entry.env_vars.map(v => envVarLabels[v] || v).join(', ')}
 										</p>
+									{:else}
+										<p class="text-green-600 text-xs mt-2">No credentials needed</p>
 									{/if}
 								</div>
 							</div>
@@ -188,17 +304,22 @@
 									<span class="text-green-400 text-sm">✓ Connected</span>
 								{:else}
 									<button
-										onclick={() => connectService(entry)}
-										disabled={connecting === entry.name}
-										class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-lg text-sm font-medium w-full"
+										onclick={() => startSetup(entry)}
+										class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium w-full"
 									>
-										{connecting === entry.name ? 'Connecting...' : `Connect ${entry.name}`}
+										Connect {entry.name}
 									</button>
 								{/if}
 							</div>
 						</div>
 					{/each}
 				</div>
+			</div>
+
+			<!-- Info note -->
+			<div class="mt-8 bg-gray-900/50 border border-gray-800 rounded-xl p-4 text-sm text-gray-500">
+				<p class="font-medium text-gray-400 mb-1">🔒 About credentials</p>
+				<p>Your API keys and tokens are stored encrypted on your server. Motes is self-hosted — credentials never leave your infrastructure. Each service uses the <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener" class="text-blue-400 hover:underline">Model Context Protocol (MCP)</a> standard.</p>
 			</div>
 		{/if}
 	</main>
