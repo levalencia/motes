@@ -115,7 +115,6 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                     "session": {
                         "type": "realtime",
                         "instructions": agent.system_prompt,
-                        "voice": "alloy",
                         "input_audio_format": "pcm16",
                         "output_audio_format": "pcm16",
                         "turn_detection": {
@@ -212,6 +211,9 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
     except WebSocketDisconnect:
         pass
     except Exception as e:
+        import traceback
+
+        traceback.print_exc()
         with contextlib.suppress(Exception):
             await websocket.send_json({"type": "error", "message": str(e)})
     finally:
