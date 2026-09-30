@@ -16,12 +16,12 @@ _model = None
 
 
 def _get_model():
-    """Lazy-load the Whisper model (downloads ~150MB on first use)."""
+    """Lazy-load the Whisper model (downloads ~500MB on first use)."""
     global _model  # noqa: PLW0603
     if _model is None:
         from faster_whisper import WhisperModel
 
-        _model = WhisperModel("base", device="cpu", compute_type="int8")
+        _model = WhisperModel("small", device="cpu", compute_type="int8")
     return _model
 
 
@@ -57,6 +57,8 @@ async def transcribe_local(audio_data: bytes, language: str | None = None) -> st
             kwargs: dict = {}
             if language:
                 kwargs["language"] = language
+            else:
+                kwargs["language"] = "en"  # Default to English to avoid misdetection
             segments, _info = model.transcribe(audio_array, **kwargs)
             return " ".join(seg.text.strip() for seg in segments)
         finally:

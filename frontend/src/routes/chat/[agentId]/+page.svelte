@@ -24,6 +24,7 @@
 	let messages = $state<ChatMessage[]>([]);
 	let input = $state('');
 	let streaming = $state(false);
+	let transcribing = $state(false);
 	let conversationId = $state<string | null>(null);
 	let agentName = $state('Agent');
 	let error = $state('');
