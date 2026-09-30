@@ -125,13 +125,28 @@ async def chat(
     async def event_generator():
         full_content = ""
         try:
-            async for event in run_agent_stream(
-                base_url=provider.base_url,
-                api_key=provider.api_key_encrypted,
-                model=provider.model,
-                messages=messages,
-                tools=tools,
-            ):
+            # Pick the right agent loop based on provider API format
+            if provider.api_format == "anthropic":
+                from app.agent_loop_anthropic import run_anthropic_stream
+
+                stream = run_anthropic_stream(
+                    base_url=provider.base_url,
+                    api_key=provider.api_key_encrypted,
+                    model=provider.model,
+                    messages=messages,
+                    tools=tools,
+                    system_prompt=agent.system_prompt + memory_context,
+                )
+            else:
+                stream = run_agent_stream(
+                    base_url=provider.base_url,
+                    api_key=provider.api_key_encrypted,
+                    model=provider.model,
+                    messages=messages,
+                    tools=tools,
+                )
+
+            async for event in stream:
                 if event["type"] == "token":
                     full_content += event["content"]
                     yield {"event": "token", "data": json.dumps(event)}

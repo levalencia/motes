@@ -46,6 +46,38 @@ async def test_provider_connection(
         return False, f"Connection error: {exc}"
 
 
+async def test_anthropic_connection(
+    base_url: str, api_key: str, model: str, timeout: float = 10.0
+) -> tuple[bool, str]:
+    """Test an Anthropic Messages API endpoint."""
+    url = base_url.rstrip("/") + "/messages"
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": "Say ok"}],
+        "max_tokens": 5,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(url, json=payload, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                if "content" in data:
+                    return True, "Connection successful"
+                return False, f"Unexpected response: {data}"
+            return False, f"HTTP {response.status_code}: {response.text[:200]}"
+    except httpx.ConnectError:
+        return False, f"Cannot connect to {base_url}"
+    except httpx.TimeoutException:
+        return False, "Connection timed out"
+    except Exception as exc:
+        return False, f"Connection error: {exc}"
+
+
 async def add_provider(
     session: AsyncSession,
     user_id: str,
@@ -53,9 +85,13 @@ async def add_provider(
     base_url: str,
     api_key: str,
     model: str,
+    api_format: str = "openai",
 ) -> Provider:
     """Add a verified provider. Tests connection first, rejects if invalid."""
-    success, message = await test_provider_connection(base_url, api_key, model)
+    if api_format == "anthropic":
+        success, message = await test_anthropic_connection(base_url, api_key, model)
+    else:
+        success, message = await test_provider_connection(base_url, api_key, model)
     if not success:
         raise ValueError(f"Provider validation failed: {message}")
 
@@ -65,6 +101,7 @@ async def add_provider(
         base_url=base_url.rstrip("/"),
         api_key_encrypted=api_key,  # TODO: encrypt at rest
         model=model,
+        api_format=api_format,
         is_verified=True,
     )
     session.add(provider)

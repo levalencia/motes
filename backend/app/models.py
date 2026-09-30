@@ -38,6 +38,7 @@ class Provider(Base):
     base_url: Mapped[str]
     api_key_encrypted: Mapped[str]  # stored encrypted, never returned raw
     model: Mapped[str]
+    api_format: Mapped[str] = mapped_column(default="openai")  # openai | anthropic
     is_verified: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

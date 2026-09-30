@@ -18,6 +18,7 @@ class ProviderCreate(BaseModel):
     base_url: str = Field(min_length=1)
     api_key: str = Field(min_length=1)
     model: str = Field(min_length=1)
+    api_format: str = "openai"  # openai | anthropic
 
 
 class ProviderTestRequest(BaseModel):
@@ -55,7 +56,8 @@ async def create_provider(
     """Add a new provider. Tests connection first, rejects if invalid."""
     try:
         provider = await add_provider(
-            session, user.id, body.name, body.base_url, body.api_key, body.model
+            session, user.id, body.name, body.base_url, body.api_key, body.model,
+            body.api_format,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
