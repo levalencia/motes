@@ -20,11 +20,19 @@
 </script>
 
 <div class="min-h-screen bg-gray-950 text-white">
+	<!-- Top nav -->
 	<nav class="border-b border-gray-800 px-6 py-4 flex justify-between items-center">
-		<h1 class="text-xl font-bold">Motes</h1>
+		<div class="flex items-center gap-3">
+			<div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold">M</div>
+			<h1 class="text-xl font-bold">Motes</h1>
+		</div>
 		<div class="flex items-center gap-4">
+			<a href="/providers" class="text-sm text-gray-400 hover:text-white">Providers</a>
+			<a href="/agents" class="text-sm text-gray-400 hover:text-white">Agents</a>
+			<a href="/services" class="text-sm text-gray-400 hover:text-white">Services</a>
+			<span class="text-gray-600">|</span>
 			<span class="text-gray-400 text-sm">{$username}</span>
-			<button onclick={() => { clearAuth(); goto('/login'); }} class="text-sm text-gray-400 hover:text-white">
+			<button onclick={() => { clearAuth(); goto('/login'); }} class="text-sm text-gray-500 hover:text-white">
 				Sign out
 			</button>
 		</div>
@@ -32,51 +40,114 @@
 
 	<main class="max-w-6xl mx-auto px-6 py-8">
 		{#if loading}
-			<p class="text-gray-400">Loading...</p>
+			<div class="flex items-center justify-center h-64">
+				<div class="text-gray-500">Loading...</div>
+			</div>
 		{:else}
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-				<div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
-					<h3 class="text-sm text-gray-400 uppercase tracking-wide">Providers</h3>
-					<p class="text-3xl font-bold mt-2">{providers.length}</p>
-					<a href="/providers" class="text-blue-400 text-sm mt-2 inline-block hover:underline">Manage →</a>
+			<!-- Stats row -->
+			<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+				<div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+					<div class="flex items-center justify-between">
+						<span class="text-xs text-gray-500 uppercase tracking-wider">Agents</span>
+						<span class="text-2xl">🤖</span>
+					</div>
+					<p class="text-3xl font-bold mt-1">{agents.length}</p>
+					<a href="/agents" class="text-blue-400 text-xs mt-2 inline-block hover:underline">Manage →</a>
 				</div>
-				<div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
-					<h3 class="text-sm text-gray-400 uppercase tracking-wide">Agents</h3>
-					<p class="text-3xl font-bold mt-2">{agents.length}</p>
-					<a href="/agents" class="text-blue-400 text-sm mt-2 inline-block hover:underline">Manage →</a>
+				<div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+					<div class="flex items-center justify-between">
+						<span class="text-xs text-gray-500 uppercase tracking-wider">Providers</span>
+						<span class="text-2xl">⚡</span>
+					</div>
+					<p class="text-3xl font-bold mt-1">{providers.length}</p>
+					<a href="/providers" class="text-blue-400 text-xs mt-2 inline-block hover:underline">Manage →</a>
 				</div>
-				<div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
-					<h3 class="text-sm text-gray-400 uppercase tracking-wide">Status</h3>
-					<p class="text-3xl font-bold mt-2 text-green-400">Online</p>
+				<div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+					<div class="flex items-center justify-between">
+						<span class="text-xs text-gray-500 uppercase tracking-wider">Services</span>
+						<span class="text-2xl">🔌</span>
+					</div>
+					<p class="text-3xl font-bold mt-1">0</p>
+					<a href="/services" class="text-blue-400 text-xs mt-2 inline-block hover:underline">Connect →</a>
+				</div>
+				<div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+					<div class="flex items-center justify-between">
+						<span class="text-xs text-gray-500 uppercase tracking-wider">Status</span>
+						<span class="text-2xl">🟢</span>
+					</div>
+					<p class="text-xl font-bold mt-1 text-green-400">All systems online</p>
 				</div>
 			</div>
 
-			<h2 class="text-xl font-semibold mb-4">Your Agents</h2>
-			{#if agents.length === 0}
-				<div class="bg-gray-900 border border-gray-800 rounded-lg p-8 text-center">
-					<p class="text-gray-400">No agents yet.</p>
-					<p class="text-gray-500 text-sm mt-1">
-						{#if providers.length === 0}
-							<a href="/providers" class="text-blue-400 hover:underline">Add a provider</a> first, then create an agent.
-						{:else}
-							<a href="/agents" class="text-blue-400 hover:underline">Create your first agent</a>
-						{/if}
-					</p>
+			<!-- Agents section -->
+			<div class="mb-8">
+				<div class="flex items-center justify-between mb-4">
+					<h2 class="text-xl font-semibold">Your Agents</h2>
+					<a href="/agents" class="text-sm text-blue-400 hover:underline">+ Create Agent</a>
 				</div>
-			{:else}
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-					{#each agents as agent}
-						<a
-							href="/chat/{agent.id}"
-							class="bg-gray-900 border border-gray-800 rounded-lg p-4 hover:border-gray-600 transition-colors"
-						>
-							<h3 class="font-semibold">{agent.name}</h3>
-							<p class="text-gray-400 text-sm mt-1">{agent.model || 'Unknown model'}</p>
-							<p class="text-gray-500 text-xs mt-2 line-clamp-2">{agent.system_prompt}</p>
-						</a>
-					{/each}
+
+				{#if agents.length === 0}
+					<div class="bg-gray-900 border border-gray-800 border-dashed rounded-xl p-12 text-center">
+						<p class="text-4xl mb-3">🤖</p>
+						<p class="text-gray-400 font-medium">No agents yet</p>
+						<p class="text-gray-500 text-sm mt-1">
+							{#if providers.length === 0}
+								<a href="/providers" class="text-blue-400 hover:underline">Add a provider</a> first, then create an agent.
+							{:else}
+								<a href="/agents" class="text-blue-400 hover:underline">Create your first agent</a> to get started.
+							{/if}
+						</p>
+					</div>
+				{:else}
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+						{#each agents as agent}
+							<a
+								href="/chat/{agent.id}"
+								class="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-blue-500/50 hover:bg-gray-900/80 transition-all group"
+							>
+								<div class="flex items-start gap-3">
+									<div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-lg flex-shrink-0">
+										{agent.name[0]}
+									</div>
+									<div class="flex-1 min-w-0">
+										<h3 class="font-semibold group-hover:text-blue-400 transition-colors">{agent.name}</h3>
+										<p class="text-gray-500 text-xs mt-0.5">{agent.model || 'Unknown model'}</p>
+									</div>
+									<div class="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0" title="Online"></div>
+								</div>
+								<p class="text-gray-500 text-xs mt-3 line-clamp-2">{agent.system_prompt}</p>
+								<div class="flex items-center gap-3 mt-3 text-xs text-gray-600">
+									<span>💬 Chat</span>
+									<span>🧠 Memory</span>
+									<span>🔧 2 tools</span>
+								</div>
+							</a>
+						{/each}
+					</div>
+				{/if}
+			</div>
+
+			<!-- Quick actions -->
+			<div>
+				<h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+					<a href="/services" class="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-600 transition-colors">
+						<p class="text-2xl mb-2">📧</p>
+						<h3 class="font-medium">Connect Gmail</h3>
+						<p class="text-gray-500 text-xs mt-1">Let your agents read and send emails</p>
+					</a>
+					<a href="/services" class="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-600 transition-colors">
+						<p class="text-2xl mb-2">📅</p>
+						<h3 class="font-medium">Connect Calendar</h3>
+						<p class="text-gray-500 text-xs mt-1">Schedule meetings and check availability</p>
+					</a>
+					<a href="/services" class="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-600 transition-colors">
+						<p class="text-2xl mb-2">💻</p>
+						<h3 class="font-medium">Connect GitHub</h3>
+						<p class="text-gray-500 text-xs mt-1">Manage issues, PRs, and repositories</p>
+					</a>
 				</div>
-			{/if}
+			</div>
 		{/if}
 	</main>
 </div>
