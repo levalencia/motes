@@ -1,16 +1,24 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { listAgents, listProviders, type Agent, type Provider } from '$lib/api/client';
+	import { listAgents, listProviders, api, type Agent, type Provider } from '$lib/api/client';
 	import { clearAuth, username } from '$lib/stores/auth';
 	import { onMount } from 'svelte';
 
 	let agents = $state<Agent[]>([]);
 	let providers = $state<Provider[]>([]);
+	let connectedServices = $state(0);
 	let loading = $state(true);
 
 	onMount(async () => {
 		try {
-			[agents, providers] = await Promise.all([listAgents(), listProviders()]);
+			const [a, p, svc] = await Promise.all([
+				listAgents(),
+				listProviders(),
+				api<{ service: string }[]>('/oauth/connected'),
+			]);
+			agents = a;
+			providers = p;
+			connectedServices = svc.length;
 		} catch {
 			goto('/login');
 		} finally {
@@ -67,7 +75,7 @@
 						<span class="text-xs text-gray-500 uppercase tracking-wider">Services</span>
 						<span class="text-2xl">🔌</span>
 					</div>
-					<p class="text-3xl font-bold mt-1">0</p>
+					<p class="text-3xl font-bold mt-1">{connectedServices}</p>
 					<a href="/services" class="text-blue-400 text-xs mt-2 inline-block hover:underline">Connect →</a>
 				</div>
 				<div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
