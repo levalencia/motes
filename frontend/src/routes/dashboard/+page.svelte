@@ -38,6 +38,7 @@
 			<a href="/providers" class="text-sm text-gray-400 hover:text-white">Providers</a>
 			<a href="/agents" class="text-sm text-gray-400 hover:text-white">Agents</a>
 			<a href="/services" class="text-sm text-gray-400 hover:text-white">Services</a>
+			<a href="/settings" class="text-sm text-gray-400 hover:text-white">Settings</a>
 			<span class="text-gray-600">|</span>
 			<span class="text-gray-400 text-sm">{$username}</span>
 			<button onclick={() => { clearAuth(); goto('/login'); }} class="text-sm text-gray-500 hover:text-white">
