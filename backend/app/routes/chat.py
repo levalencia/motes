@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -16,7 +14,6 @@ from sse_starlette.sse import EventSourceResponse
 from app.agent_loop import run_agent_stream
 from app.dependencies import get_current_user, get_session
 from app.models import Agent, Conversation, Message, Provider, User
-from app.tools import create_default_registry
 
 logger = structlog.get_logger()
 
@@ -129,49 +126,10 @@ async def chat(
             entry["tool_call_id"] = msg.tool_call_id
         messages.append(entry)
 
-    # Create tool registry with built-in + connected service tools
-    tools = create_default_registry()
+    # Build tool registry via service layer
+    from app.services import build_tool_registry
 
-    # Load file tools (local computer access)
-    from app.file_tools import (
-        FileDownloadUrlTool,
-        FileListTool,
-        FileReadTool,
-        FileSearchTool,
-        PptxAddSlideTool,
-        PptxInspectTool,
-    )
-
-    home_dir = str(Path.home())
-    tools.register(FileListTool(home_dir))
-    tools.register(FileReadTool(home_dir))
-    tools.register(FileSearchTool(home_dir))
-    tools.register(PptxInspectTool(home_dir))
-    tools.register(PptxAddSlideTool(home_dir))
-    tools.register(FileDownloadUrlTool(home_dir))
-
-    # Web search tool (free DuckDuckGo fallback, Brave if key configured)
-    from app.web_search_tool import WebSearchTool
-
-    brave_key = os.environ.get("BRAVE_SEARCH_API_KEY", "")
-    tools.register(WebSearchTool(brave_key))
-
-    # Load Google tools if user has connected Gmail/Calendar (with auto-refresh)
-    from app.token_refresh import get_valid_token
-
-    gmail_access = await get_valid_token(session, user.id, "gmail")
-    if gmail_access:
-        from app.google_tools import GmailReadTool, GmailSendTool
-
-        tools.register(GmailReadTool(gmail_access))
-        tools.register(GmailSendTool(gmail_access))
-
-    calendar_access = await get_valid_token(session, user.id, "calendar")
-    if calendar_access:
-        from app.google_tools import CalendarCreateTool, CalendarListTool
-
-        tools.register(CalendarListTool(calendar_access))
-        tools.register(CalendarCreateTool(calendar_access))
+    tools = await build_tool_registry(session, user.id)
 
     async def event_generator():
         full_content = ""
