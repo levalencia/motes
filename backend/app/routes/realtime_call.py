@@ -84,20 +84,54 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                 await websocket.close()
                 return
 
-            # Create a conversation for this call
-            conversation = Conversation(
-                agent_id=agent_id,
-                title="Voice call",
-            )
-            session.add(conversation)
-            await session.commit()
-            await session.refresh(conversation)
+            # Use existing conversation or create new one for this call
+            client_conv_id = auth_msg.get("conversation_id")
+            if client_conv_id:
+                conv_result = await session.execute(
+                    select(Conversation).where(
+                        Conversation.id == client_conv_id,
+                        Conversation.agent_id == agent_id,
+                    )
+                )
+                conversation = conv_result.scalar_one_or_none()
+                if not conversation:
+                    conversation = Conversation(
+                        agent_id=agent_id,
+                        title="Voice call",
+                        conversation_type="call",
+                    )
+                    session.add(conversation)
+                    await session.commit()
+                    await session.refresh(conversation)
+            else:
+                conversation = Conversation(
+                    agent_id=agent_id,
+                    title="Voice call",
+                    conversation_type="call",
+                )
+                session.add(conversation)
+                await session.commit()
+                await session.refresh(conversation)
 
             await websocket.send_json({
                 "type": "ready",
                 "agent_name": agent.name,
                 "conversation_id": conversation.id,
             })
+
+            # Build context from previous messages in this conversation
+            prev_msgs = await session.execute(
+                select(Message)
+                .where(Message.conversation_id == conversation.id)
+                .order_by(Message.created_at)
+            )
+            prev_history = prev_msgs.scalars().all()
+            context_summary = ""
+            if prev_history:
+                recent = prev_history[-10:]  # Last 10 messages
+                context_summary = "\n\nPrevious conversation context:\n"
+                for m in recent:
+                    context_summary += f"- {m.role}: {m.content[:150]}\n"
 
             # If no realtime key, fall back to pipeline mode
             if not realtime_key:
@@ -194,7 +228,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                     "type": "session.update",
                     "session": {
                         "type": "realtime",
-                        "instructions": agent.system_prompt,
+                        "instructions": agent.system_prompt + context_summary,
                         "audio": {
                             "input": {
                                 "format": {

@@ -5,7 +5,7 @@
 
 	const agentId = $derived($page.params.agentId);
 
-	let agentName = $state('Agent');
+	let agentName = $state('Motes');
 	let status = $state('Connecting...');
 	let callDuration = $state(0);
 	let durationInterval: ReturnType<typeof setInterval> | null = null;
@@ -14,55 +14,11 @@
 	let listening = $state(false);
 	let transcripts = $state<{role: string; text: string}[]>([]);
 	let showCaptions = $state(false);
+	let showTranscript = $state(false);
+	let previousMessages = $state<{role: string; content: string}[]>([]);
+	let conversationId = $state<string | null>(null);
 	let socket: WebSocket | null = null;
-	let audioContext: AudioContext | null = null;
 	let micStream: MediaStream | null = null;
-	let processor: ScriptProcessorNode | null = null;
-	let audioChunksFromAzure: string[] = [];
-
-	// Convert base64 PCM16 chunks to a single Uint8Array
-	function concatBase64PCM(chunks: string[]): Uint8Array {
-		const arrays = chunks.map(c => Uint8Array.from(atob(c), ch => ch.charCodeAt(0)));
-		const total = arrays.reduce((s, a) => s + a.length, 0);
-		const result = new Uint8Array(total);
-		let offset = 0;
-		for (const a of arrays) {
-			result.set(a, offset);
-			offset += a.length;
-		}
-		return result;
-	}
-
-	// Wrap raw PCM16 in a WAV header so the browser can play it
-	function pcm16ToWav(pcmData: Uint8Array, sampleRate: number): Blob {
-		const numChannels = 1;
-		const bitsPerSample = 16;
-		const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
-		const blockAlign = numChannels * (bitsPerSample / 8);
-		const dataSize = pcmData.length;
-		const buffer = new ArrayBuffer(44 + dataSize);
-		const view = new DataView(buffer);
-
-		// RIFF header
-		writeString(view, 0, 'RIFF');
-		view.setUint32(4, 36 + dataSize, true);
-		writeString(view, 8, 'WAVE');
-		// fmt chunk
-		writeString(view, 12, 'fmt ');
-		view.setUint32(16, 16, true);
-		view.setUint16(20, 1, true); // PCM
-		view.setUint16(22, numChannels, true);
-		view.setUint32(24, sampleRate, true);
-		view.setUint32(28, byteRate, true);
-		view.setUint16(32, blockAlign, true);
-		view.setUint16(34, bitsPerSample, true);
-		// data chunk
-		writeString(view, 36, 'data');
-		view.setUint32(40, dataSize, true);
-		new Uint8Array(buffer, 44).set(pcmData);
-
-		return new Blob([buffer], { type: 'audio/wav' });
-	}
 
 	function writeString(view: DataView, offset: number, str: string) {
 		for (let i = 0; i < str.length; i++) {
@@ -84,6 +40,21 @@
 			if (agent) agentName = agent.name;
 		} catch { /* ignore */ }
 
+		// Check for existing conversation from URL
+		const urlConvId = $page.url.searchParams.get('conversation');
+		if (urlConvId) {
+			conversationId = urlConvId;
+			// Load previous transcript
+			try {
+				const res = await fetch(`http://localhost:8001/api/conversations/${urlConvId}/messages`, {
+					headers: { Authorization: `Bearer ${token}` }
+				});
+				if (res.ok) {
+					previousMessages = await res.json();
+				}
+			} catch { /* ignore */ }
+		}
+
 		// Connect WebSocket
 		socket = new WebSocket(`ws://localhost:8001/api/realtime-call/${agentId}`);
 
@@ -91,6 +62,7 @@
 			socket!.send(JSON.stringify({
 				type: 'auth',
 				token,
+				conversation_id: conversationId,
 			}));
 		};
 
@@ -100,6 +72,7 @@
 			if (msg.type === 'ready') {
 				connected = true;
 				status = 'Connected';
+				if (msg.conversation_id) conversationId = msg.conversation_id;
 				startTimer();
 				startMic();
 			} else if (msg.type === 'status') {
@@ -110,11 +83,16 @@
 				transcripts = [...transcripts, { role: 'user', text: msg.text }];
 				listening = false;
 			} else if (msg.type === 'response_done') {
-				transcripts = [...transcripts, { role: 'assistant', text: msg.text }];
+				if (msg.text) {
+					// Only add if not duplicate of last transcript
+					const last = transcripts[transcripts.length - 1];
+					if (!last || last.text !== msg.text) {
+						transcripts = [...transcripts, { role: 'assistant', text: msg.text }];
+					}
+				}
 				status = 'Speaking...';
 				speaking = true;
 			} else if (msg.type === 'response_transcript') {
-				// Live streaming text — update or add
 				const last = transcripts[transcripts.length - 1];
 				if (last && last.role === 'assistant') {
 					transcripts = [...transcripts.slice(0, -1), { role: 'assistant', text: msg.text }];
@@ -122,7 +100,6 @@
 					transcripts = [...transcripts, { role: 'assistant', text: msg.text }];
 				}
 			} else if (msg.type === 'audio_wav') {
-				// Server-assembled WAV from Azure Realtime
 				const bytes = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
 				const blob = new Blob([bytes], { type: 'audio/wav' });
 				const url = URL.createObjectURL(blob);
@@ -132,18 +109,13 @@
 					speaking = false;
 					status = 'Listening...';
 					listening = true;
-					startRecordingChunk();
+					startContinuousRecording();
 				};
 				stopRecording();
 				speaking = true;
 				status = 'Speaking...';
 				audio.play();
-			} else if (msg.type === 'response_done') {
-				// Final text — DON'T add again (already shown via response_transcript)
-			} else if (msg.type === 'audio') {
-				// Ignore individual PCM chunks (server assembles WAV now)
 			} else if (msg.type === 'audio_mp3') {
-				// Pipeline fallback (Edge TTS mp3)
 				const bytes = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
 				const blob = new Blob([bytes], { type: 'audio/mpeg' });
 				const url = URL.createObjectURL(blob);
@@ -153,7 +125,7 @@
 					speaking = false;
 					status = 'Listening...';
 					listening = true;
-					startRecordingChunk();
+					startContinuousRecording();
 				};
 				stopRecording();
 				audio.play();
@@ -192,7 +164,6 @@
 			};
 			recorder.onstop = () => {
 				const blob = new Blob(chunks, { type: 'audio/webm' });
-				// Only send if we have meaningful audio (>5KB)
 				if (blob.size > 5000 && socket && socket.readyState === WebSocket.OPEN) {
 					const reader = new FileReader();
 					reader.onload = () => {
@@ -201,7 +172,6 @@
 					};
 					reader.readAsDataURL(blob);
 				}
-				// Auto-restart if still listening
 				if (connected && listening && !speaking) {
 					setTimeout(() => startRecording(stream), 100);
 				}
@@ -222,11 +192,6 @@
 				startRecording(stream);
 			});
 		}
-	}
-
-	function startRecordingChunk() {
-		// Resume continuous recording after agent responds
-		startContinuousRecording();
 	}
 
 	function stopRecording() {
@@ -272,42 +237,88 @@
 	}
 </script>
 
-<div class="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center relative">
-	<!-- Background pulse animation when listening -->
+<!-- Transcript view (separate panel) -->
+{#if showTranscript}
+	<div class="fixed inset-0 z-50 flex" style="background: var(--bg-app);">
+		<div class="flex-1 flex flex-col max-w-2xl mx-auto">
+			<div class="flex items-center justify-between px-6 py-4" style="border-bottom: 1px solid var(--border);">
+				<h2 class="text-lg font-semibold" style="color: var(--text-primary);">Call Transcript</h2>
+				<button onclick={() => { showTranscript = false; }} class="px-3 py-1.5 rounded-lg text-sm" style="color: var(--text-secondary); background: var(--bg-hover);">
+					← Back to call
+				</button>
+			</div>
+			<div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+				<!-- Previous messages (from earlier in this conversation) -->
+				{#each previousMessages as msg}
+					<div class="flex gap-3">
+						{#if msg.role === 'user'}
+							<div class="flex justify-end w-full">
+								<div class="max-w-[80%] px-4 py-2.5 rounded-2xl text-sm" style="background: var(--accent); color: white;">{msg.content}</div>
+							</div>
+						{:else}
+							<div class="flex gap-2">
+								<img src="/mascot-sm.png" alt="" class="w-5 h-5 mt-0.5" />
+								<div class="text-sm" style="color: var(--text-primary);">{msg.content}</div>
+							</div>
+						{/if}
+					</div>
+				{/each}
+				{#if previousMessages.length > 0 && transcripts.length > 0}
+					<div class="text-center text-xs py-2" style="color: var(--text-muted);">— Current call —</div>
+				{/if}
+				<!-- Current call transcripts -->
+				{#each transcripts as t}
+					<div class="flex gap-3">
+						{#if t.role === 'user'}
+							<div class="flex justify-end w-full">
+								<div class="max-w-[80%] px-4 py-2.5 rounded-2xl text-sm" style="background: var(--accent); color: white;">{t.text}</div>
+							</div>
+						{:else}
+							<div class="flex gap-2">
+								<img src="/mascot-sm.png" alt="" class="w-5 h-5 mt-0.5" />
+								<div class="text-sm" style="color: var(--text-primary);">{t.text}</div>
+							</div>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Call UI -->
+<div class="min-h-dvh flex flex-col items-center justify-center relative" style="background: var(--bg-app); color: var(--text-primary);">
+	<!-- Background pulse -->
 	{#if listening}
 		<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-			<div class="w-64 h-64 rounded-full bg-green-500/10 animate-ping" style="animation-duration: 2s;"></div>
+			<div class="w-64 h-64 rounded-full animate-ping" style="background: rgba(16, 185, 129, 0.08); animation-duration: 2s;"></div>
 		</div>
 	{/if}
 	{#if speaking}
 		<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-			<div class="w-64 h-64 rounded-full bg-blue-500/10 animate-ping" style="animation-duration: 1.5s;"></div>
+			<div class="w-64 h-64 rounded-full animate-ping" style="background: rgba(79, 91, 213, 0.08); animation-duration: 1.5s;"></div>
 		</div>
 	{/if}
 
 	<!-- Mascot -->
-	<img src="/mascot.png" alt="Motes" class="w-32 h-32 object-contain mb-4 {speaking ? 'animate-bounce' : ''}" style="animation-duration: 1s;" />
+	<img src="/mascot.png" alt="Motes" class="w-32 h-32 object-contain mb-4 {speaking ? 'animate-bounce' : 'mascot-float'}" style="animation-duration: {speaking ? '1s' : '4s'};" />
 
-	<!-- Agent name -->
-	<h1 class="text-2xl font-bold mb-1">{agentName}</h1>
+	<h1 class="text-2xl font-semibold mb-1">{agentName}</h1>
+	<p class="text-sm mb-2" style="color: var(--text-secondary);">{status}</p>
 
-	<!-- Status -->
-	<p class="text-gray-400 text-sm mb-2">{status}</p>
-
-	<!-- Duration -->
 	{#if connected}
-		<p class="text-gray-500 text-xs font-mono mb-8">{formatDuration(callDuration)}</p>
+		<p class="text-xs font-mono mb-8" style="color: var(--text-muted);">{formatDuration(callDuration)}</p>
 	{/if}
 
-	<!-- Live transcript (toggleable) -->
+	<!-- Live captions -->
 	{#if showCaptions}
 		<div class="w-full max-w-md px-4 mb-8 space-y-2 min-h-[80px]">
 			{#each transcripts.slice(-3) as t}
 				<div class="text-center">
 					{#if t.role === 'user'}
-						<p class="text-gray-400 text-sm italic">"{t.text}"</p>
+						<p class="text-sm italic" style="color: var(--text-secondary);">"{t.text}"</p>
 					{:else}
-						<p class="text-white text-sm">"{t.text}"</p>
+						<p class="text-sm" style="color: var(--text-primary);">"{t.text}"</p>
 					{/if}
 				</div>
 			{/each}
@@ -318,8 +329,8 @@
 
 	<!-- Controls -->
 	<div class="flex items-center gap-8">
-		<!-- Mute (placeholder) -->
-		<button class="w-14 h-14 rounded-full bg-gray-800 flex items-center justify-center text-xl hover:bg-gray-700" title="Mute">
+		<!-- Mute -->
+		<button class="w-14 h-14 rounded-full flex items-center justify-center text-xl" style="background: var(--bg-hover);" title="Mute">
 			{listening ? '🎤' : '🔇'}
 		</button>
 
@@ -335,15 +346,24 @@
 		<!-- Captions toggle -->
 		<button
 			onclick={() => { showCaptions = !showCaptions; }}
-			class="w-14 h-14 rounded-full {showCaptions ? 'bg-blue-700' : 'bg-gray-800'} flex items-center justify-center text-xl hover:bg-gray-700"
+			class="w-14 h-14 rounded-full flex items-center justify-center text-xl"
+			style="background: {showCaptions ? 'var(--accent)' : 'var(--bg-hover)'}; color: {showCaptions ? 'white' : 'inherit'};"
 			title="Toggle captions"
 		>
 			💬
 		</button>
 	</div>
 
-	<!-- Back to chat link -->
-	<p class="text-gray-600 text-xs mt-8">
-		Call transcript is saved to your conversation
+	<!-- Transcript button -->
+	<button
+		onclick={() => { showTranscript = true; }}
+		class="mt-6 text-xs px-4 py-2 rounded-full transition-colors"
+		style="color: var(--text-muted); background: var(--bg-hover);"
+	>
+		📝 View Transcript
+	</button>
+
+	<p class="text-xs mt-4" style="color: var(--text-muted);">
+		{previousMessages.length > 0 ? `Continuing call (${previousMessages.length} previous messages)` : 'Call transcript is saved to your conversation'}
 	</p>
 </div>
