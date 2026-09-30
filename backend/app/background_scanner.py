@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models import Agent, User
-from app.proactive import create_notification
+from app.proactive import create_notification, get_top_patterns
 from app.token_refresh import get_valid_token
 
 logger = structlog.get_logger()
@@ -125,6 +125,50 @@ async def scan_calendar(
         logger.warning("scanner_calendar_error", exc_info=True)
 
 
+async def check_patterns(
+    session: AsyncSession, user_id: str, agent_id: str
+) -> None:
+    """Generate proactive suggestions based on learned user patterns."""
+    from datetime import datetime
+
+    now = datetime.now(UTC)
+    hour = now.hour
+
+    patterns = await get_top_patterns(session, user_id)
+
+    for pattern in patterns:
+        if pattern.pattern_type != "time_action":
+            continue
+        if pattern.frequency < 3:
+            continue  # Only suggest frequent actions
+
+        key_parts = pattern.pattern_key.split("_h")
+        if len(key_parts) == 2:
+            topic = key_parts[0]
+            pattern_hour = int(key_parts[1])
+            if pattern_hour == hour:
+                suggestions = {
+                    "email": "You usually check emails now. Want me to show your inbox?",
+                    "calendar": "You often check your calendar now. Show today's events?",
+                    "news": "Time for your news catch-up. Want the latest?",
+                    "weather": "Time for your weather check!",
+                    "search": "You often search around now. Anything to find?",
+                }
+                if topic in suggestions:
+                    await create_notification(
+                        session, user_id, agent_id,
+                        title=f"💡 {topic.title()} time",
+                        body=suggestions[topic],
+                        category="suggestion",
+                    )
+                    logger.info(
+                        "scanner_pattern_suggestion",
+                        user_id=user_id,
+                        topic=topic,
+                        hour=hour,
+                    )
+
+
 async def run_scanner(session_factory: async_sessionmaker) -> None:
     """Main scanner loop — runs forever, scanning every SCAN_INTERVAL_SECONDS."""
     logger.info("scanner_started", interval=SCAN_INTERVAL_SECONDS)
@@ -154,6 +198,9 @@ async def run_scanner(session_factory: async_sessionmaker) -> None:
                     cal_token = await get_valid_token(session, user.id, "calendar")
                     if cal_token:
                         await scan_calendar(session, user.id, agent.id, cal_token)
+
+                    # Proactive suggestions based on patterns
+                    await check_patterns(session, user.id, agent.id)
 
                     logger.debug("scanner_user_complete", user_id=user.id)
 
