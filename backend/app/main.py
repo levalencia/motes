@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import models so Base.metadata includes them
+import app.app_settings  # noqa: F401
 import app.approvals  # noqa: F401
 import app.mcp_connector  # noqa: F401
 import app.memory  # noqa: F401

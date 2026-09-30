@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -202,24 +202,28 @@ class RealtimeConfigUpdate(BaseModel):
 
 @router.get("/realtime-config", response_model=RealtimeConfigResponse)
 async def get_realtime_config(
-    request: Request,
+    session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
     """Get realtime voice call config (key is never returned)."""
-    url = getattr(request.app.state, "realtime_url", "") or request.app.state.settings.realtime_url
-    key = getattr(request.app.state, "realtime_key", "") or request.app.state.settings.realtime_key
+    from app.app_settings import get_setting
+
+    url = await get_setting(session, "realtime_url")
+    key = await get_setting(session, "realtime_key")
     return RealtimeConfigResponse(realtime_url=url, has_key=bool(key))
 
 
 @router.post("/realtime-config", response_model=RealtimeConfigResponse)
 async def set_realtime_config(
     body: RealtimeConfigUpdate,
-    request: Request,
+    session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    """Save realtime voice call config. Stored in app state (runtime only)."""
-    request.app.state.realtime_url = body.realtime_url
-    request.app.state.realtime_key = body.realtime_key
+    """Save realtime voice call config. Persisted in database."""
+    from app.app_settings import set_setting
+
+    await set_setting(session, "realtime_url", body.realtime_url)
+    await set_setting(session, "realtime_key", body.realtime_key)
     return RealtimeConfigResponse(
         realtime_url=body.realtime_url,
         has_key=bool(body.realtime_key),
