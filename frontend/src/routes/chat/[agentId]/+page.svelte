@@ -187,8 +187,13 @@
 			});
 
 			if (!res.ok) {
-				const body = await res.json().catch(() => ({ detail: 'Unknown error' }));
-				throw new Error(body.detail);
+				let detail = `HTTP ${res.status}`;
+				try {
+					const body = await res.text();
+					const parsed = JSON.parse(body);
+					detail = parsed.detail || detail;
+				} catch { /* ignore parse errors */ }
+				throw new Error(detail);
 			}
 
 			const reader = res.body?.getReader();

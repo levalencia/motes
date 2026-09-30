@@ -153,34 +153,22 @@ async def chat(
     brave_key = os.environ.get("BRAVE_SEARCH_API_KEY", "")
     tools.register(WebSearchTool(brave_key))
 
-    # Load Google tools if user has connected Gmail/Calendar
-    from app.oauth import OAuthToken
+    # Load Google tools if user has connected Gmail/Calendar (with auto-refresh)
+    from app.token_refresh import get_valid_token
 
-    gmail_token_result = await session.execute(
-        select(OAuthToken).where(
-            OAuthToken.user_id == user.id,
-            OAuthToken.service == "gmail",
-        )
-    )
-    gmail_token = gmail_token_result.scalar_one_or_none()
-    if gmail_token:
+    gmail_access = await get_valid_token(session, user.id, "gmail")
+    if gmail_access:
         from app.google_tools import GmailReadTool, GmailSendTool
 
-        tools.register(GmailReadTool(gmail_token.access_token_encrypted))
-        tools.register(GmailSendTool(gmail_token.access_token_encrypted))
+        tools.register(GmailReadTool(gmail_access))
+        tools.register(GmailSendTool(gmail_access))
 
-    calendar_token_result = await session.execute(
-        select(OAuthToken).where(
-            OAuthToken.user_id == user.id,
-            OAuthToken.service == "calendar",
-        )
-    )
-    calendar_token = calendar_token_result.scalar_one_or_none()
-    if calendar_token:
+    calendar_access = await get_valid_token(session, user.id, "calendar")
+    if calendar_access:
         from app.google_tools import CalendarCreateTool, CalendarListTool
 
-        tools.register(CalendarListTool(calendar_token.access_token_encrypted))
-        tools.register(CalendarCreateTool(calendar_token.access_token_encrypted))
+        tools.register(CalendarListTool(calendar_access))
+        tools.register(CalendarCreateTool(calendar_access))
 
     async def event_generator():
         full_content = ""
