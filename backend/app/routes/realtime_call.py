@@ -266,6 +266,10 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                             "type": "input_audio_buffer.append",
                                             "audio": pcm_b64,
                                         }))
+                                        # Force commit so Azure processes it
+                                        await azure_ws.send(json.dumps({
+                                            "type": "input_audio_buffer.commit",
+                                        }))
                                     else:
                                         print(f"[CALL] ffmpeg err: {result.returncode}")
                                 finally:
