@@ -7,6 +7,7 @@ Approach 2 (future): OpenAI Realtime API WebSocket for sub-second latency
 from __future__ import annotations
 
 import contextlib
+from pathlib import Path
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
@@ -80,7 +81,51 @@ async def voice_call(websocket: WebSocket, agent_id: str):
 
             # Conversation history for context
             messages = [{"role": "system", "content": agent.system_prompt}]
+
+            # Load ALL tools (same as chat route)
             tools = create_default_registry()
+
+            # File tools
+            from app.file_tools import (
+                FileDownloadUrlTool,
+                FileListTool,
+                FileReadTool,
+                FileSearchTool,
+                PptxAddSlideTool,
+                PptxInspectTool,
+            )
+
+            home_dir = str(Path.home())
+            tools.register(FileListTool(home_dir))
+            tools.register(FileReadTool(home_dir))
+            tools.register(FileSearchTool(home_dir))
+            tools.register(PptxInspectTool(home_dir))
+            tools.register(PptxAddSlideTool(home_dir))
+            tools.register(FileDownloadUrlTool(home_dir))
+
+            # Web search
+            import os
+
+            from app.web_search_tool import WebSearchTool
+
+            tools.register(WebSearchTool(os.environ.get("BRAVE_SEARCH_API_KEY", "")))
+
+            # Gmail/Calendar (with auto-refresh)
+            from app.token_refresh import get_valid_token
+
+            gmail_access = await get_valid_token(session, user_id, "gmail")
+            if gmail_access:
+                from app.google_tools import GmailReadTool, GmailSendTool
+
+                tools.register(GmailReadTool(gmail_access))
+                tools.register(GmailSendTool(gmail_access))
+
+            calendar_access = await get_valid_token(session, user_id, "calendar")
+            if calendar_access:
+                from app.google_tools import CalendarCreateTool, CalendarListTool
+
+                tools.register(CalendarListTool(calendar_access))
+                tools.register(CalendarCreateTool(calendar_access))
 
             # Voice call loop
             while True:
