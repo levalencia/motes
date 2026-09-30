@@ -257,22 +257,23 @@
 		<h1 class="text-lg font-semibold">{agentName}</h1>
 	</nav>
 
-	<!-- Messages -->
-	<div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+	<!-- Mascot always visible at top -->
+	<div class="flex flex-col items-center pt-6 pb-2 shrink-0">
+		<img src="/mascot.png" alt="Motes" class="w-20 h-20 object-contain" />
 		{#if messages.length === 0}
-			<div class="flex flex-col items-center justify-center h-full gap-4">
-				<img src="/mascot.png" alt="Motes" class="w-32 h-32 object-contain drop-shadow-lg animate-bounce" style="animation-duration: 3s;" />
-				<h2 class="text-xl font-semibold text-gray-300">{agentName}</h2>
-				<p class="text-gray-500 text-sm">How can I help you today?</p>
-				<div class="flex flex-wrap justify-center gap-2 mt-2 max-w-md">
-					<button onclick={() => { input = 'What\'s on my calendar today?'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">📅 What's on my calendar?</button>
-					<button onclick={() => { input = 'Show me my unread emails'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">📧 Unread emails</button>
-					<button onclick={() => { input = 'Search the web for latest AI news'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">🔍 Search the web</button>
-					<button onclick={() => { input = 'What time is it?'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">🕐 What time is it?</button>
-					<button onclick={() => { input = 'Find my most recent PowerPoint file'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">📁 Recent files</button>
-				</div>
+			<h2 class="text-lg font-semibold text-gray-300 mt-2">{agentName}</h2>
+			<p class="text-gray-500 text-sm">How can I help you today?</p>
+			<div class="flex flex-wrap justify-center gap-2 mt-3 max-w-md">
+				<button onclick={() => { input = 'What\'s on my calendar today?'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">📅 Calendar</button>
+				<button onclick={() => { input = 'Show me my unread emails'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">📧 Emails</button>
+				<button onclick={() => { input = 'Search the web for latest AI news'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">🔍 Web search</button>
+				<button onclick={() => { input = 'Find my most recent files'; sendMessage(); }} class="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-full text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors">📁 Files</button>
 			</div>
 		{/if}
+	</div>
+
+	<!-- Messages -->
+	<div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
 
 		{#each messages as msg}
 			<div class="max-w-3xl mx-auto">
@@ -284,7 +285,7 @@
 					</div>
 				{:else if msg.role === 'tool'}
 					<div class="flex gap-3">
-						<img src="/mascot.png" alt="" class="w-6 h-6 object-contain flex-shrink-0 mt-1 opacity-50" />
+						<img src="/mascot-sm.png" alt="" class="w-6 h-6 object-contain flex-shrink-0 mt-1 opacity-50" />
 						<div class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm flex-1">
 							<span class="text-yellow-400 font-mono text-xs">🔧 {msg.tool_name}</span>
 							<pre class="text-gray-300 mt-1 whitespace-pre-wrap text-xs">{msg.content}</pre>
@@ -292,7 +293,7 @@
 					</div>
 				{:else}
 					<div class="flex gap-3">
-						<img src="/mascot.png" alt="" class="w-6 h-6 object-contain flex-shrink-0 mt-1" />
+						<img src="/mascot-sm.png" alt="" class="w-6 h-6 object-contain flex-shrink-0 mt-1" />
 						<div class="rounded-lg px-4 py-2 max-w-xl chat-prose flex-1" style="background: var(--bg-card); border: 1px solid var(--border);">
 						<div>{@html renderMarkdown(msg.content)}</div>
 						{#if streaming && msg === messages[messages.length - 1]}<span class="animate-pulse">▊</span>{/if}
