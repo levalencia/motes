@@ -254,14 +254,154 @@
 			streaming = false;
 		}
 	}
+	// Voice call state
+	let inCall = $state(false);
+	let callStatus = $state('');
+	let callSocket: WebSocket | null = null;
+	let callRecorder: MediaRecorder | null = null;
+	let callStream: MediaStream | null = null;
+
+	async function startCall() {
+		const token = localStorage.getItem('motes_token');
+		if (!token) return;
+
+		callSocket = new WebSocket(`ws://localhost:8001/api/voice-call/${agentId}`);
+		callStatus = 'Connecting...';
+		inCall = true;
+
+		callSocket.onopen = () => {
+			callSocket!.send(JSON.stringify({ type: 'auth', token }));
+		};
+
+		callSocket.onmessage = async (event) => {
+			const msg = JSON.parse(event.data);
+
+			if (msg.type === 'ready') {
+				callStatus = `On call with ${msg.agent_name}`;
+				// Start continuous recording
+				startCallRecording();
+			} else if (msg.type === 'thinking') {
+				const steps: Record<string, string> = {
+					transcribing: '🎤 Listening...',
+					responding: '🤔 Thinking...',
+					speaking: '🔊 Speaking...',
+				};
+				callStatus = steps[msg.step] || 'Processing...';
+			} else if (msg.type === 'transcript') {
+				if (msg.text !== '(silence)') {
+					messages = [...messages, { role: 'user', content: msg.text }];
+				}
+			} else if (msg.type === 'response') {
+				messages = [...messages, { role: 'assistant', content: msg.text }];
+				callStatus = `On call with ${agentName}`;
+			} else if (msg.type === 'audio') {
+				// Play audio response
+				const audioBytes = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
+				const blob = new Blob([audioBytes], { type: 'audio/mpeg' });
+				const url = URL.createObjectURL(blob);
+				const audio = new Audio(url);
+				audio.onended = () => {
+					URL.revokeObjectURL(url);
+					// Resume recording after agent finishes speaking
+					if (inCall) startCallRecording();
+				};
+				// Stop recording while agent speaks
+				stopCallRecording();
+				audio.play();
+			} else if (msg.type === 'ended') {
+				endCall();
+			} else if (msg.type === 'error') {
+				error = msg.message;
+				endCall();
+			}
+		};
+
+		callSocket.onclose = () => {
+			if (inCall) endCall();
+		};
+	}
+
+	function startCallRecording() {
+		if (!inCall) return;
+		navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+			callStream = stream;
+			callRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+			const chunks: Blob[] = [];
+			callRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+			callRecorder.onstop = () => {
+				stream.getTracks().forEach(t => t.stop());
+				const blob = new Blob(chunks, { type: 'audio/webm' });
+				// Send to WebSocket
+				const reader = new FileReader();
+				reader.onload = () => {
+					if (callSocket && callSocket.readyState === WebSocket.OPEN) {
+						const base64 = (reader.result as string).split(',')[1];
+						callSocket.send(JSON.stringify({ type: 'audio', data: base64 }));
+					}
+				};
+				reader.readAsDataURL(blob);
+			};
+			callRecorder.start();
+			// Record for 5 seconds then send
+			setTimeout(() => {
+				if (callRecorder && callRecorder.state === 'recording') {
+					callRecorder.stop();
+				}
+			}, 5000);
+		});
+	}
+
+	function stopCallRecording() {
+		if (callRecorder && callRecorder.state === 'recording') {
+			callRecorder.stop();
+		}
+	}
+
+	function endCall() {
+		inCall = false;
+		callStatus = '';
+		if (callSocket && callSocket.readyState === WebSocket.OPEN) {
+			callSocket.send(JSON.stringify({ type: 'end' }));
+			callSocket.close();
+		}
+		callSocket = null;
+		stopCallRecording();
+		if (callStream) {
+			callStream.getTracks().forEach(t => t.stop());
+			callStream = null;
+		}
+	}
 </script>
 
 <div class="min-h-screen bg-gray-950 text-white flex flex-col">
 	<!-- Header -->
 	<nav class="border-b border-gray-800 px-6 py-3 flex items-center gap-4 shrink-0">
 		<a href="/dashboard" class="text-gray-400 hover:text-white">← Back</a>
-		<h1 class="text-lg font-semibold">{agentName}</h1>
+		<h1 class="text-lg font-semibold flex-1">{agentName}</h1>
+		{#if inCall}
+			<button
+				onclick={endCall}
+				class="px-4 py-1.5 bg-red-600 hover:bg-red-700 rounded-full text-sm font-medium flex items-center gap-2 animate-pulse"
+			>
+				📞 End Call
+			</button>
+		{:else}
+			<button
+				onclick={startCall}
+				class="px-4 py-1.5 bg-green-600 hover:bg-green-700 rounded-full text-sm font-medium flex items-center gap-2"
+				title="Start a voice call with this agent"
+			>
+				📞 Call
+			</button>
+		{/if}
 	</nav>
+
+	<!-- Call status bar -->
+	{#if inCall}
+		<div class="bg-green-900/30 border-b border-green-800 px-6 py-2 text-center text-sm text-green-400 shrink-0">
+			{callStatus || 'In call...'}
+		</div>
+	{/if}
 
 	<!-- Mascot always visible at top -->
 	<div class="flex flex-col items-center pt-6 pb-2 shrink-0">
