@@ -185,20 +185,35 @@
 		if (!connected) return;
 		navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
 			micStream = stream;
-			// Use timeslice: emit a chunk every 1 second while recording
 			recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+			const chunks: Blob[] = [];
 			recorder.ondataavailable = (e) => {
-				if (e.data.size > 0 && socket && socket.readyState === WebSocket.OPEN) {
+				if (e.data.size > 0) chunks.push(e.data);
+			};
+			recorder.onstop = () => {
+				// Send the complete webm blob
+				const blob = new Blob(chunks, { type: 'audio/webm' });
+				if (blob.size > 0 && socket && socket.readyState === WebSocket.OPEN) {
 					const reader = new FileReader();
 					reader.onload = () => {
 						const base64 = (reader.result as string).split(',')[1];
 						socket!.send(JSON.stringify({ type: 'audio', data: base64 }));
 					};
-					reader.readAsDataURL(e.data);
+					reader.readAsDataURL(blob);
+				}
+				// Start next recording cycle if still listening
+				if (connected && listening) {
+					startContinuousRecording();
 				}
 			};
-			// Start with timeslice — sends ondataavailable every 1000ms
-			recorder.start(1000);
+			recorder.start();
+			// Record for 6 seconds then send (long enough for full sentences)
+			setTimeout(() => {
+				if (recorder && recorder.state === 'recording') {
+					recorder.stop();
+					// Don't stop the mic stream — it'll be reused
+				}
+			}, 6000);
 		});
 	}
 
