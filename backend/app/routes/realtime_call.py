@@ -10,6 +10,7 @@ import asyncio
 import base64
 import contextlib
 import json
+import struct
 from pathlib import Path
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -206,6 +207,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
 
                 async def azure_to_client():
                     full_response = ""
+                    audio_chunks: list[bytes] = []
                     try:
                         async for raw in azure_ws:
                             event = json.loads(raw)
@@ -213,11 +215,9 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                             print(f"[CALL] Azure event: {etype}")
 
                             if etype == "response.output_audio.delta":
-                                # Stream audio back to client
-                                await websocket.send_json({
-                                    "type": "audio",
-                                    "data": event.get("delta", ""),
-                                })
+                                # Collect audio on server side
+                                pcm = base64.b64decode(event.get("delta", ""))
+                                audio_chunks.append(pcm)
 
                             elif etype == "response.output_audio_transcript.delta":
                                 full_response += event.get("delta", "")
@@ -228,8 +228,6 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
 
                             elif etype == "response.output_audio_transcript.done":
                                 text = event.get("transcript", full_response)
-                                # Save transcript but DON'T send response_done yet
-                                # Wait for response.done (after all audio is sent)
                                 session.add(Message(
                                     conversation_id=conversation.id,
                                     role="assistant",
@@ -239,7 +237,17 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                 full_response = text
 
                             elif etype == "response.done":
-                                # All audio sent — now tell client to play
+                                # Build WAV on server and send as one blob
+                                if audio_chunks:
+                                    pcm_all = b"".join(audio_chunks)
+                                    wav = _pcm16_to_wav(pcm_all, 24000)
+                                    wav_b64 = base64.b64encode(wav).decode()
+                                    print(f"[CALL] Sending WAV: {len(wav)}b")
+                                    await websocket.send_json({
+                                        "type": "audio_wav",
+                                        "data": wav_b64,
+                                    })
+                                    audio_chunks = []
                                 await websocket.send_json({
                                     "type": "response_done",
                                     "text": full_response,
@@ -376,3 +384,29 @@ async def _pipeline_call(
                 "type": "audio_mp3",
                 "data": base64.b64encode(audio_out).decode(),
             })
+
+
+def _pcm16_to_wav(pcm_data: bytes, sample_rate: int) -> bytes:
+    """Wrap raw PCM16 mono in a WAV header."""
+    num_channels = 1
+    bits_per_sample = 16
+    byte_rate = sample_rate * num_channels * (bits_per_sample // 8)
+    block_align = num_channels * (bits_per_sample // 8)
+    data_size = len(pcm_data)
+    header = struct.pack(
+        "<4sI4s4sIHHIIHH4sI",
+        b"RIFF",
+        36 + data_size,
+        b"WAVE",
+        b"fmt ",
+        16,
+        1,  # PCM
+        num_channels,
+        sample_rate,
+        byte_rate,
+        block_align,
+        bits_per_sample,
+        b"data",
+        data_size,
+    )
+    return header + pcm_data

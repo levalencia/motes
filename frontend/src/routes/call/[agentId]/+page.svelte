@@ -118,14 +118,30 @@
 				if (last && last.role === 'assistant') {
 					transcripts = [...transcripts.slice(0, -1), { role: 'assistant', text: msg.text }];
 				}
+			} else if (msg.type === 'audio_wav') {
+				// Server-assembled WAV from Azure Realtime
+				const bytes = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
+				const blob = new Blob([bytes], { type: 'audio/wav' });
+				const url = URL.createObjectURL(blob);
+				const audio = new Audio(url);
+				audio.onended = () => {
+					URL.revokeObjectURL(url);
+					speaking = false;
+					status = 'Listening...';
+					listening = true;
+					startRecordingChunk();
+				};
+				stopRecording();
+				speaking = true;
+				status = 'Speaking...';
+				audio.play();
 			} else if (msg.type === 'audio') {
-				// Collect PCM16 audio chunks from Azure Realtime
-				if (!audioChunksFromAzure) audioChunksFromAzure = [];
-				audioChunksFromAzure.push(msg.data);
+				// Ignore individual PCM chunks (server assembles WAV now)
 			} else if (msg.type === 'response_done') {
 				transcripts = [...transcripts, { role: 'assistant', text: msg.text }];
 				speaking = true;
 				status = 'Speaking...';
+				console.log(`[CALL] response_done, audio chunks: ${audioChunksFromAzure?.length || 0}`);
 				// Play collected audio chunks as WAV
 				if (audioChunksFromAzure && audioChunksFromAzure.length > 0) {
 					const pcmBytes = concatBase64PCM(audioChunksFromAzure);
