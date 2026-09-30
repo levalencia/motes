@@ -279,7 +279,7 @@
 						<pre class="text-gray-300 mt-1 whitespace-pre-wrap text-xs">{msg.content}</pre>
 					</div>
 				{:else}
-					<div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 max-w-xl prose prose-invert prose-sm max-w-none">
+					<div class="rounded-lg px-4 py-2 max-w-xl chat-prose" style="background: var(--bg-card); border: 1px solid var(--border);">
 						<div>{@html renderMarkdown(msg.content)}</div>
 						{#if streaming && msg === messages[messages.length - 1]}<span class="animate-pulse">▊</span>{/if}
 						{#if !streaming && msg.content}
