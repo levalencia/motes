@@ -102,6 +102,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from app.routes.approvals import router as approvals_router
     from app.routes.auth import router as auth_router
     from app.routes.chat import router as chat_router
+    from app.routes.files import router as files_router
     from app.routes.mcp import router as mcp_router
     from app.routes.memory import router as memory_router
     from app.routes.oauth import router as oauth_router
@@ -113,6 +114,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(providers_router)
     app.include_router(agents_router)
     app.include_router(chat_router)
+    app.include_router(files_router)
     app.include_router(memory_router)
     app.include_router(approvals_router)
     app.include_router(scheduler_router)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -121,6 +122,24 @@ async def chat(
 
     # Create tool registry with built-in + connected service tools
     tools = create_default_registry()
+
+    # Load file tools (local computer access)
+    from app.file_tools import (
+        FileDownloadUrlTool,
+        FileListTool,
+        FileReadTool,
+        FileSearchTool,
+        PptxAddSlideTool,
+        PptxInspectTool,
+    )
+
+    home_dir = str(Path.home())
+    tools.register(FileListTool(home_dir))
+    tools.register(FileReadTool(home_dir))
+    tools.register(FileSearchTool(home_dir))
+    tools.register(PptxInspectTool(home_dir))
+    tools.register(PptxAddSlideTool(home_dir))
+    tools.register(FileDownloadUrlTool(home_dir))
 
     # Load Google tools if user has connected Gmail/Calendar
     from app.oauth import OAuthToken
