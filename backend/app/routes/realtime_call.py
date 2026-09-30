@@ -58,12 +58,18 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
 
         user_id = payload["sub"]
 
+        print(f"[CALL] Auth OK for user {user_id}")
+
         # Get realtime config from database (set via Settings page)
         from app.app_settings import get_setting
 
         async with session_factory() as settings_session:
             realtime_url = await get_setting(settings_session, "realtime_url")
             realtime_key = await get_setting(settings_session, "realtime_key")
+
+        print(f"[CALL] Realtime URL: {realtime_url[:50] if realtime_url else 'NONE'}")
+        print(f"[CALL] Realtime key: {'YES' if realtime_key else 'NO'}")
+        print(f"[CALL] Key len: {len(realtime_key)}")
 
         async with session_factory() as session:
             # Load agent
@@ -93,6 +99,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
 
             # If no realtime key, fall back to pipeline mode
             if not realtime_key:
+                print("[CALL] No realtime key — falling back to pipeline mode")
                 await _pipeline_call(
                     websocket, session, agent, conversation, user_id
                 )
@@ -101,6 +108,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
             # Connect to Azure OpenAI Realtime API
             import websockets
 
+            print("[CALL] Connecting to Azure Realtime...")
             headers = {
                 "api-key": realtime_key,
                 "openai-beta": "realtime=v1",
@@ -110,6 +118,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                 realtime_url,
                 additional_headers=headers,
             ) as azure_ws:
+                print("[CALL] Azure connected! Sending session config...")
                 # Configure the session (GA API format from OpenAI playground)
                 await azure_ws.send(json.dumps({
                     "type": "session.update",
@@ -142,6 +151,13 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                     },
                 }))
 
+                print("[CALL] Session config sent, starting audio loop...")
+
+                # Wait for session.created/updated from Azure
+                first_msg = await asyncio.wait_for(azure_ws.recv(), timeout=5)
+                first_event = json.loads(first_msg)
+                print(f"[CALL] Azure first event: {first_event.get('type', 'unknown')}")
+
                 # Two tasks: forward client→azure, forward azure→client
                 async def client_to_azure():
                     try:
@@ -155,6 +171,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                 import tempfile
 
                                 audio_bytes = base64.b64decode(msg["data"])
+                                print(f"[CALL] Got audio from client: {len(audio_bytes)} bytes")
                                 with tempfile.NamedTemporaryFile(
                                     suffix=".webm", delete=False
                                 ) as f:
@@ -175,10 +192,13 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                         pcm_b64 = base64.b64encode(
                                             result.stdout
                                         ).decode()
+                                        print(f"[CALL] PCM→Azure: {len(result.stdout)}b")
                                         await azure_ws.send(json.dumps({
                                             "type": "input_audio_buffer.append",
                                             "audio": pcm_b64,
                                         }))
+                                    else:
+                                        print(f"[CALL] ffmpeg err: {result.returncode}")
                                 finally:
                                     Path(tmp_in).unlink(missing_ok=True)
                     except WebSocketDisconnect:
@@ -190,22 +210,23 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                         async for raw in azure_ws:
                             event = json.loads(raw)
                             etype = event.get("type", "")
+                            print(f"[CALL] Azure event: {etype}")
 
-                            if etype == "response.audio.delta":
+                            if etype == "response.output_audio.delta":
                                 # Stream audio back to client
                                 await websocket.send_json({
                                     "type": "audio",
                                     "data": event.get("delta", ""),
                                 })
 
-                            elif etype == "response.audio_transcript.delta":
+                            elif etype == "response.output_audio_transcript.delta":
                                 full_response += event.get("delta", "")
                                 await websocket.send_json({
                                     "type": "response_transcript",
                                     "text": full_response,
                                 })
 
-                            elif etype == "response.audio_transcript.done":
+                            elif etype == "response.output_audio_transcript.done":
                                 text = event.get("transcript", full_response)
                                 await websocket.send_json({
                                     "type": "response_done",
@@ -222,6 +243,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
 
                             elif etype == "conversation.item.input_audio_transcription.completed":
                                 text = event.get("transcript", "")
+                                print(f"[CALL] User said: {text}")
                                 await websocket.send_json({
                                     "type": "user_transcript",
                                     "text": text,

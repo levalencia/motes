@@ -17,6 +17,57 @@
 	let audioContext: AudioContext | null = null;
 	let micStream: MediaStream | null = null;
 	let processor: ScriptProcessorNode | null = null;
+	let audioChunksFromAzure: string[] = [];
+
+	// Convert base64 PCM16 chunks to a single Uint8Array
+	function concatBase64PCM(chunks: string[]): Uint8Array {
+		const arrays = chunks.map(c => Uint8Array.from(atob(c), ch => ch.charCodeAt(0)));
+		const total = arrays.reduce((s, a) => s + a.length, 0);
+		const result = new Uint8Array(total);
+		let offset = 0;
+		for (const a of arrays) {
+			result.set(a, offset);
+			offset += a.length;
+		}
+		return result;
+	}
+
+	// Wrap raw PCM16 in a WAV header so the browser can play it
+	function pcm16ToWav(pcmData: Uint8Array, sampleRate: number): Blob {
+		const numChannels = 1;
+		const bitsPerSample = 16;
+		const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+		const blockAlign = numChannels * (bitsPerSample / 8);
+		const dataSize = pcmData.length;
+		const buffer = new ArrayBuffer(44 + dataSize);
+		const view = new DataView(buffer);
+
+		// RIFF header
+		writeString(view, 0, 'RIFF');
+		view.setUint32(4, 36 + dataSize, true);
+		writeString(view, 8, 'WAVE');
+		// fmt chunk
+		writeString(view, 12, 'fmt ');
+		view.setUint32(16, 16, true);
+		view.setUint16(20, 1, true); // PCM
+		view.setUint16(22, numChannels, true);
+		view.setUint32(24, sampleRate, true);
+		view.setUint32(28, byteRate, true);
+		view.setUint16(32, blockAlign, true);
+		view.setUint16(34, bitsPerSample, true);
+		// data chunk
+		writeString(view, 36, 'data');
+		view.setUint32(40, dataSize, true);
+		new Uint8Array(buffer, 44).set(pcmData);
+
+		return new Blob([buffer], { type: 'audio/wav' });
+	}
+
+	function writeString(view: DataView, offset: number, str: string) {
+		for (let i = 0; i < str.length; i++) {
+			view.setUint8(offset + i, str.charCodeAt(i));
+		}
+	}
 
 	onMount(async () => {
 		const token = localStorage.getItem('motes_token');
@@ -67,11 +118,40 @@
 				if (last && last.role === 'assistant') {
 					transcripts = [...transcripts.slice(0, -1), { role: 'assistant', text: msg.text }];
 				}
-			} else if (msg.type === 'audio_mp3' || msg.type === 'audio') {
-				// Play audio
+			} else if (msg.type === 'audio') {
+				// Collect PCM16 audio chunks from Azure Realtime
+				if (!audioChunksFromAzure) audioChunksFromAzure = [];
+				audioChunksFromAzure.push(msg.data);
+			} else if (msg.type === 'response_done') {
+				transcripts = [...transcripts, { role: 'assistant', text: msg.text }];
+				speaking = true;
+				status = 'Speaking...';
+				// Play collected audio chunks as WAV
+				if (audioChunksFromAzure && audioChunksFromAzure.length > 0) {
+					const pcmBytes = concatBase64PCM(audioChunksFromAzure);
+					audioChunksFromAzure = [];
+					const wavBlob = pcm16ToWav(pcmBytes, 24000);
+					const url = URL.createObjectURL(wavBlob);
+					const audio = new Audio(url);
+					audio.onended = () => {
+						URL.revokeObjectURL(url);
+						speaking = false;
+						status = 'Listening...';
+						listening = true;
+						startRecordingChunk();
+					};
+					stopRecording();
+					audio.play();
+				} else {
+					speaking = false;
+					status = 'Listening...';
+					listening = true;
+					startRecordingChunk();
+				}
+			} else if (msg.type === 'audio_mp3') {
+				// Pipeline fallback (Edge TTS mp3)
 				const bytes = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
-				const mime = msg.type === 'audio_mp3' ? 'audio/mpeg' : 'audio/wav';
-				const blob = new Blob([bytes], { type: mime });
+				const blob = new Blob([bytes], { type: 'audio/mpeg' });
 				const url = URL.createObjectURL(blob);
 				const audio = new Audio(url);
 				audio.onended = () => {
@@ -79,7 +159,6 @@
 					speaking = false;
 					status = 'Listening...';
 					listening = true;
-					// Resume recording
 					startRecordingChunk();
 				};
 				stopRecording();
