@@ -297,12 +297,12 @@
 								{#if svc.is_connected}
 									<span class="text-green-400 text-sm">✓ Connected</span>
 								{:else if !svc.is_configured}
-									<button
-										onclick={() => { showAdminSetup = true; adminProvider = svc.provider; }}
-										class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm w-full text-gray-300"
+									<a
+										href="/services/setup/{svc.provider}"
+										class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm w-full text-gray-300 text-center block"
 									>
-										⚙️ Configure {svc.provider} first
-									</button>
+										⚙️ Setup {svc.provider} → step-by-step guide
+									</a>
 								{:else}
 									<button
 										onclick={() => connectService(svc.provider, svc.service)}
