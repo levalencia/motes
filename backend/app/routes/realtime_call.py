@@ -18,8 +18,6 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
 from app.auth import decode_jwt
-from app.config import get_settings
-from app.database import create_engine, create_session_factory
 from app.models import Agent, Conversation, Message
 
 logger = structlog.get_logger()
@@ -41,9 +39,9 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
     """
     await websocket.accept()
 
-    settings = get_settings()
-    engine = create_engine(settings)
-    session_factory = create_session_factory(engine)
+    settings = websocket.app.state.settings
+    engine = websocket.app.state.engine
+    session_factory = websocket.app.state.session_factory
 
     azure_ws = None
     try:

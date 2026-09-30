@@ -14,8 +14,6 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
 from app.auth import decode_jwt
-from app.config import get_settings
-from app.database import create_engine, create_session_factory
 from app.edge_tts_provider import edge_tts_synthesize
 from app.local_stt import transcribe_local
 from app.models import Agent, Provider
@@ -41,9 +39,9 @@ async def voice_call(websocket: WebSocket, agent_id: str):
     """
     await websocket.accept()
 
-    settings = get_settings()
-    engine = create_engine(settings)
-    session_factory = create_session_factory(engine)
+    settings = websocket.app.state.settings
+    engine = websocket.app.state.engine
+    session_factory = websocket.app.state.session_factory
 
     try:
         # Step 1: Authenticate
