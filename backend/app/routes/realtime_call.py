@@ -120,7 +120,73 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                 additional_headers=headers,
             ) as azure_ws:
                 print("[CALL] Azure connected! Sending session config...")
-                # Configure the session (GA API format from OpenAI playground)
+
+                # Build tool definitions for the realtime session
+                from app.file_tools import (
+                    FileListTool,
+                    FileReadTool,
+                    FileSearchTool,
+                    PptxInspectTool,
+                )
+                from app.google_tools import (
+                    CalendarListTool,
+                    GmailReadTool,
+                )
+                from app.token_refresh import get_valid_token
+                from app.web_search_tool import WebSearchTool
+
+                rt_tools = []
+                tool_instances = {}
+
+                # Always available tools
+                for tool_cls in [
+                    FileListTool, FileReadTool, FileSearchTool,
+                    PptxInspectTool, WebSearchTool,
+                ]:
+                    if tool_cls == WebSearchTool:
+                        inst = tool_cls()
+                    elif hasattr(tool_cls, '__init__'):
+                        inst = tool_cls(str(Path.home()))
+                    else:
+                        inst = tool_cls()
+                    rt_tools.append({
+                        "type": "function",
+                        "name": inst.name,
+                        "description": inst.description,
+                        "parameters": inst.parameters,
+                    })
+                    tool_instances[inst.name] = inst
+
+                # Gmail/Calendar if connected
+                gmail_tk = await get_valid_token(
+                    session, user_id, "gmail"
+                )
+                if gmail_tk:
+                    gmail_inst = GmailReadTool(gmail_tk)
+                    rt_tools.append({
+                        "type": "function",
+                        "name": gmail_inst.name,
+                        "description": gmail_inst.description,
+                        "parameters": gmail_inst.parameters,
+                    })
+                    tool_instances[gmail_inst.name] = gmail_inst
+
+                cal_tk = await get_valid_token(
+                    session, user_id, "calendar"
+                )
+                if cal_tk:
+                    cal_inst = CalendarListTool(cal_tk)
+                    rt_tools.append({
+                        "type": "function",
+                        "name": cal_inst.name,
+                        "description": cal_inst.description,
+                        "parameters": cal_inst.parameters,
+                    })
+                    tool_instances[cal_inst.name] = cal_inst
+
+                print(f"[CALL] Tools: {[t['name'] for t in rt_tools]}")
+
+                # Configure the session (GA API format)
                 await azure_ws.send(json.dumps({
                     "type": "session.update",
                     "session": {
@@ -147,7 +213,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                             },
                         },
                         "output_modalities": ["audio"],
-                        "tools": [],
+                        "tools": rt_tools,
                         "max_output_tokens": "inf",
                     },
                 }))
@@ -267,6 +333,39 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                     content=text,
                                 ))
                                 await session.commit()
+
+                            elif etype == "response.function_call_arguments.done":
+                                # Azure wants to call a tool
+                                call_id = event.get("call_id", "")
+                                fn_name = event.get("name", "")
+                                fn_args = event.get("arguments", "{}")
+                                print(f"[CALL] Tool call: {fn_name}({fn_args[:100]})")
+
+                                tool = tool_instances.get(fn_name)
+                                if tool:
+                                    try:
+                                        args = json.loads(fn_args)
+                                        result_text = await tool.execute(args)
+                                    except Exception as e:
+                                        result_text = json.dumps({"error": str(e)})
+                                else:
+                                    result_text = json.dumps({"error": f"Unknown tool: {fn_name}"})
+
+                                print(f"[CALL] Tool result: {result_text[:100]}")
+
+                                # Send result back to Azure
+                                await azure_ws.send(json.dumps({
+                                    "type": "conversation.item.create",
+                                    "item": {
+                                        "type": "function_call_output",
+                                        "call_id": call_id,
+                                        "output": result_text,
+                                    },
+                                }))
+                                # Trigger a new response
+                                await azure_ws.send(json.dumps({
+                                    "type": "response.create",
+                                }))
 
                             elif etype == "error":
                                 err = event.get("error", {})
