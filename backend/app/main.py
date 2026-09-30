@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import app.approvals  # noqa: F401
 import app.memory  # noqa: F401
 import app.scheduler  # noqa: F401
+import app.voice  # noqa: F401
 from app.config import Settings, get_settings
 from app.database import create_engine, create_session_factory
 from app.logging import setup_logging
@@ -102,6 +103,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from app.routes.memory import router as memory_router
     from app.routes.providers import router as providers_router
     from app.routes.scheduler import router as scheduler_router
+    from app.routes.voice import router as voice_router
 
     app.include_router(auth_router)
     app.include_router(providers_router)
@@ -110,6 +112,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(memory_router)
     app.include_router(approvals_router)
     app.include_router(scheduler_router)
+    app.include_router(voice_router)
 
     return app
 
