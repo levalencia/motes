@@ -2,8 +2,18 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { marked } from 'marked';
+	import DOMPurify from 'dompurify';
 
 	const agentId = $derived($page.params.agentId);
+
+	// Configure marked for clean output
+	marked.setOptions({ breaks: true, gfm: true });
+
+	function renderMarkdown(text: string): string {
+		const raw = marked.parse(text) as string;
+		return DOMPurify.sanitize(raw);
+	}
 
 	interface ChatMessage {
 		role: 'user' | 'assistant' | 'tool';
@@ -155,8 +165,9 @@
 						<pre class="text-gray-300 mt-1 whitespace-pre-wrap text-xs">{msg.content}</pre>
 					</div>
 				{:else}
-					<div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 max-w-xl">
-						<p class="whitespace-pre-wrap">{msg.content}{#if streaming && msg === messages[messages.length - 1]}<span class="animate-pulse">▊</span>{/if}</p>
+					<div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 max-w-xl prose prose-invert prose-sm max-w-none">
+						<div>{@html renderMarkdown(msg.content)}</div>
+						{#if streaming && msg === messages[messages.length - 1]}<span class="animate-pulse">▊</span>{/if}
 					</div>
 				{/if}
 			</div>
