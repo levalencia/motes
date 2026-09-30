@@ -39,8 +39,6 @@
 			socket!.send(JSON.stringify({
 				type: 'auth',
 				token,
-				realtime_url: 'wss://motes.openai.azure.com/openai/v1/realtime?model=gpt-realtime-2.1-mini',
-				realtime_key: '',  // Will use pipeline fallback if empty
 			}));
 		};
 

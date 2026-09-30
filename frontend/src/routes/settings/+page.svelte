@@ -21,6 +21,12 @@
 	let saving = $state(false);
 	let error = $state('');
 
+	// Realtime config state
+	let realtimeUrl = $state('');
+	let realtimeKey = $state('');
+	let realtimeConfigured = $state(false);
+	let realtimeSaving = $state(false);
+
 	// Form state
 	let name = $state('OpenAI Voice');
 	let providerType = $state('openai');
@@ -64,12 +70,32 @@
 	onMount(async () => {
 		try {
 			providers = await api<VoiceProvider[]>('/voice/providers');
+			// Load realtime config
+			const rtConfig = await api<{ realtime_url: string; has_key: boolean }>('/voice/realtime-config');
+			realtimeUrl = rtConfig.realtime_url;
+			realtimeConfigured = rtConfig.has_key;
 		} catch {
 			goto('/login');
 		} finally {
 			loading = false;
 		}
 	});
+
+	async function saveRealtimeConfig() {
+		realtimeSaving = true;
+		try {
+			const result = await api<{ realtime_url: string; has_key: boolean }>('/voice/realtime-config', {
+				method: 'POST',
+				body: JSON.stringify({ realtime_url: realtimeUrl, realtime_key: realtimeKey }),
+			});
+			realtimeConfigured = result.has_key;
+			realtimeKey = '';
+		} catch (e: any) {
+			error = e.message;
+		} finally {
+			realtimeSaving = false;
+		}
+	}
 
 	async function save() {
 		if (!apiKey.trim() && providerType !== 'edge') {
@@ -256,10 +282,56 @@
 			<div class="mt-8 bg-gray-900/50 border border-gray-800 rounded-xl p-4 text-sm text-gray-500">
 				<p class="font-medium text-gray-400 mb-1">💡 How voice works</p>
 				<p>
-					<strong>🎤 Speech-to-text:</strong> Click the mic button in chat, speak, and your voice is transcribed and sent as a message.<br/>
-					<strong>🔊 Text-to-speech:</strong> Click "Listen" on any agent response to hear it read aloud.<br/>
-					OpenAI's Whisper (STT) and TTS API are the default. Any OpenAI-compatible voice endpoint works.
+					<strong>🎤 Speech-to-text:</strong> Uses local Whisper (free) by default. Add a provider for cloud STT.<br/>
+					<strong>🔊 Text-to-speech:</strong> Uses Edge TTS (free) by default. Add a provider for premium voices.<br/>
+					<strong>📞 Voice calls:</strong> Pipeline mode (free) or Azure Realtime (sub-second, configure below).
 				</p>
+			</div>
+
+			<!-- Realtime Voice Call Config -->
+			<div class="mt-8">
+				<h2 class="text-lg font-semibold mb-4">📞 Realtime Voice Calls</h2>
+				<div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+					<p class="text-gray-400 text-sm mb-4">
+						For sub-second voice calls (like OpenAI Dots), configure an Azure OpenAI Realtime model.
+						Without this, calls use the pipeline mode (Whisper → LLM → Edge TTS, ~3s latency).
+					</p>
+					<div class="space-y-4">
+						<div>
+							<label for="rt-url" class="block text-sm text-gray-300">Realtime WebSocket URL</label>
+							<input
+								id="rt-url"
+								bind:value={realtimeUrl}
+								placeholder="wss://your-resource.openai.azure.com/openai/v1/realtime?model=gpt-realtime-2.1-mini"
+								class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-600"
+							/>
+						</div>
+						<div>
+							<label for="rt-key" class="block text-sm text-gray-300">API Key</label>
+							<input
+								id="rt-key"
+								type="password"
+								bind:value={realtimeKey}
+								placeholder={realtimeConfigured ? '••••••••••••••••' : 'Enter your Azure OpenAI API key'}
+								class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-600"
+							/>
+						</div>
+					</div>
+					<div class="flex items-center gap-3 mt-4">
+						<button
+							onclick={saveRealtimeConfig}
+							disabled={realtimeSaving}
+							class="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-lg text-sm font-medium"
+						>
+							{realtimeSaving ? 'Saving...' : 'Save'}
+						</button>
+						{#if realtimeConfigured}
+							<span class="text-green-400 text-xs">✓ Realtime configured</span>
+						{:else}
+							<span class="text-gray-500 text-xs">Not configured — using pipeline mode</span>
+						{/if}
+					</div>
+				</div>
 			</div>
 		{/if}
 	</main>

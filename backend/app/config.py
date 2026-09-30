@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     # Security
     secret_key: str = "change-me-in-production-please"
 
+    # Azure OpenAI Realtime (voice calls)
+    realtime_url: str = ""
+    realtime_key: str = ""
+
     # Server
     host: str = "0.0.0.0"
     port: int = 8000

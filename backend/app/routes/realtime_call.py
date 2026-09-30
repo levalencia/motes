@@ -57,12 +57,9 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
 
         user_id = payload["sub"]
 
-        # Get realtime config from the auth message or settings
-        realtime_url = auth_msg.get(
-            "realtime_url",
-            "wss://motes.openai.azure.com/openai/v1/realtime?model=gpt-realtime-2.1-mini",
-        )
-        realtime_key = auth_msg.get("realtime_key", "")
+        # Get realtime config from app settings (set via Settings page)
+        realtime_url = settings.realtime_url
+        realtime_key = settings.realtime_key
 
         async with session_factory() as session:
             # Load agent

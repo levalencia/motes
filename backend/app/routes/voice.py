@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -185,3 +185,45 @@ async def speech_to_text(
         raise HTTPException(status_code=502, detail=str(exc)) from None
 
     return STTResponse(text=text)
+
+
+# ── Realtime voice call settings ─────────────────────────────────
+
+
+class RealtimeConfigResponse(BaseModel):
+    realtime_url: str
+    has_key: bool
+
+
+class RealtimeConfigUpdate(BaseModel):
+    realtime_url: str
+    realtime_key: str
+
+
+@router.get("/realtime-config", response_model=RealtimeConfigResponse)
+async def get_realtime_config(
+    request: Request,
+    user: User = Depends(get_current_user),
+):
+    """Get realtime voice call config (key is never returned)."""
+    settings = request.app.state.settings
+    return RealtimeConfigResponse(
+        realtime_url=settings.realtime_url,
+        has_key=bool(settings.realtime_key),
+    )
+
+
+@router.post("/realtime-config", response_model=RealtimeConfigResponse)
+async def set_realtime_config(
+    body: RealtimeConfigUpdate,
+    request: Request,
+    user: User = Depends(get_current_user),
+):
+    """Save realtime voice call config. Stored in app state (runtime only)."""
+    settings = request.app.state.settings
+    settings.realtime_url = body.realtime_url
+    settings.realtime_key = body.realtime_key
+    return RealtimeConfigResponse(
+        realtime_url=settings.realtime_url,
+        has_key=bool(settings.realtime_key),
+    )
