@@ -202,6 +202,9 @@
 					if (socket && socket.readyState === WebSocket.OPEN) {
 						const base64 = (reader.result as string).split(',')[1];
 						socket.send(JSON.stringify({ type: 'audio', data: base64 }));
+						// DON'T start a new recording — wait for response
+						listening = false;
+						status = 'Processing...';
 					}
 				};
 				reader.readAsDataURL(blob);
