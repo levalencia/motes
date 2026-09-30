@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -19,11 +20,35 @@ from app.token_refresh import get_valid_token
 
 logger = structlog.get_logger()
 
+
+async def _notify(
+    session: AsyncSession,
+    event_bus: Any,
+    user_id: str,
+    agent_id: str,
+    title: str,
+    body: str,
+    category: str,
+) -> None:
+    """Save notification to DB and push to active sessions via event bus."""
+    await create_notification(session, user_id, agent_id, title, body, category)
+    if event_bus is not None:
+        from app.event_bus import ProactiveEvent
+
+        await event_bus.publish(ProactiveEvent(
+            user_id=user_id,
+            agent_id=agent_id,
+            title=title,
+            body=body,
+            category=category,
+        ))
+
 SCAN_INTERVAL_SECONDS = 300  # 5 minutes
 
 
 async def scan_gmail(
-    session: AsyncSession, user_id: str, agent_id: str, access_token: str
+    session: AsyncSession, user_id: str, agent_id: str,
+    access_token: str, event_bus: Any = None,
 ) -> None:
     """Check for new unread emails and create notifications."""
     import httpx
@@ -61,8 +86,8 @@ async def scan_gmail(
             sender = headers.get("From", "Unknown")
             subject = headers.get("Subject", "No subject")
 
-            await create_notification(
-                session, user_id, agent_id,
+            await _notify(
+                session, event_bus, user_id, agent_id,
                 title=f"📧 New email from {sender.split('<')[0].strip()}",
                 body=subject,
                 category="email",
@@ -77,7 +102,8 @@ async def scan_gmail(
 
 
 async def scan_calendar(
-    session: AsyncSession, user_id: str, agent_id: str, access_token: str
+    session: AsyncSession, user_id: str, agent_id: str,
+    access_token: str, event_bus: Any = None,
 ) -> None:
     """Check for upcoming calendar events and create notifications."""
     from datetime import datetime, timedelta
@@ -109,8 +135,8 @@ async def scan_calendar(
                 summary = event.get("summary", "Untitled event")
                 start = event.get("start", {}).get("dateTime", "")
                 if start:
-                    await create_notification(
-                        session, user_id, agent_id,
+                    await _notify(
+                        session, event_bus, user_id, agent_id,
                         title=f"📅 Upcoming: {summary}",
                         body=f"Starting at {start}",
                         category="calendar",
@@ -126,7 +152,8 @@ async def scan_calendar(
 
 
 async def check_patterns(
-    session: AsyncSession, user_id: str, agent_id: str
+    session: AsyncSession, user_id: str, agent_id: str,
+    event_bus: Any = None,
 ) -> None:
     """Generate proactive suggestions based on learned user patterns."""
     from datetime import datetime
@@ -155,8 +182,8 @@ async def check_patterns(
                     "search": "You often search around now. Anything to find?",
                 }
                 if topic in suggestions:
-                    await create_notification(
-                        session, user_id, agent_id,
+                    await _notify(
+                        session, event_bus, user_id, agent_id,
                         title=f"💡 {topic.title()} time",
                         body=suggestions[topic],
                         category="suggestion",
@@ -169,7 +196,10 @@ async def check_patterns(
                     )
 
 
-async def run_scanner(session_factory: async_sessionmaker) -> None:
+async def run_scanner(
+    session_factory: async_sessionmaker,
+    event_bus: Any = None,
+) -> None:
     """Main scanner loop — runs forever, scanning every SCAN_INTERVAL_SECONDS."""
     logger.info("scanner_started", interval=SCAN_INTERVAL_SECONDS)
 
@@ -192,15 +222,15 @@ async def run_scanner(session_factory: async_sessionmaker) -> None:
                     # Check Gmail
                     gmail_token = await get_valid_token(session, user.id, "gmail")
                     if gmail_token:
-                        await scan_gmail(session, user.id, agent.id, gmail_token)
+                        await scan_gmail(session, user.id, agent.id, gmail_token, event_bus)
 
                     # Check Calendar
                     cal_token = await get_valid_token(session, user.id, "calendar")
                     if cal_token:
-                        await scan_calendar(session, user.id, agent.id, cal_token)
+                        await scan_calendar(session, user.id, agent.id, cal_token, event_bus)
 
                     # Proactive suggestions based on patterns
-                    await check_patterns(session, user.id, agent.id)
+                    await check_patterns(session, user.id, agent.id, event_bus)
 
                     logger.debug("scanner_user_complete", user_id=user.id)
 

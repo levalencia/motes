@@ -233,7 +233,41 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                     event_type=first_event.get('type', 'unknown'),
                 )
 
-                # Two tasks: forward client→azure, forward azure→client
+                # Three tasks: client→azure, azure→client, proactive→client
+                async def proactive_to_client():
+                    """Push proactive notifications as audio mid-call."""
+                    event_bus = getattr(websocket.app.state, "event_bus", None)
+                    if not event_bus:
+                        return
+                    subscription = event_bus.subscribe(user_id)
+                    try:
+                        while True:
+                            event = await subscription.get(timeout=5.0)
+                            if event is None:
+                                continue
+                            # Convert notification to speech
+                            from app.edge_tts_provider import edge_tts_synthesize
+
+                            text = f"{event.title}. {event.body}"
+                            logger.info(
+                                "realtime_call_proactive",
+                                title=event.title,
+                            )
+                            audio = await edge_tts_synthesize(text[:500])
+                            wav = _pcm16_to_wav(audio, 24000)
+                            await websocket.send_json({
+                                "type": "audio_wav",
+                                "data": base64.b64encode(wav).decode(),
+                            })
+                            await websocket.send_json({
+                                "type": "response_done",
+                                "text": f"💡 {event.title}: {event.body}",
+                            })
+                    except Exception:
+                        pass
+                    finally:
+                        subscription.close()
+
                 async def client_to_azure():
                     try:
                         while True:
@@ -400,10 +434,11 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                     except Exception:
                         pass
 
-                # Run both tasks
+                # Run all three tasks
                 await asyncio.gather(
                     client_to_azure(),
                     azure_to_client(),
+                    proactive_to_client(),
                     return_exceptions=True,
                 )
 

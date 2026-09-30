@@ -50,6 +50,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    # Event bus for real-time proactive notifications
+    from app.event_bus import EventBus
+
+    app.state.event_bus = EventBus()
+
     logger.info(
         "motes_starting",
         app=settings.app_name,
@@ -71,7 +76,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from app.background_scanner import run_scanner
 
         scanner_task = asyncio.create_task(
-            run_scanner(app.state.session_factory)
+            run_scanner(app.state.session_factory, app.state.event_bus)
         )
         yield
     finally:
@@ -128,6 +133,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from app.routes.approvals import router as approvals_router
     from app.routes.auth import router as auth_router
     from app.routes.chat import router as chat_router
+    from app.routes.events import router as events_router
     from app.routes.files import router as files_router
     from app.routes.mcp import router as mcp_router
     from app.routes.memory import router as memory_router
@@ -145,6 +151,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(providers_router)
     app.include_router(agents_router)
     app.include_router(chat_router)
+    app.include_router(events_router)
     app.include_router(files_router)
     app.include_router(memory_router)
     app.include_router(approvals_router)

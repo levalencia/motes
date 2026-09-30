@@ -62,6 +62,19 @@
 					voiceProviderId = vps[0].id;
 				}
 			}
+
+			// Subscribe to proactive notifications via SSE
+			const eventSource = new EventSource(
+				`http://localhost:8001/api/events/stream?token=${token}`
+			);
+			eventSource.addEventListener('notification', (e) => {
+				const data = JSON.parse(e.data);
+				// Show proactive message as an agent message in the chat
+				messages = [...messages, {
+					role: 'assistant',
+					content: `💡 **${data.title}**\n\n${data.body}`,
+				}];
+			});
 		} catch {
 			goto('/login');
 		}
