@@ -67,21 +67,53 @@
 	});
 
 	async function startRecording() {
-		try {
-			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-			audioChunks = [];
-			mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-			mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
-			mediaRecorder.onstop = async () => {
-				stream.getTracks().forEach(t => t.stop());
-				const blob = new Blob(audioChunks, { type: 'audio/webm' });
-				await transcribeAndSend(blob);
-			};
-			mediaRecorder.start();
-			recording = true;
-		} catch (e: any) {
-			error = 'Microphone access denied: ' + e.message;
+		// If we have a server-side STT provider, use MediaRecorder
+		if (hasVoiceProvider) {
+			try {
+				const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+				audioChunks = [];
+				mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+				mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+				mediaRecorder.onstop = async () => {
+					stream.getTracks().forEach(t => t.stop());
+					const blob = new Blob(audioChunks, { type: 'audio/webm' });
+					await transcribeWithServer(blob);
+				};
+				mediaRecorder.start();
+				recording = true;
+			} catch (e: any) {
+				error = 'Microphone access denied: ' + e.message;
+			}
+			return;
 		}
+
+		// Free fallback: browser's Web Speech API (Chrome, Safari, Edge)
+		const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+		if (!SpeechRecognition) {
+			error = 'Voice input not supported in this browser. Use Chrome, Safari, or Edge.';
+			return;
+		}
+		const recognition = new SpeechRecognition();
+		recognition.continuous = false;
+		recognition.interimResults = false;
+		recognition.lang = 'en-US';
+
+		recognition.onresult = (event: any) => {
+			const text = event.results[0][0].transcript;
+			if (text) {
+				input = text;
+				sendMessage();
+			}
+			recording = false;
+		};
+		recognition.onerror = (event: any) => {
+			error = 'Speech recognition error: ' + event.error;
+			recording = false;
+		};
+		recognition.onend = () => { recording = false; };
+
+		recognition.start();
+		recording = true;
 	}
 
 	function stopRecording() {
@@ -91,12 +123,7 @@
 		}
 	}
 
-	async function transcribeAndSend(blob: Blob) {
-		if (!hasVoiceProvider) {
-			// No voice provider — use browser's speech recognition as fallback info
-			error = 'No voice provider configured. Add one in Settings → Voice.';
-			return;
-		}
+	async function transcribeWithServer(blob: Blob) {
 		const token = localStorage.getItem('motes_token');
 		const formData = new FormData();
 		formData.append('file', blob, 'audio.webm');
@@ -114,7 +141,6 @@
 				const data = await res.json();
 				if (data.text) {
 					input = data.text;
-					// Auto-send after transcription
 					sendMessage();
 				}
 			} else {
