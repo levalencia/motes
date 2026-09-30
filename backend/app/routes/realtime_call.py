@@ -109,10 +109,11 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                 realtime_url,
                 additional_headers=headers,
             ) as azure_ws:
-                # Configure the session
+                # Configure the session (GA API requires session.type)
                 await azure_ws.send(json.dumps({
                     "type": "session.update",
                     "session": {
+                        "type": "realtime",
                         "instructions": agent.system_prompt,
                         "voice": "alloy",
                         "input_audio_format": "pcm16",
@@ -122,6 +123,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                             "threshold": 0.5,
                             "prefix_padding_ms": 300,
                             "silence_duration_ms": 500,
+                            "create_response": True,
                         },
                     },
                 }))
