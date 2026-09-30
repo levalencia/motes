@@ -45,7 +45,7 @@
 
 <!-- Desktop sidebar -->
 <div class="hidden md:block">
-	<Sidebar agents={agents.map(a => ({id: a.id, name: a.name}))} {unreadCount} onNewChat={() => { if (agents[0]) goto(`/chat/${agents[0].id}`); }} />
+	<Sidebar agents={agents.map(a => ({id: a.id, name: a.name}))} onNewChat={() => { if (agents[0]) goto(`/chat/${agents[0].id}`); }} />
 </div>
 
 <!-- Mobile -->

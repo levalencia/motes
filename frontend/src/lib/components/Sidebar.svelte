@@ -4,9 +4,8 @@
 	import { clearAuth, username } from '$lib/stores/auth';
 	import { theme, toggleTheme } from '$lib/stores/theme';
 
-	let { agents = [], unreadCount = 0, onNewChat = () => {} }: {
+	let { agents = [], onNewChat = () => {} }: {
 		agents?: { id: string; name: string }[];
-		unreadCount?: number;
 		onNewChat?: () => void;
 	} = $props();
 
@@ -93,17 +92,11 @@
 
 	<!-- Bottom: theme + user -->
 	<div class="px-3 py-3 space-y-2" style="border-top: 1px solid var(--border);">
-		<!-- Notification + Theme row -->
-		<div class="flex items-center justify-between px-3">
+		<!-- Theme toggle -->
+		<div class="flex items-center justify-center px-3">
 			<button onclick={toggleTheme} class="text-sm transition-opacity hover:opacity-70" style="color: var(--text-muted);">
 				{$theme === 'dark' ? '☀️' : '🌙'}
 			</button>
-			<div class="relative">
-				<span class="text-sm" style="color: var(--text-muted);">🔔</span>
-				{#if unreadCount > 0}
-					<span class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-medium">{unreadCount}</span>
-				{/if}
-			</div>
 		</div>
 		<!-- User -->
 		<div class="flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-pointer transition-colors duration-150" style="background: transparent;" onmouseenter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'} onmouseleave={(e) => e.currentTarget.style.background = 'transparent'}>

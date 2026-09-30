@@ -203,7 +203,7 @@
 
 <!-- Desktop sidebar (hidden on mobile) -->
 <div class="hidden md:block">
-	<Sidebar {agents} unreadCount={unreadCount} onNewChat={() => { messages = []; conversationId = null; }} />
+	<Sidebar {agents} onNewChat={() => { messages = []; conversationId = null; }} />
 </div>
 
 <!-- Mobile header + drawer -->

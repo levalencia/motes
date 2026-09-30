@@ -9,7 +9,6 @@ from fastapi import APIRouter, Request
 from sse_starlette.sse import EventSourceResponse
 
 from app.auth import decode_jwt
-from app.config import get_settings
 
 logger = structlog.get_logger()
 
@@ -24,7 +23,7 @@ async def event_stream(request: Request, token: str):
     Receives events like:
         data: {"type": "notification", "title": "📧 New email", "body": "..."}
     """
-    settings = get_settings()
+    settings = request.app.state.settings
     payload = decode_jwt(token, settings.secret_key)
     if not payload:
         return EventSourceResponse(
