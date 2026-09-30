@@ -50,6 +50,133 @@ async def build_tool_registry(
     brave_key = os.environ.get("BRAVE_SEARCH_API_KEY", "")
     tools.register(WebSearchTool(brave_key))
 
+    # Weather (free, no API key — Open-Meteo)
+    from app.weather_tool import WeatherTool
+
+    tools.register(WeatherTool())
+
+    # Apple Reminders + Notes (macOS only, no API key)
+    import platform
+
+    if platform.system() == "Darwin":
+        from app.apple_tools import (
+            NotesListTool,
+            NotesReadTool,
+            ReminderCreateTool,
+            ReminderListTool,
+        )
+
+        tools.register(ReminderListTool())
+        tools.register(ReminderCreateTool())
+        tools.register(NotesListTool())
+        tools.register(NotesReadTool())
+        logger.debug("tools_apple_loaded")
+
+    # Maps (free, no API key — OpenStreetMap + OSRM)
+    from app.maps_tool import MapsTool
+
+    tools.register(MapsTool())
+
+    # News (free, no API key — DuckDuckGo)
+    from app.news_tool import NewsTool
+
+    tools.register(NewsTool())
+
+    # Travel (flights + hotels — requires Amadeus keys)
+    amadeus_key = os.environ.get("AMADEUS_API_KEY", "")
+    if amadeus_key:
+        from app.travel_tools import FlightSearchTool, HotelSearchTool
+
+        tools.register(FlightSearchTool())
+        tools.register(HotelSearchTool())
+        logger.debug("tools_travel_loaded")
+
+    # GitHub (requires GITHUB_TOKEN)
+    github_token = os.environ.get("GITHUB_TOKEN", "")
+    if github_token:
+        from app.github_tools import (
+            GitHubCreateIssueTool,
+            GitHubListIssuesTool,
+            GitHubListReposTool,
+        )
+
+        tools.register(GitHubListReposTool())
+        tools.register(GitHubListIssuesTool())
+        tools.register(GitHubCreateIssueTool())
+        logger.debug("tools_github_loaded")
+
+    # Todoist (requires TODOIST_API_KEY)
+    todoist_key = os.environ.get("TODOIST_API_KEY", "")
+    if todoist_key:
+        from app.todoist_tools import TodoistCreateTool, TodoistListTool
+
+        tools.register(TodoistListTool())
+        tools.register(TodoistCreateTool())
+        logger.debug("tools_todoist_loaded")
+
+    # Notion (requires NOTION_API_KEY)
+    notion_key = os.environ.get("NOTION_API_KEY", "")
+    if notion_key:
+        from app.notion_tools import NotionReadPageTool, NotionSearchTool
+
+        tools.register(NotionSearchTool())
+        tools.register(NotionReadPageTool())
+        logger.debug("tools_notion_loaded")
+
+    # Slack (requires SLACK_BOT_TOKEN)
+    slack_token = os.environ.get("SLACK_BOT_TOKEN", "")
+    if slack_token:
+        from app.slack_tools import (
+            SlackListChannelsTool,
+            SlackReadMessagesTool,
+            SlackSendMessageTool,
+        )
+
+        tools.register(SlackListChannelsTool())
+        tools.register(SlackSendMessageTool())
+        tools.register(SlackReadMessagesTool())
+        logger.debug("tools_slack_loaded")
+
+    # Spotify (requires SPOTIFY_TOKEN)
+    spotify_token = os.environ.get("SPOTIFY_TOKEN", "")
+    if spotify_token:
+        from app.spotify_tools import SpotifyPlayTool, SpotifySearchTool
+
+        tools.register(SpotifySearchTool())
+        tools.register(SpotifyPlayTool())
+        logger.debug("tools_spotify_loaded")
+
+    # Home Assistant (requires HA_URL + HA_TOKEN)
+    ha_url = os.environ.get("HA_URL", "")
+    if ha_url:
+        from app.homeassistant_tools import HAControlDeviceTool, HAListDevicesTool
+
+        tools.register(HAListDevicesTool())
+        tools.register(HAControlDeviceTool())
+        logger.debug("tools_homeassistant_loaded")
+
+    # Outlook (requires OUTLOOK_ACCESS_TOKEN)
+    outlook_token = os.environ.get("OUTLOOK_ACCESS_TOKEN", "")
+    if outlook_token:
+        from app.outlook_tools import (
+            OutlookCalendarTool,
+            OutlookReadEmailTool,
+            OutlookSendEmailTool,
+        )
+
+        tools.register(OutlookReadEmailTool())
+        tools.register(OutlookSendEmailTool())
+        tools.register(OutlookCalendarTool())
+        logger.debug("tools_outlook_loaded")
+
+    # Telegram (requires TELEGRAM_BOT_TOKEN)
+    telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    if telegram_token:
+        from app.messaging_tools import TelegramSendTool
+
+        tools.register(TelegramSendTool())
+        logger.debug("tools_telegram_loaded")
+
     # Gmail (if connected, with auto-refresh)
     gmail_access = await get_valid_token(session, user_id, "gmail")
     if gmail_access:

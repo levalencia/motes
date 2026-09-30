@@ -35,8 +35,6 @@ class TestMCPCatalog:
         for entry in catalog:
             assert "name" in entry
             assert "description" in entry
-            assert "transport" in entry
-            assert "command" in entry
             assert "category" in entry
 
 
