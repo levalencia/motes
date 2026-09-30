@@ -258,17 +258,19 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                         timeout=10,
                                     )
                                     if result.returncode == 0 and result.stdout:
-                                        pcm_b64 = base64.b64encode(
-                                            result.stdout
-                                        ).decode()
-                                        print(f"[CALL] PCM→Azure: {len(result.stdout)}b")
-                                        await azure_ws.send(json.dumps({
-                                            "type": "input_audio_buffer.append",
-                                            "audio": pcm_b64,
-                                        }))
-                                        await azure_ws.send(json.dumps({
-                                            "type": "input_audio_buffer.commit",
-                                        }))
+                                        # Only send if enough audio (>2400 bytes = 100ms at 24kHz)
+                                        if len(result.stdout) > 2400:
+                                            pcm_b64 = base64.b64encode(
+                                                result.stdout
+                                            ).decode()
+                                            print(f"[CALL] PCM→Azure: {len(result.stdout)}b")
+                                            await azure_ws.send(json.dumps({
+                                                "type": "input_audio_buffer.append",
+                                                "audio": pcm_b64,
+                                            }))
+                                            await azure_ws.send(json.dumps({
+                                                "type": "input_audio_buffer.commit",
+                                            }))
                                     else:
                                         print(f"[CALL] ffmpeg err: {result.returncode}")
                                 finally:

@@ -182,18 +182,18 @@
 	}
 
 	function startContinuousRecording() {
-		if (!connected) return;
-		navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-			micStream = stream;
+		if (!connected || recorder?.state === 'recording') return;
+
+		const startRecording = (stream: MediaStream) => {
 			recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
 			const chunks: Blob[] = [];
 			recorder.ondataavailable = (e) => {
 				if (e.data.size > 0) chunks.push(e.data);
 			};
 			recorder.onstop = () => {
-				// Send the complete webm blob
 				const blob = new Blob(chunks, { type: 'audio/webm' });
-				if (blob.size > 0 && socket && socket.readyState === WebSocket.OPEN) {
+				// Only send if we have meaningful audio (>5KB)
+				if (blob.size > 5000 && socket && socket.readyState === WebSocket.OPEN) {
 					const reader = new FileReader();
 					reader.onload = () => {
 						const base64 = (reader.result as string).split(',')[1];
@@ -201,20 +201,27 @@
 					};
 					reader.readAsDataURL(blob);
 				}
-				// Start next recording cycle if still listening
-				if (connected && listening) {
-					startContinuousRecording();
+				// Auto-restart if still listening
+				if (connected && listening && !speaking) {
+					setTimeout(() => startRecording(stream), 100);
 				}
 			};
 			recorder.start();
-			// Record for 6 seconds then send (long enough for full sentences)
 			setTimeout(() => {
 				if (recorder && recorder.state === 'recording') {
 					recorder.stop();
-					// Don't stop the mic stream — it'll be reused
 				}
 			}, 6000);
-		});
+		};
+
+		if (micStream && micStream.active) {
+			startRecording(micStream);
+		} else {
+			navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+				micStream = stream;
+				startRecording(stream);
+			});
+		}
 	}
 
 	function startRecordingChunk() {
