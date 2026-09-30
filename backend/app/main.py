@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -66,8 +67,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
 
     try:
+        # Start background scanner
+        from app.background_scanner import run_scanner
+
+        scanner_task = asyncio.create_task(
+            run_scanner(app.state.session_factory)
+        )
         yield
     finally:
+        scanner_task.cancel()
         await engine.dispose()
         logger.info("motes_shutdown")
 

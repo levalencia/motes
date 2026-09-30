@@ -8,17 +8,24 @@
 	let agents = $state<Agent[]>([]);
 	let providers = $state<Provider[]>([]);
 	let connectedServices = $state(0);
+	let unreadNotifications = $state(0);
+	let notifications = $state<{id: string; title: string; body: string; category: string; is_read: boolean}[]>([]);
+	let showNotifications = $state(false);
 	let loading = $state(true);
 
 	onMount(async () => {
 		try {
-			const [a, p, svc] = await Promise.all([
+			const [a, p, svc, notifCount, notifList] = await Promise.all([
 				listAgents(),
 				listProviders(),
 				api<{ service: string }[]>('/oauth/connected'),
+				api<{ count: number }>('/notifications/unread-count'),
+				api<typeof notifications>('/notifications'),
 			]);
 			agents = a;
 			providers = p;
+			unreadNotifications = notifCount.count;
+			notifications = notifList;
 			connectedServices = svc.length;
 		} catch {
 			goto('/login');
@@ -39,6 +46,33 @@
 			<a href="/agents" class="text-sm hover:opacity-100 opacity-60 transition-opacity" style="color: var(--text-secondary);">Agents</a>
 			<a href="/services" class="text-sm hover:opacity-100 opacity-60 transition-opacity" style="color: var(--text-secondary);">Services</a>
 			<a href="/settings" class="text-sm hover:opacity-100 opacity-60 transition-opacity" style="color: var(--text-secondary);">Settings</a>
+			<!-- Notification bell -->
+			<div class="relative">
+				<button
+					onclick={() => { showNotifications = !showNotifications; }}
+					class="text-lg hover:opacity-80 transition-opacity relative"
+				>
+					🔔
+					{#if unreadNotifications > 0}
+						<span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">{unreadNotifications}</span>
+					{/if}
+				</button>
+				{#if showNotifications}
+					<div class="absolute right-0 top-8 w-80 max-h-96 overflow-y-auto rounded-xl shadow-2xl z-50" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+						<div class="px-4 py-3 font-semibold" style="border-bottom: 1px solid var(--border-color);">Notifications</div>
+						{#if notifications.length === 0}
+							<div class="px-4 py-6 text-center text-sm" style="color: var(--text-muted);">No notifications yet</div>
+						{:else}
+							{#each notifications.slice(0, 10) as n}
+								<div class="px-4 py-3 hover:opacity-80 cursor-pointer" style="border-bottom: 1px solid var(--border-color); opacity: {n.is_read ? 0.5 : 1};">
+									<div class="text-sm font-medium">{n.title}</div>
+									<div class="text-xs mt-0.5" style="color: var(--text-muted);">{n.body.slice(0, 80)}</div>
+								</div>
+							{/each}
+						{/if}
+					</div>
+				{/if}
+			</div>
 			<span style="color: var(--border);">|</span>
 			<!-- Theme toggle -->
 			<button
