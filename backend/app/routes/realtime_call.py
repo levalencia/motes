@@ -424,10 +424,21 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
 
                             elif etype == "error":
                                 err = event.get("error", {})
-                                await websocket.send_json({
-                                    "type": "error",
-                                    "message": err.get("message", str(err)),
-                                })
+                                err_msg = err.get("message", str(err))
+                                # Buffer-too-small is non-fatal, just log it
+                                if "buffer too small" in err_msg.lower():
+                                    logger.debug(
+                                        "realtime_call_buffer_small",
+                                    )
+                                else:
+                                    logger.warning(
+                                        "realtime_call_azure_error",
+                                        error=err_msg,
+                                    )
+                                    await websocket.send_json({
+                                        "type": "error",
+                                        "message": err_msg,
+                                    })
 
                     except Exception:
                         pass
