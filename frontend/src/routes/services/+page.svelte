@@ -1,74 +1,75 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import { api } from '$lib/api/client';
 
-	interface CatalogEntry {
-		name: string;
-		description: string;
-		transport: string;
-		command: string;
-		env_vars: string[];
-		category: string;
+	interface OAuthService {
+		provider: string;
+		service: string;
+		label: string;
+		is_connected: boolean;
+		is_configured: boolean;
 	}
 
-	interface ConnectedServer {
-		id: string;
-		name: string;
-		description: string;
-		transport: string;
-		command: string;
-		url: string;
-		is_enabled: boolean;
+	interface ConnectedService {
+		service: string;
+		provider: string;
+		account_email: string;
+		scopes: string;
 	}
 
-	let catalog = $state<CatalogEntry[]>([]);
-	let connected = $state<ConnectedServer[]>([]);
+	interface OAuthApp {
+		provider: string;
+		client_id: string;
+		is_configured: boolean;
+	}
+
+	let services = $state<OAuthService[]>([]);
+	let connected = $state<ConnectedService[]>([]);
+	let oauthApps = $state<OAuthApp[]>([]);
 	let loading = $state(true);
-	let connecting = $state<string | null>(null);
 	let error = $state('');
+	let justConnected = $state('');
 
-	// Setup form state
-	let showSetupFor = $state<CatalogEntry | null>(null);
-	let envValues = $state<Record<string, string>>({});
+	// Admin setup form
+	let showAdminSetup = $state(false);
+	let adminProvider = $state('google');
+	let adminClientId = $state('');
+	let adminClientSecret = $state('');
+	let adminSaving = $state(false);
 
-	const categoryIcons: Record<string, string> = {
-		email: '📧',
+	const serviceIcons: Record<string, string> = {
+		gmail: '📧',
 		calendar: '📅',
-		development: '💻',
-		communication: '💬',
-		utility: '📁',
-		search: '🔍',
+		github: '💻',
+		slack: '💬',
 	};
 
-	const envVarLabels: Record<string, string> = {
-		GMAIL_OAUTH_CLIENT_ID: 'Google OAuth Client ID',
-		GMAIL_OAUTH_CLIENT_SECRET: 'Google OAuth Client Secret',
-		GOOGLE_OAUTH_CLIENT_ID: 'Google OAuth Client ID',
-		GOOGLE_OAUTH_CLIENT_SECRET: 'Google OAuth Client Secret',
-		GITHUB_PERSONAL_ACCESS_TOKEN: 'GitHub Personal Access Token',
-		SLACK_BOT_TOKEN: 'Slack Bot Token',
-		BRAVE_API_KEY: 'Brave Search API Key',
-	};
-
-	const envVarHelp: Record<string, string> = {
-		GMAIL_OAUTH_CLIENT_ID: 'Get from Google Cloud Console → APIs → Credentials',
-		GMAIL_OAUTH_CLIENT_SECRET: 'Get from Google Cloud Console → APIs → Credentials',
-		GOOGLE_OAUTH_CLIENT_ID: 'Get from Google Cloud Console → APIs → Credentials',
-		GOOGLE_OAUTH_CLIENT_SECRET: 'Get from Google Cloud Console → APIs → Credentials',
-		GITHUB_PERSONAL_ACCESS_TOKEN: 'GitHub → Settings → Developer Settings → Personal Access Tokens',
-		SLACK_BOT_TOKEN: 'Slack API → Your Apps → OAuth & Permissions → Bot Token',
-		BRAVE_API_KEY: 'Get from brave.com/search/api/',
+	const providerSetupHelp: Record<string, string> = {
+		google: 'Google Cloud Console → APIs & Services → Credentials → Create OAuth 2.0 Client',
+		github: 'GitHub → Settings → Developer Settings → OAuth Apps → New OAuth App',
+		slack: 'api.slack.com → Your Apps → Create New App → OAuth & Permissions',
 	};
 
 	onMount(async () => {
+		// Check for success redirect
+		const connectedParam = $page.url.searchParams.get('connected');
+		if (connectedParam) {
+			justConnected = connectedParam;
+			// Clean URL
+			window.history.replaceState({}, '', '/services');
+		}
+
 		try {
-			const [cat, srv] = await Promise.all([
-				api<CatalogEntry[]>('/mcp/catalog'),
-				api<ConnectedServer[]>('/mcp/servers'),
+			const [svc, conn, apps] = await Promise.all([
+				api<OAuthService[]>('/oauth/services'),
+				api<ConnectedService[]>('/oauth/connected'),
+				api<OAuthApp[]>('/oauth/apps'),
 			]);
-			catalog = cat;
-			connected = srv;
+			services = svc;
+			connected = conn;
+			oauthApps = apps;
 		} catch {
 			goto('/login');
 		} finally {
@@ -76,77 +77,61 @@
 		}
 	});
 
-	function startSetup(entry: CatalogEntry) {
-		showSetupFor = entry;
-		envValues = {};
-		error = '';
-		// Pre-fill empty values
-		for (const v of entry.env_vars) {
-			envValues[v] = '';
-		}
-	}
-
-	function cancelSetup() {
-		showSetupFor = null;
-		envValues = {};
-		error = '';
-	}
-
-	async function connectService() {
-		if (!showSetupFor) return;
-		const entry = showSetupFor;
-
-		// Validate all required env vars are filled
-		for (const v of entry.env_vars) {
-			if (!envValues[v]?.trim()) {
-				error = `${envVarLabels[v] || v} is required`;
-				return;
-			}
-		}
-
-		connecting = entry.name;
+	async function connectService(provider: string, service: string) {
 		error = '';
 		try {
-			const server = await api<ConnectedServer>('/mcp/servers', {
+			const result = await api<{ auth_url: string }>(
+				`/oauth/connect/${provider}/${service}`
+			);
+			// Redirect to consent screen
+			window.location.href = result.auth_url;
+		} catch (e: any) {
+			error = e.message;
+		}
+	}
+
+	async function disconnectService(service: string) {
+		try {
+			await api(`/oauth/connected/${service}`, { method: 'DELETE' });
+			connected = connected.filter((c) => c.service !== service);
+			services = services.map((s) =>
+				s.service === service ? { ...s, is_connected: false } : s
+			);
+		} catch (e: any) {
+			error = e.message;
+		}
+	}
+
+	async function saveAdminConfig() {
+		adminSaving = true;
+		error = '';
+		try {
+			await api('/oauth/apps', {
 				method: 'POST',
 				body: JSON.stringify({
-					name: entry.name,
-					description: entry.description,
-					transport: entry.transport,
-					command: entry.command,
-					env_json: JSON.stringify(envValues),
+					provider: adminProvider,
+					client_id: adminClientId,
+					client_secret: adminClientSecret,
 				}),
 			});
-			connected = [...connected, server];
-			showSetupFor = null;
-			envValues = {};
+			oauthApps = await api<OAuthApp[]>('/oauth/apps');
+			services = await api<OAuthService[]>('/oauth/services');
+			showAdminSetup = false;
+			adminClientId = '';
+			adminClientSecret = '';
 		} catch (e: any) {
 			error = e.message;
 		} finally {
-			connecting = null;
+			adminSaving = false;
 		}
 	}
 
-	async function toggleService(id: string, enabled: boolean) {
-		try {
-			await api(`/mcp/servers/${id}/toggle?enabled=${enabled}`, { method: 'POST' });
-			connected = connected.map((s) => (s.id === id ? { ...s, is_enabled: enabled } : s));
-		} catch (e: any) {
-			error = e.message;
-		}
+	function getConnectedInfo(service: string): ConnectedService | undefined {
+		return connected.find((c) => c.service === service);
 	}
 
-	async function removeService(id: string) {
-		try {
-			await api(`/mcp/servers/${id}`, { method: 'DELETE' });
-			connected = connected.filter((s) => s.id !== id);
-		} catch (e: any) {
-			error = e.message;
-		}
-	}
-
-	function isConnected(name: string): boolean {
-		return connected.some((s) => s.name === name);
+	function isProviderConfigured(provider: string): boolean {
+		return oauthApps.some((a) => a.provider === provider);
 	}
 </script>
 
@@ -156,114 +141,132 @@
 			<a href="/dashboard" class="text-gray-400 hover:text-white">← Dashboard</a>
 			<h1 class="text-xl font-bold">Connected Services</h1>
 		</div>
+		<button
+			onclick={() => (showAdminSetup = !showAdminSetup)}
+			class="text-sm text-gray-400 hover:text-white px-3 py-1 border border-gray-700 rounded hover:border-gray-500"
+		>
+			⚙️ OAuth Settings
+		</button>
 	</nav>
 
 	<main class="max-w-5xl mx-auto px-6 py-8">
 		{#if loading}
 			<p class="text-gray-400">Loading services...</p>
 		{:else}
-			{#if error && !showSetupFor}
+			{#if justConnected}
+				<div class="bg-green-950 border border-green-800 rounded-lg px-4 py-3 mb-6 text-sm text-green-400">
+					✓ Successfully connected {justConnected}!
+				</div>
+			{/if}
+
+			{#if error}
 				<div class="bg-red-950 border border-red-900 rounded-lg px-4 py-3 mb-6 text-sm text-red-400">
 					{error}
 				</div>
 			{/if}
 
-			<!-- Setup modal/form -->
-			{#if showSetupFor}
-				<div class="bg-gray-900 border border-blue-500/50 rounded-xl p-6 mb-8">
-					<div class="flex items-center gap-3 mb-4">
-						<div class="w-10 h-10 bg-blue-900/50 border border-blue-800 rounded-lg flex items-center justify-center text-lg">
-							{categoryIcons[showSetupFor.category] || '🔌'}
+			<!-- Admin OAuth setup -->
+			{#if showAdminSetup}
+				<div class="bg-gray-900 border border-yellow-500/30 rounded-xl p-6 mb-8">
+					<h2 class="text-lg font-semibold mb-1">⚙️ OAuth Provider Setup</h2>
+					<p class="text-gray-400 text-sm mb-4">
+						One-time setup: add your OAuth credentials so users can connect with one click.
+					</p>
+
+					<div class="space-y-4">
+						<div>
+							<label for="admin-provider" class="block text-sm text-gray-300">Provider</label>
+							<select
+								id="admin-provider"
+								bind:value={adminProvider}
+								class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"
+							>
+								<option value="google">Google (Gmail + Calendar)</option>
+								<option value="github">GitHub</option>
+								<option value="slack">Slack</option>
+							</select>
+							<p class="text-gray-600 text-xs mt-1">{providerSetupHelp[adminProvider]}</p>
 						</div>
 						<div>
-							<h2 class="text-lg font-semibold">Connect {showSetupFor.name}</h2>
-							<p class="text-gray-400 text-sm">{showSetupFor.description}</p>
+							<label for="admin-client-id" class="block text-sm text-gray-300">Client ID</label>
+							<input
+								id="admin-client-id"
+								bind:value={adminClientId}
+								class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"
+							/>
 						</div>
+						<div>
+							<label for="admin-client-secret" class="block text-sm text-gray-300">Client Secret</label>
+							<input
+								id="admin-client-secret"
+								type="password"
+								bind:value={adminClientSecret}
+								class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"
+							/>
+						</div>
+						<p class="text-gray-600 text-xs">
+							Redirect URI: <code class="bg-gray-800 px-1 rounded">http://localhost:8001/api/oauth/callback/{adminProvider}</code>
+						</p>
 					</div>
-
-					{#if showSetupFor.env_vars.length === 0}
-						<p class="text-gray-400 text-sm mb-4">No credentials needed — this service works out of the box.</p>
-					{:else}
-						<p class="text-gray-400 text-sm mb-4">Enter your credentials. These are stored encrypted and never shared.</p>
-						<div class="space-y-4">
-							{#each showSetupFor.env_vars as envVar}
-								<div>
-									<label for={envVar} class="block text-sm text-gray-300 font-medium">
-										{envVarLabels[envVar] || envVar}
-									</label>
-									<input
-										id={envVar}
-										type="password"
-										bind:value={envValues[envVar]}
-										placeholder={envVar}
-										class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-blue-500"
-									/>
-									{#if envVarHelp[envVar]}
-										<p class="text-gray-600 text-xs mt-1">{envVarHelp[envVar]}</p>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					{/if}
-
-					{#if error}
-						<p class="text-red-400 text-sm mt-3">{error}</p>
-					{/if}
-
 					<div class="flex gap-3 mt-5">
 						<button
-							onclick={connectService}
-							disabled={connecting !== null}
-							class="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-lg text-sm font-medium"
+							onclick={saveAdminConfig}
+							disabled={adminSaving || !adminClientId || !adminClientSecret}
+							class="px-6 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 rounded-lg text-sm font-medium"
 						>
-							{connecting ? 'Connecting...' : `Connect ${showSetupFor.name}`}
+							{adminSaving ? 'Saving...' : 'Save Credentials'}
 						</button>
 						<button
-							onclick={cancelSetup}
-							class="px-6 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-gray-300"
+							onclick={() => (showAdminSetup = false)}
+							class="px-6 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm"
 						>
 							Cancel
 						</button>
 					</div>
+
+					{#if oauthApps.length > 0}
+						<div class="mt-4 pt-4 border-t border-gray-800">
+							<p class="text-xs text-gray-500 mb-2">Configured providers:</p>
+							<div class="flex gap-2">
+								{#each oauthApps as app}
+									<span class="text-xs bg-green-900/50 text-green-400 px-2 py-1 rounded">
+										✓ {app.provider}
+									</span>
+								{/each}
+							</div>
+						</div>
+					{/if}
 				</div>
 			{/if}
 
 			<!-- Connected services -->
 			{#if connected.length > 0}
 				<div class="mb-10">
-					<h2 class="text-lg font-semibold mb-4">Active Services ({connected.length})</h2>
+					<h2 class="text-lg font-semibold mb-4">Connected ({connected.length})</h2>
 					<div class="space-y-3">
-						{#each connected as server}
-							<div class="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between">
+						{#each connected as conn}
+							<div class="bg-gray-900 border border-green-900/50 rounded-xl p-4 flex items-center justify-between">
 								<div class="flex items-center gap-3">
 									<div class="w-10 h-10 bg-green-900/50 border border-green-800 rounded-lg flex items-center justify-center text-lg">
-										{categoryIcons[catalog.find((c) => c.name === server.name)?.category || ''] || '🔌'}
+										{serviceIcons[conn.service] || '🔌'}
 									</div>
 									<div>
-										<h3 class="font-medium">{server.name}</h3>
-										<p class="text-gray-500 text-xs">{server.description || server.command}</p>
+										<h3 class="font-medium capitalize">{conn.service}</h3>
+										<p class="text-gray-500 text-xs">
+											{conn.account_email || conn.provider}
+										</p>
 									</div>
 								</div>
 								<div class="flex items-center gap-3">
-									{#if server.is_enabled}
-										<span class="text-green-400 text-xs flex items-center gap-1">
-											<span class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-											Connected
-										</span>
-									{:else}
-										<span class="text-yellow-400 text-xs">Paused</span>
-									{/if}
+									<span class="text-green-400 text-xs flex items-center gap-1">
+										<span class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+										Active
+									</span>
 									<button
-										onclick={() => toggleService(server.id, !server.is_enabled)}
-										class="text-xs text-gray-400 hover:text-white px-2 py-1 rounded border border-gray-700 hover:border-gray-500"
-									>
-										{server.is_enabled ? 'Pause' : 'Resume'}
-									</button>
-									<button
-										onclick={() => removeService(server.id)}
+										onclick={() => disconnectService(conn.service)}
 										class="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded border border-red-900 hover:border-red-700"
 									>
-										Remove
+										Disconnect
 									</button>
 								</div>
 							</div>
@@ -272,42 +275,40 @@
 				</div>
 			{/if}
 
-			<!-- Service catalog -->
+			<!-- Available services -->
 			<div>
-				<h2 class="text-lg font-semibold mb-2">Service Catalog</h2>
-				<p class="text-gray-500 text-sm mb-4">Connect services to give your agents superpowers. MCP-based, community-extensible.</p>
+				<h2 class="text-lg font-semibold mb-2">Available Services</h2>
+				<p class="text-gray-500 text-sm mb-4">
+					Click Connect to sign in with your account. No API keys needed.
+				</p>
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-					{#each catalog as entry}
-						{@const alreadyConnected = isConnected(entry.name)}
-						<div class="bg-gray-900 border border-gray-800 rounded-xl p-5 {alreadyConnected ? 'opacity-60' : ''}">
+					{#each services as svc}
+						<div class="bg-gray-900 border border-gray-800 rounded-xl p-5 {svc.is_connected ? 'opacity-60' : ''}">
 							<div class="flex items-start gap-3">
 								<div class="w-10 h-10 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
-									{categoryIcons[entry.category] || '🔌'}
+									{serviceIcons[svc.service] || '🔌'}
 								</div>
 								<div class="flex-1">
-									<div class="flex items-center justify-between">
-										<h3 class="font-semibold">{entry.name}</h3>
-										<span class="text-xs text-gray-600 px-2 py-0.5 bg-gray-800 rounded">{entry.category}</span>
-									</div>
-									<p class="text-gray-400 text-sm mt-1">{entry.description}</p>
-									{#if entry.env_vars.length > 0}
-										<p class="text-gray-600 text-xs mt-2">
-											Requires: {entry.env_vars.map(v => envVarLabels[v] || v).join(', ')}
-										</p>
-									{:else}
-										<p class="text-green-600 text-xs mt-2">No credentials needed</p>
-									{/if}
+									<h3 class="font-semibold">{svc.label}</h3>
+									<p class="text-gray-500 text-xs mt-0.5">via {svc.provider}</p>
 								</div>
 							</div>
 							<div class="mt-4">
-								{#if alreadyConnected}
+								{#if svc.is_connected}
 									<span class="text-green-400 text-sm">✓ Connected</span>
+								{:else if !svc.is_configured}
+									<button
+										onclick={() => { showAdminSetup = true; adminProvider = svc.provider; }}
+										class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm w-full text-gray-300"
+									>
+										⚙️ Configure {svc.provider} first
+									</button>
 								{:else}
 									<button
-										onclick={() => startSetup(entry)}
+										onclick={() => connectService(svc.provider, svc.service)}
 										class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium w-full"
 									>
-										Connect {entry.name}
+										Connect {svc.label}
 									</button>
 								{/if}
 							</div>
@@ -316,10 +317,14 @@
 				</div>
 			</div>
 
-			<!-- Info note -->
+			<!-- Security note -->
 			<div class="mt-8 bg-gray-900/50 border border-gray-800 rounded-xl p-4 text-sm text-gray-500">
-				<p class="font-medium text-gray-400 mb-1">🔒 About credentials</p>
-				<p>Your API keys and tokens are stored encrypted on your server. Motes is self-hosted — credentials never leave your infrastructure. Each service uses the <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener" class="text-blue-400 hover:underline">Model Context Protocol (MCP)</a> standard.</p>
+				<p class="font-medium text-gray-400 mb-1">🔒 How it works</p>
+				<p>
+					When you click Connect, you're redirected to the service's own sign-in page (Google, GitHub, etc.).
+					Motes never sees your password. The service gives Motes a limited access token which is stored
+					encrypted on your server. You can disconnect at any time.
+				</p>
 			</div>
 		{/if}
 	</main>
