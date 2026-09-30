@@ -118,6 +118,8 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
             async with websockets.connect(
                 realtime_url,
                 additional_headers=headers,
+                close_timeout=3,
+                open_timeout=10,
             ) as azure_ws:
                 print("[CALL] Azure connected! Sending session config...")
 
