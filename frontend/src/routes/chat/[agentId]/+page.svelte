@@ -67,53 +67,21 @@
 	});
 
 	async function startRecording() {
-		// If we have a server-side STT provider, use MediaRecorder
-		if (hasVoiceProvider) {
-			try {
-				const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-				audioChunks = [];
-				mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-				mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
-				mediaRecorder.onstop = async () => {
-					stream.getTracks().forEach(t => t.stop());
-					const blob = new Blob(audioChunks, { type: 'audio/webm' });
-					await transcribeWithServer(blob);
-				};
-				mediaRecorder.start();
-				recording = true;
-			} catch (e: any) {
-				error = 'Microphone access denied: ' + e.message;
-			}
-			return;
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			audioChunks = [];
+			mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+			mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+			mediaRecorder.onstop = async () => {
+				stream.getTracks().forEach(t => t.stop());
+				const blob = new Blob(audioChunks, { type: 'audio/webm' });
+				await transcribeWithServer(blob);
+			};
+			mediaRecorder.start();
+			recording = true;
+		} catch (e: any) {
+			error = 'Microphone access denied: ' + e.message;
 		}
-
-		// Free fallback: browser's Web Speech API (Chrome, Safari, Edge)
-		const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-		if (!SpeechRecognition) {
-			error = 'Voice input not supported in this browser. Use Chrome, Safari, or Edge.';
-			return;
-		}
-		const recognition = new SpeechRecognition();
-		recognition.continuous = false;
-		recognition.interimResults = false;
-		recognition.lang = 'en-US';
-
-		recognition.onresult = (event: any) => {
-			const text = event.results[0][0].transcript;
-			if (text) {
-				input = text;
-				sendMessage();
-			}
-			recording = false;
-		};
-		recognition.onerror = (event: any) => {
-			error = 'Speech recognition error: ' + event.error;
-			recording = false;
-		};
-		recognition.onend = () => { recording = false; };
-
-		recognition.start();
-		recording = true;
 	}
 
 	function stopRecording() {
@@ -128,15 +96,18 @@
 		const formData = new FormData();
 		formData.append('file', blob, 'audio.webm');
 
+		// Use voice provider if configured, otherwise local Whisper (free)
+		let url = 'http://localhost:8001/api/voice/stt';
+		if (voiceProviderId) {
+			url += `?voice_provider_id=${voiceProviderId}`;
+		}
+
 		try {
-			const res = await fetch(
-				`http://localhost:8001/api/voice/stt?voice_provider_id=${voiceProviderId}`,
-				{
-					method: 'POST',
-					headers: { Authorization: `Bearer ${token}` },
-					body: formData,
-				}
-			);
+			const res = await fetch(url, {
+				method: 'POST',
+				headers: { Authorization: `Bearer ${token}` },
+				body: formData,
+			});
 			if (res.ok) {
 				const data = await res.json();
 				if (data.text) {

@@ -144,22 +144,35 @@ async def text_to_speech(
 
 @router.post("/stt", response_model=STTResponse)
 async def speech_to_text(
-    voice_provider_id: str,
     file: UploadFile,
+    voice_provider_id: str | None = None,
     language: str | None = None,
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    """Transcribe audio to text."""
+    """Transcribe audio to text. Uses local Whisper (free) if no provider specified."""
+    audio_data = await file.read()
+    if not audio_data:
+        raise HTTPException(status_code=400, detail="Empty audio file")
+
+    # Local Whisper — free, no provider needed
+    if not voice_provider_id:
+        from app.local_stt import transcribe_local
+
+        try:
+            text = await transcribe_local(audio_data, language)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=502, detail=f"Local STT error: {exc}"
+            ) from None
+        return STTResponse(text=text)
+
+    # Server-side provider
     provider = await get_voice_provider(session, voice_provider_id, user.id)
     if provider is None:
         raise HTTPException(status_code=404, detail="Voice provider not found")
     if provider.capability not in (VoiceCapability.STT, VoiceCapability.BOTH):
         raise HTTPException(status_code=400, detail="Provider does not support STT")
-
-    audio_data = await file.read()
-    if not audio_data:
-        raise HTTPException(status_code=400, detail="Empty audio file")
 
     try:
         text = await transcribe_audio(
