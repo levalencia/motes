@@ -13,6 +13,7 @@
 	let speaking = $state(false);
 	let listening = $state(false);
 	let transcripts = $state<{role: string; text: string}[]>([]);
+	let showCaptions = $state(false);
 	let socket: WebSocket | null = null;
 	let audioContext: AudioContext | null = null;
 	let micStream: MediaStream | null = null;
@@ -113,10 +114,12 @@
 				status = 'Speaking...';
 				speaking = true;
 			} else if (msg.type === 'response_transcript') {
-				// Live streaming transcript — update last assistant entry
+				// Live streaming text — update or add
 				const last = transcripts[transcripts.length - 1];
 				if (last && last.role === 'assistant') {
 					transcripts = [...transcripts.slice(0, -1), { role: 'assistant', text: msg.text }];
+				} else {
+					transcripts = [...transcripts, { role: 'assistant', text: msg.text }];
 				}
 			} else if (msg.type === 'audio_wav') {
 				// Server-assembled WAV from Azure Realtime
@@ -135,35 +138,10 @@
 				speaking = true;
 				status = 'Speaking...';
 				audio.play();
+			} else if (msg.type === 'response_done') {
+				// Final text — DON'T add again (already shown via response_transcript)
 			} else if (msg.type === 'audio') {
 				// Ignore individual PCM chunks (server assembles WAV now)
-			} else if (msg.type === 'response_done') {
-				transcripts = [...transcripts, { role: 'assistant', text: msg.text }];
-				speaking = true;
-				status = 'Speaking...';
-				console.log(`[CALL] response_done, audio chunks: ${audioChunksFromAzure?.length || 0}`);
-				// Play collected audio chunks as WAV
-				if (audioChunksFromAzure && audioChunksFromAzure.length > 0) {
-					const pcmBytes = concatBase64PCM(audioChunksFromAzure);
-					audioChunksFromAzure = [];
-					const wavBlob = pcm16ToWav(pcmBytes, 24000);
-					const url = URL.createObjectURL(wavBlob);
-					const audio = new Audio(url);
-					audio.onended = () => {
-						URL.revokeObjectURL(url);
-						speaking = false;
-						status = 'Listening...';
-						listening = true;
-						startRecordingChunk();
-					};
-					stopRecording();
-					audio.play();
-				} else {
-					speaking = false;
-					status = 'Listening...';
-					listening = true;
-					startRecordingChunk();
-				}
 			} else if (msg.type === 'audio_mp3') {
 				// Pipeline fallback (Edge TTS mp3)
 				const bytes = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
@@ -300,18 +278,22 @@
 		<p class="text-gray-500 text-xs font-mono mb-8">{formatDuration(callDuration)}</p>
 	{/if}
 
-	<!-- Live transcript (last 3) -->
-	<div class="w-full max-w-md px-4 mb-8 space-y-2 min-h-[120px]">
-		{#each transcripts.slice(-3) as t}
-			<div class="text-center">
-				{#if t.role === 'user'}
-					<p class="text-gray-400 text-sm italic">"{t.text}"</p>
-				{:else}
-					<p class="text-white text-sm">"{t.text}"</p>
-				{/if}
-			</div>
-		{/each}
-	</div>
+	<!-- Live transcript (toggleable) -->
+	{#if showCaptions}
+		<div class="w-full max-w-md px-4 mb-8 space-y-2 min-h-[80px]">
+			{#each transcripts.slice(-3) as t}
+				<div class="text-center">
+					{#if t.role === 'user'}
+						<p class="text-gray-400 text-sm italic">"{t.text}"</p>
+					{:else}
+						<p class="text-white text-sm">"{t.text}"</p>
+					{/if}
+				</div>
+			{/each}
+		</div>
+	{:else}
+		<div class="mb-8"></div>
+	{/if}
 
 	<!-- Controls -->
 	<div class="flex items-center gap-8">
@@ -329,9 +311,13 @@
 			📞
 		</button>
 
-		<!-- Speaker (placeholder) -->
-		<button class="w-14 h-14 rounded-full bg-gray-800 flex items-center justify-center text-xl hover:bg-gray-700" title="Speaker">
-			🔊
+		<!-- Captions toggle -->
+		<button
+			onclick={() => { showCaptions = !showCaptions; }}
+			class="w-14 h-14 rounded-full {showCaptions ? 'bg-blue-700' : 'bg-gray-800'} flex items-center justify-center text-xl hover:bg-gray-700"
+			title="Toggle captions"
+		>
+			💬
 		</button>
 	</div>
 
