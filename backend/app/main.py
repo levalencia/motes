@@ -22,7 +22,7 @@ from app.config import Settings, get_settings
 from app.database import create_engine, create_session_factory
 from app.logging import setup_logging
 from app.models import Base
-from app.observability import setup_otel
+from app.observability import instrument_app, setup_otel
 
 logger = structlog.get_logger()
 
@@ -80,6 +80,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from app.middleware import CorrelationIdMiddleware
 
     app.add_middleware(CorrelationIdMiddleware)
+
+    # OTEL auto-instrumentation
+    instrument_app(app)
 
     # CORS
     app.add_middleware(

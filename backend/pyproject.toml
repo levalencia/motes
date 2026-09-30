@@ -30,6 +30,8 @@ dependencies = [
     "faster-whisper>=1.2.1",
     "av>=14.0.0",
     "websockets>=17.1",
+    "opentelemetry-instrumentation-sqlalchemy>=0.66b0",
+    "opentelemetry-instrumentation-httpx>=0.66b0",
 ]
 
 [project.optional-dependencies]
