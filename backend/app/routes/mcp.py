@@ -41,10 +41,12 @@ class MCPServerResponse(BaseModel):
 class MCPCatalogEntry(BaseModel):
     name: str
     description: str
-    transport: str
-    command: str
-    env_vars: list[str]
     category: str
+    built_in: bool = False
+    requires_oauth: bool = False
+    macos_only: bool = False
+    env_vars: list[str] = []
+    coming_soon: bool = False
 
 
 @router.get("/catalog", response_model=list[MCPCatalogEntry])
