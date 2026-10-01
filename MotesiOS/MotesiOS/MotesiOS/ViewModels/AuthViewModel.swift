@@ -2,10 +2,18 @@ import Foundation
 
 @Observable
 class AuthViewModel {
-    var username = ""
-    var password = ""
+    // Hardcoded for dev/testing — remove before release
+    var username = "luis"
+    var password = "Motes2025!"
     var serverURL: String {
-        get { APIClient.shared.baseURL }
+        get {
+            let saved = APIClient.shared.baseURL
+            if saved == "http://localhost:8001" {
+                APIClient.shared.baseURL = "https://luiss-macbook-pro.tailf19efd.ts.net:8001"
+                return "https://luiss-macbook-pro.tailf19efd.ts.net:8001"
+            }
+            return saved
+        }
         set { APIClient.shared.baseURL = newValue }
     }
     var isLoading = false
@@ -13,7 +21,6 @@ class AuthViewModel {
     var isLoggedIn: Bool
 
     init() {
-        // If no server URL configured, force login
         let savedURL = UserDefaults.standard.string(forKey: "motes_server_url") ?? ""
         if savedURL.isEmpty || !savedURL.hasPrefix("https://") {
             AuthService.logout()

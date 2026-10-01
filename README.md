@@ -1,6 +1,17 @@
 # Motes — Your agents, your models, your data
 
-Open-source, model-agnostic, self-hosted personal AI agents. An alternative to OpenAI Dots that works with any LLM, runs on your infrastructure, and respects your privacy.
+<p align="center">
+  <img src="frontend/static/mascot.png" alt="Motes Mascot" width="180" />
+</p>
+
+<p align="center">
+  <strong>Open-source, model-agnostic, self-hosted personal AI agents.</strong><br/>
+  An alternative to OpenAI Dots that works with any LLM, runs on your infrastructure, and respects your privacy.
+</p>
+
+<p align="center">
+  <img src="frontend/static/logo.png" alt="Motes Logo" width="120" />
+</p>
 
 ## Why Motes?
 
@@ -249,38 +260,103 @@ In Xcode console, look for `[Motes]` prefix:
 
 ## Architecture
 
+```mermaid
+graph TB
+    subgraph Clients
+        Web["🌐 SvelteKit<br/>:5173"]
+        iOS["📱 iOS SwiftUI<br/>via Tailscale"]
+        API["🔌 Any HTTP Client"]
+    end
+
+    subgraph Backend["FastAPI Backend :8001"]
+        Chat["💬 Chat SSE<br/>Streaming"]
+        Voice["📞 Voice WS<br/>Azure Realtime"]
+        Tools["🔧 Tools (20)<br/>Gmail, Calendar,<br/>Weather, Maps..."]
+        Memory["🧠 Memory<br/>Save & Recall"]
+        Proactive["⚡ Proactive<br/>Scanner (60s)"]
+        EventBus["📡 Event Bus<br/>Pub/Sub"]
+        Logging["📊 structlog<br/>+ OTEL"]
+    end
+
+    subgraph Infrastructure
+        PG["🐘 PostgreSQL<br/>:5433"]
+        Redis["⚡ Redis<br/>:6380"]
+        Jaeger["🔍 Jaeger<br/>:16687"]
+    end
+
+    subgraph External
+        LLM["🤖 LLM Provider<br/>OpenAI / Anthropic / Azure"]
+        AzureRT["🎙️ Azure Realtime<br/>gpt-realtime-2.1-mini"]
+        Gmail["📧 Gmail API"]
+        CalAPI["📅 Calendar API"]
+    end
+
+    Web --> Chat
+    iOS --> Chat
+    iOS --> Voice
+    API --> Chat
+    Chat --> Tools
+    Chat --> Memory
+    Voice --> Tools
+    Voice --> Memory
+    Voice --> AzureRT
+    Chat --> LLM
+    Proactive --> EventBus
+    EventBus --> Chat
+    EventBus --> Voice
+    Proactive --> Gmail
+    Proactive --> CalAPI
+    Tools --> Gmail
+    Tools --> CalAPI
+    Backend --> PG
+    Backend --> Redis
+    Logging --> Jaeger
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Clients                                │
-│  ┌──────────┐  ┌──────────────┐  ┌───────────────────┐  │
-│  │ SvelteKit│  │ iOS (SwiftUI)│  │ Any HTTP client   │  │
-│  │ :5173    │  │ via Tailscale│  │                   │  │
-│  └────┬─────┘  └──────┬───────┘  └─────────┬─────────┘  │
-│       │               │                     │            │
-└───────┼───────────────┼─────────────────────┼────────────┘
-        │               │                     │
-   ┌────▼───────────────▼─────────────────────▼────┐
-   │           FastAPI Backend (:8001)              │
-   │                                                │
-   │  ┌──────────┐  ┌───────────┐  ┌────────────┐  │
-   │  │ Chat SSE │  │ Voice WS  │  │ Tools (20) │  │
-   │  │ Streaming│  │ Realtime  │  │ Gmail,Cal, │  │
-   │  │          │  │ Azure API │  │ Weather,...│  │
-   │  └──────────┘  └───────────┘  └────────────┘  │
-   │                                                │
-   │  ┌──────────┐  ┌───────────┐  ┌────────────┐  │
-   │  │ structlog│  │   OTEL    │  │  Proactive │  │
-   │  │ + PII    │  │  Jaeger   │  │  Scanner   │  │
-   │  │ redaction│  │  traces   │  │  (60s)     │  │
-   │  └──────────┘  └───────────┘  └────────────┘  │
-   └────────────────────┬──────────────────────────┘
-                        │
-          ┌─────────────┼─────────────┐
-          │             │             │
-   ┌──────▼──┐  ┌──────▼──┐  ┌──────▼──┐
-   │PostgreSQL│  │  Redis  │  │ Jaeger  │
-   │  :5433   │  │  :6380  │  │ :16687  │
-   └──────────┘  └─────────┘  └─────────┘
+
+### Voice Call Pipeline
+
+```mermaid
+sequenceDiagram
+    participant iPhone
+    participant Backend
+    participant Azure as Azure Realtime API
+
+    iPhone->>Backend: WebSocket connect (wss://)
+    iPhone->>Backend: {"type": "auth", "token": "..."}
+    Backend->>Azure: WebSocket connect (wss://)
+    Backend->>Azure: session.update (semantic_vad, 24kHz PCM16)
+    Backend->>Azure: response.create (greeting)
+    Azure-->>Backend: audio chunks (PCM16)
+    Backend-->>iPhone: {"type": "audio_wav", "data": "base64..."}
+    
+    Note over iPhone: User speaks
+    iPhone->>Backend: {"type": "audio", "data": "base64 PCM16 24kHz"}
+    Backend->>Azure: input_audio_buffer.append
+    Note over Azure: Semantic VAD detects end of speech
+    Azure-->>Backend: response audio chunks
+    Backend-->>iPhone: {"type": "audio_wav", "data": "base64..."}
+    
+    iPhone->>Backend: {"type": "end"}
+    Backend->>Azure: close
+```
+
+### Proactive Intelligence Flow
+
+```mermaid
+flowchart LR
+    Scanner["🔄 Background<br/>Scanner<br/>(every 60s)"]
+    
+    Scanner --> Gmail["📧 Gmail<br/>new emails?"]
+    Scanner --> Cal["📅 Calendar<br/>upcoming events?"]
+    Scanner --> Patterns["💡 Patterns<br/>time-based habits?"]
+    
+    Gmail --> Notify["📡 Event Bus"]
+    Cal --> Notify
+    Patterns --> Notify
+    
+    Notify --> Chat["💬 Chat<br/>(SSE push)"]
+    Notify --> Voice["📞 Voice Call<br/>(TTS speech)"]
+    Notify --> DB["💾 Database<br/>(for later)"]
 ```
 
 ## Tech Stack
