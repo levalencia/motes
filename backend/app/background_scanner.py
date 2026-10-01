@@ -37,12 +37,28 @@ async def _notify(
     """Save notification to DB, push to event bus, and add to thread."""
     await create_notification(session, user_id, agent_id, title, body, category)
 
-    # Also save to the thread (Dots model — proactive appears in conversation)
+    # Save to thread — but deduplicate (don't repeat same notification)
     from app.models import Message
     from app.thread import get_or_create_thread
 
     try:
         thread = await get_or_create_thread(session, agent_id)
+        # Check if same notification already exists in last 10 messages
+        from sqlalchemy import select
+
+        recent = await session.execute(
+            select(Message)
+            .where(
+                Message.conversation_id == thread.id,
+                Message.message_type == "proactive",
+            )
+            .order_by(Message.created_at.desc())
+            .limit(10)
+        )
+        recent_msgs = recent.scalars().all()
+        if any(title in m.content for m in recent_msgs):
+            return  # Already notified about this
+
         session.add(Message(
             conversation_id=thread.id,
             role="assistant",
@@ -71,7 +87,7 @@ async def scan_gmail(
     session: AsyncSession, user_id: str, agent_id: str,
     access_token: str, event_bus: Any = None,
 ) -> None:
-    """Check for new unread emails and create notifications."""
+    """Check for new unread emails and create ONE summary notification."""
     import httpx
 
     try:
@@ -89,8 +105,9 @@ async def scan_gmail(
             if not messages:
                 return
 
-            # Check each unread for new ones we haven't notified about
-            for msg_entry in messages[:3]:
+            # Collect new emails we haven't notified about
+            new_emails: list[dict[str, str]] = []
+            for msg_entry in messages[:5]:
                 msg_id = msg_entry["id"]
                 if msg_id in _notified_email_ids:
                     continue
@@ -108,21 +125,32 @@ async def scan_gmail(
                     h["name"]: h["value"]
                     for h in detail.get("payload", {}).get("headers", [])
                 }
-                sender = hdrs.get("From", "Unknown")
+                sender = hdrs.get("From", "Unknown").split("<")[0].strip()
                 subject = hdrs.get("Subject", "No subject")
-
                 _notified_email_ids.add(msg_id)
+                new_emails.append({"sender": sender, "subject": subject})
+
+            # Send ONE summary for all new emails
+            if new_emails:
+                if len(new_emails) == 1:
+                    title = f"📧 New email from {new_emails[0]['sender']}"
+                    body = new_emails[0]["subject"]
+                else:
+                    title = f"📧 {len(new_emails)} new emails"
+                    body = "\n".join(
+                        f"• {e['sender']}: {e['subject']}" for e in new_emails
+                    )
 
                 await _notify(
                     session, event_bus, user_id, agent_id,
-                    title=f"📧 New email from {sender.split('<')[0].strip()}",
-                    body=subject,
+                    title=title,
+                    body=body[:300],
                     category="email",
                 )
                 logger.info(
                     "scanner_gmail_notification",
                     user_id=user_id,
-                    msg_id=msg_id,
+                    count=len(new_emails),
                 )
     except Exception:
         logger.warning("scanner_gmail_error", exc_info=True)
