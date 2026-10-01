@@ -61,6 +61,18 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
         user_id = payload["sub"]
         user_name = payload.get("username", "friend")
 
+        # Get user's voice personality preference
+        async with session_factory() as user_session:
+            from app.models import User
+
+            user_result = await user_session.execute(
+                select(User).where(User.id == user_id)
+            )
+            user = user_result.scalar_one_or_none()
+            voice_personality = ""
+            if user and getattr(user, "voice_personality", ""):
+                voice_personality = user.voice_personality
+
         logger.info("realtime_call_auth_ok", user_id=user_id)
 
         # Get realtime config from database (set via Settings page)
@@ -187,6 +199,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                             f"Start the call with a warm greeting using their name. "
                             f"Keep responses conversational and concise (under 5 seconds). "
                             f"If the user switches languages, follow them. "
+                            + (f"Voice personality: {voice_personality}. " if voice_personality else "")
                             + agent.system_prompt
                             + context_summary
                         ),

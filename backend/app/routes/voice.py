@@ -228,3 +228,31 @@ async def set_realtime_config(
         realtime_url=body.realtime_url,
         has_key=bool(body.realtime_key),
     )
+
+
+# ── Voice personality ─────────────────────────────────
+
+
+class VoicePersonalityRequest(BaseModel):
+    personality: str
+
+
+@router.get("/voice-personality")
+async def get_voice_personality(
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Get the user's voice personality setting."""
+    return {"personality": getattr(user, "voice_personality", "")}
+
+
+@router.post("/voice-personality")
+async def set_voice_personality(
+    body: VoicePersonalityRequest,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Set voice personality/accent for calls."""
+    user.voice_personality = body.personality
+    await session.commit()
+    return {"personality": body.personality}

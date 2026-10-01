@@ -17,8 +17,9 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
-    username: Mapped[str] = mapped_column(unique=True, index=True)
+    username: Mapped[str] = mapped_column(unique=True)
     password_hash: Mapped[str]
+    voice_personality: Mapped[str] = mapped_column(default="")
     is_admin: Mapped[bool] = mapped_column(default=False)
     is_setup_complete: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(
