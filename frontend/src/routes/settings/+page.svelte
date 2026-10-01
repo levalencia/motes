@@ -97,6 +97,23 @@
 		}
 	}
 
+	let resetting = $state(false);
+	let resetDone = $state(false);
+
+	async function resetAll() {
+		if (!confirm('This will delete ALL messages, memories, patterns, and notifications. Are you sure?')) return;
+		resetting = true;
+		try {
+			await api(`/agents/${agentId}/reset`, { method: 'DELETE' });
+			resetDone = true;
+			setTimeout(() => resetDone = false, 3000);
+		} catch (e: any) {
+			error = e.message;
+		} finally {
+			resetting = false;
+		}
+	}
+
 	async function savePersonality() {
 		personalitySaving = true;
 		personalitySaved = false;
@@ -575,6 +592,28 @@
 							<span class="text-green-400 text-xs">✓ Realtime configured</span>
 						{:else}
 							<span class="text-gray-500 text-xs">Not configured — using pipeline mode</span>
+						{/if}
+					</div>
+				</div>
+			</div>
+
+			<!-- Danger Zone -->
+			<div class="mt-8">
+				<h2 class="text-lg font-semibold mb-4 text-red-400">⚠️ Danger Zone</h2>
+				<div class="bg-gray-900 border border-red-900/50 rounded-xl p-6">
+					<p class="text-gray-400 text-sm mb-4">
+						Delete all messages, call history, memories, learned patterns, and notifications. This cannot be undone.
+					</p>
+					<div class="flex items-center gap-3">
+						<button
+							onclick={resetAll}
+							disabled={resetting}
+							class="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 rounded-lg text-sm font-medium text-white"
+						>
+							{resetting ? 'Resetting...' : 'Reset Everything'}
+						</button>
+						{#if resetDone}
+							<span class="text-green-400 text-sm">✓ Reset complete</span>
 						{/if}
 					</div>
 				</div>

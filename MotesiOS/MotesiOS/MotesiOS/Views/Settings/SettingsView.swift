@@ -150,6 +150,15 @@ struct SettingsView: View {
                         authVM.logout()
                     }
                 }
+
+                Section("Danger Zone") {
+                    Button("Reset Everything", role: .destructive) {
+                        Task { await resetEverything() }
+                    }
+                    Text("Deletes all messages, call history, memories, and notifications")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
             }
             .navigationTitle("Settings")
             .task {
@@ -246,6 +255,21 @@ struct SettingsView: View {
 
             proactiveSaved = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { proactiveSaved = false }
+        } catch { /* ignore */ }
+    }
+
+    func resetEverything() async {
+        guard !agentId.isEmpty else { return }
+        do {
+            let url = URL(string: "\(APIClient.shared.baseURL)/api/agents/\(agentId)/reset")!
+            var req = URLRequest(url: url)
+            req.httpMethod = "DELETE"
+            if let t = APIClient.shared.token {
+                req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
+            }
+            let _ = try await APIClient.shared.session.data(for: req)
+            saved = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { saved = false }
         } catch { /* ignore */ }
     }
 }

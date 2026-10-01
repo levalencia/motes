@@ -403,3 +403,49 @@ async def clear_thread(
     )
     await session.commit()
     return {"status": "ok", "cleared": True}
+
+
+@router.delete("/agents/{agent_id}/reset")
+async def reset_everything(
+    agent_id: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Nuclear reset: delete ALL messages, conversations, memories, notifications."""
+    from app.memory import Memory
+    from app.proactive import Notification, UserPattern
+
+    # Delete all messages in all conversations for this agent
+    agent_result = await session.execute(
+        select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id)
+    )
+    agent = agent_result.scalars().first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+
+    # Delete messages
+    convs = await session.execute(
+        select(Conversation).where(Conversation.agent_id == agent_id)
+    )
+    for conv in convs.scalars().all():
+        await session.execute(
+            delete(Message).where(Message.conversation_id == conv.id)
+        )
+    # Delete conversations
+    await session.execute(
+        delete(Conversation).where(Conversation.agent_id == agent_id)
+    )
+    # Delete memories
+    await session.execute(
+        delete(Memory).where(Memory.agent_id == agent_id)
+    )
+    # Delete patterns and notifications
+    await session.execute(
+        delete(UserPattern).where(UserPattern.user_id == user.id)
+    )
+    await session.execute(
+        delete(Notification).where(Notification.user_id == user.id)
+    )
+    await session.commit()
+    logger.info("reset_everything", agent_id=agent_id, user_id=user.id)
+    return {"status": "ok", "reset": True}
