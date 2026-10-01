@@ -23,6 +23,7 @@ logger = structlog.get_logger()
 # Track notified email IDs to avoid duplicates (per-process, cleared on restart)
 _notified_email_ids: set[str] = set()
 _notified_patterns: set[str] = set()  # "user_id:topic:hour" — fires once per hour
+_last_agentic_run: dict[str, float] = {}  # user_id → timestamp of last LLM proactive
 
 
 async def _notify(
@@ -341,12 +342,22 @@ async def run_scanner(
                     if cal_token:
                         await scan_calendar(session, user.id, agent.id, cal_token, event_bus)
 
-                    # Proactive suggestions based on patterns
-                    interval = getattr(user, "proactive_interval_minutes", 60)
-                    await check_patterns(
-                        session, user.id, agent.id, event_bus,
-                        interval_minutes=interval,
-                    )
+                    # Agentic proactive — LLM decides what to check
+                    if getattr(user, "proactive_enabled", True):
+                        import time
+
+                        interval = getattr(user, "proactive_interval_minutes", 60)
+                        last_run = _last_agentic_run.get(user.id, 0)
+                        if time.time() - last_run >= interval * 60:
+                            try:
+                                from app.agentic_proactive import run_agentic_proactive
+
+                                await run_agentic_proactive(
+                                    session, user, agent, agent.provider, event_bus,
+                                )
+                                _last_agentic_run[user.id] = time.time()
+                            except Exception:
+                                logger.debug("agentic_proactive_skip", exc_info=True)
 
                     logger.debug("scanner_user_complete", user_id=user.id)
 
