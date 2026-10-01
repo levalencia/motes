@@ -286,9 +286,9 @@
 	<div class="hidden md:block" style="margin-left: var(--sidebar-width);"></div>
 
 	<div class="flex-1 flex flex-col md:ml-[var(--sidebar-width)]">
-		<!-- Chat header (during conversation) -->
+		<!-- Chat header (during conversation, desktop only — mobile has MobileHeader) -->
 		{#if messages.length > 0}
-			<div class="flex items-center justify-between px-4 md:px-8 py-3 shrink-0" style="border-bottom: 1px solid var(--border);">
+			<div class="hidden md:flex items-center justify-between px-4 md:px-8 py-3 shrink-0" style="border-bottom: 1px solid var(--border);">
 				<div class="flex items-center gap-2">
 					<img src="/mascot-sm.png" alt="" class="w-5 h-5" />
 					<span class="text-sm font-medium" style="color: var(--text-primary);">{agentName}</span>
