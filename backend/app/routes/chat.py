@@ -306,3 +306,60 @@ async def delete_conversation(
     await session.delete(conv)
     await session.commit()
     return {"status": "ok"}
+
+
+# ── Agent personality ──────────────────────────────────
+
+
+class AgentPersonalityRequest(BaseModel):
+    """Customize the agent's personality."""
+
+    name: str = Field(default="", description="Display name")
+    system_prompt: str = Field(default="", description="System prompt")
+    language: str = Field(
+        default="", description="Default language (e.g. Spanish, French)"
+    )
+
+
+@router.get("/agents/{agent_id}/personality")
+async def get_agent_personality(
+    agent_id: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Get the agent's personality settings."""
+    result = await session.execute(
+        select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id)
+    )
+    agent = result.scalars().first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    return {
+        "name": agent.name,
+        "system_prompt": agent.system_prompt,
+        "language": getattr(agent, "language", ""),
+        "voice_personality": getattr(user, "voice_personality", ""),
+    }
+
+
+@router.put("/agents/{agent_id}/personality")
+async def set_agent_personality(
+    agent_id: str,
+    body: AgentPersonalityRequest,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Customize the agent's personality, name, and language."""
+    result = await session.execute(
+        select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id)
+    )
+    agent = result.scalars().first()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+
+    if body.name:
+        agent.name = body.name
+    if body.system_prompt:
+        agent.system_prompt = body.system_prompt
+    await session.commit()
+    return {"status": "ok", "name": agent.name}
