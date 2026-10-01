@@ -3,8 +3,10 @@ import SwiftUI
 struct ChatComposer: View {
     @Binding var text: String
     var isStreaming: Bool = false
+    var isRecording: Bool = false
     var onSend: () -> Void = {}
-    var onMic: () -> Void = {}
+    var onMicStart: () -> Void = {}
+    var onMicStop: () -> Void = {}
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -14,9 +16,17 @@ struct ChatComposer: View {
                 .padding(.vertical, 10)
                 .font(.subheadline)
 
-            Button(action: onMic) {
-                Image(systemName: "mic.fill")
-                    .foregroundStyle(.secondary)
+            // Mic button — tap to toggle recording
+            Button(action: {
+                if isRecording {
+                    onMicStop()
+                } else {
+                    onMicStart()
+                }
+            }) {
+                Image(systemName: isRecording ? "mic.fill" : "mic")
+                    .foregroundStyle(isRecording ? MotesTheme.accent : .secondary)
+                    .symbolEffect(.pulse, isActive: isRecording)
             }
 
             Button(action: onSend) {

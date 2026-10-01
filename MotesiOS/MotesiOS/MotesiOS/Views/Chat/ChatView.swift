@@ -41,7 +41,10 @@ struct ChatView: View {
                 ChatComposer(
                     text: $vm.input,
                     isStreaming: vm.isStreaming,
-                    onSend: { Task { await vm.sendMessage() } }
+                    isRecording: vm.speechRecognizer.isListening,
+                    onSend: { Task { await vm.sendMessage() } },
+                    onMicStart: { vm.startDictation() },
+                    onMicStop: { vm.stopDictation() }
                 )
             }
 #if os(macOS)

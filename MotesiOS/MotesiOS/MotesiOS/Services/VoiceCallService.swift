@@ -10,12 +10,29 @@ class VoiceCallService {
     private var webSocket: URLSessionWebSocketTask?
     private var audioPlayer: AVAudioPlayer?
 
+    // Reconnect state
+    private var lastAgentId = ""
+    private var lastToken = ""
+    private var lastConversationId: String?
+    private var reconnectAttempts = 0
+    private let maxReconnectAttempts = 3
+
     var onReady: (() -> Void)?
     var onAudioReceived: ((Data) -> Void)?
     var onResponseDone: ((String) -> Void)?
     var onError: ((String) -> Void)?
 
     func connect(agentId: String, token: String, conversationId: String? = nil) {
+        // Save for reconnect
+        lastAgentId = agentId
+        lastToken = token
+        lastConversationId = conversationId
+        reconnectAttempts = 0
+
+        doConnect(agentId: agentId, token: token, conversationId: conversationId)
+    }
+
+    private func doConnect(agentId: String, token: String, conversationId: String?) {
         let baseURL = APIClient.shared.baseURL.replacingOccurrences(of: "http://", with: "ws://")
             .replacingOccurrences(of: "https://", with: "wss://")
         guard let url = URL(string: "\(baseURL)/api/realtime-call/\(agentId)") else {
@@ -24,7 +41,7 @@ class VoiceCallService {
         }
 
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 15
+        config.timeoutIntervalForRequest = 30
         let session = URLSession(configuration: config)
         webSocket = session.webSocketTask(with: url)
         webSocket?.resume()
@@ -65,11 +82,32 @@ class VoiceCallService {
                 self.receiveMessages()
             case .failure(let error):
                 Task { @MainActor in
-                    self.status = "Disconnected"
-                    self.isConnected = false
-                    self.onError?(error.localizedDescription)
+                    self.handleDisconnect(error: error)
                 }
             }
+        }
+    }
+
+    @MainActor
+    private func handleDisconnect(error: Error) {
+        let wasConnected = isConnected
+        isConnected = false
+
+        // Auto-reconnect if was connected and haven't exceeded attempts
+        if wasConnected && reconnectAttempts < maxReconnectAttempts {
+            reconnectAttempts += 1
+            status = "Reconnecting (\(reconnectAttempts)/\(maxReconnectAttempts))..."
+            // Wait a moment then reconnect
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                self.doConnect(
+                    agentId: self.lastAgentId,
+                    token: self.lastToken,
+                    conversationId: self.lastConversationId
+                )
+            }
+        } else {
+            status = "Disconnected"
+            onError?(error.localizedDescription)
         }
     }
 
@@ -78,6 +116,7 @@ class VoiceCallService {
         switch type {
         case "ready":
             isConnected = true
+            reconnectAttempts = 0
             status = "Connected"
             onReady?()
         case "audio_wav":
@@ -90,6 +129,7 @@ class VoiceCallService {
                 transcripts.append((role: "assistant", text: text))
                 onResponseDone?(text)
             }
+            status = "Listening..."
         case "user_transcript":
             if let text = obj["text"] as? String {
                 transcripts.append((role: "user", text: text))
@@ -102,15 +142,13 @@ class VoiceCallService {
         }
     }
 
-    func sendAudio(base64: String, sampleRate: Double = 48000) {
+    func sendAudio(base64: String, sampleRate: Double = 24000) {
         let msg: [String: Any] = ["type": "audio", "data": base64, "format": "pcm16", "sample_rate": "\(Int(sampleRate))"]
         if let data = try? JSONSerialization.data(withJSONObject: msg),
            let str = String(data: data, encoding: .utf8) {
             webSocket?.send(.string(str)) { error in
                 if let error {
                     print("[Motes] Audio send error: \(error.localizedDescription)")
-                } else {
-                    print("[Motes] Audio sent OK: \(str.count) chars")
                 }
             }
         }
@@ -118,11 +156,11 @@ class VoiceCallService {
 
     func playAudio(data: Data) {
         audioPlayer = try? AVAudioPlayer(data: data)
-        audioPlayer?.delegate = nil
         audioPlayer?.play()
     }
 
     func disconnect() {
+        reconnectAttempts = maxReconnectAttempts // Prevent auto-reconnect
         let end: [String: String] = ["type": "end"]
         if let data = try? JSONSerialization.data(withJSONObject: end),
            let str = String(data: data, encoding: .utf8) {

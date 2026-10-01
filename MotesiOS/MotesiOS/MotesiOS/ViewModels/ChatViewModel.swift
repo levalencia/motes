@@ -11,6 +11,27 @@ class ChatViewModel {
     var agents: [Agent] = []
     var error: String?
     let eventStream = EventStreamService()
+    let speechRecognizer = SpeechRecognizerService()
+
+    func startDictation() {
+        speechRecognizer.startListening()
+        // Poll transcript into input field
+        Task { @MainActor in
+            while speechRecognizer.isListening {
+                if !speechRecognizer.transcript.isEmpty {
+                    input = speechRecognizer.transcript
+                }
+                try? await Task.sleep(for: .milliseconds(200))
+            }
+        }
+    }
+
+    func stopDictation() {
+        speechRecognizer.stopListening()
+        if !speechRecognizer.transcript.isEmpty {
+            input = speechRecognizer.transcript
+        }
+    }
 
     func loadData() async {
         do {

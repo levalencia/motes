@@ -443,6 +443,10 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                     result_len=len(result_text),
                                 )
 
+                                # Truncate long tool results to prevent Azure "message too long"
+                                if len(result_text) > 2000:
+                                    result_text = result_text[:2000] + "... (truncated)"
+
                                 # Send result back to Azure
                                 await azure_ws.send(json.dumps({
                                     "type": "conversation.item.create",
