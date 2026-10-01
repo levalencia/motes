@@ -18,6 +18,13 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 		...options,
 		headers: { ...getHeaders(), ...(options.headers || {}) }
 	});
+	if (res.status === 401 && !path.includes('/auth/')) {
+		if (typeof window !== 'undefined') {
+			localStorage.removeItem('motes_token');
+			window.location.href = '/login';
+		}
+		throw new Error('Session expired — please log in again');
+	}
 	if (!res.ok) {
 		const body = await res.json().catch(() => ({ detail: res.statusText }));
 		throw new Error(body.detail || `HTTP ${res.status}`);

@@ -13,7 +13,7 @@
 		loading = true;
 		error = '';
 		try {
-			const data = await login(username, password);
+			const data = await login(username.toLowerCase(), password);
 			setAuth(data.token, data.username);
 			goto('/dashboard');
 		} catch (e: any) {

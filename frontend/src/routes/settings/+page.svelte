@@ -99,6 +99,10 @@
 			personalitySaved = true;
 			setTimeout(() => personalitySaved = false, 3000);
 		} catch (e: any) {
+			if (e?.message?.includes('401') || e?.message?.includes('expired') || e?.message?.includes('Invalid')) {
+				goto('/login');
+				return;
+			}
 			error = e.message;
 		} finally {
 			personalitySaving = false;

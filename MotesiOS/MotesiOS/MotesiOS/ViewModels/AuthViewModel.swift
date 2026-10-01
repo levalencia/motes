@@ -9,8 +9,8 @@ class AuthViewModel {
         get {
             let saved = APIClient.shared.baseURL
             if saved == "http://localhost:8001" {
-                APIClient.shared.baseURL = "https://luiss-macbook-pro.tailf19efd.ts.net:8001"
-                return "https://luiss-macbook-pro.tailf19efd.ts.net:8001"
+                APIClient.shared.baseURL = "https://luiss-macbook-pro.tailf19efd.ts.net"
+                return "https://luiss-macbook-pro.tailf19efd.ts.net"
             }
             return saved
         }
