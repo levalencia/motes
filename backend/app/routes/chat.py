@@ -67,28 +67,17 @@ async def chat(
     if provider is None:
         raise HTTPException(status_code=404, detail="Provider not found")
 
-    # Get or create conversation
-    if body.conversation_id:
-        conv_result = await session.execute(
-            select(Conversation).where(
-                Conversation.id == body.conversation_id,
-                Conversation.agent_id == agent_id,
-            )
-        )
-        conversation = conv_result.scalar_one_or_none()
-        if conversation is None:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-    else:
-        conversation = Conversation(agent_id=agent_id, title=body.message[:100])
-        session.add(conversation)
-        await session.commit()
-        await session.refresh(conversation)
+    # Always use the single thread (Dots model)
+    from app.thread import get_or_create_thread
+
+    conversation = await get_or_create_thread(session, agent_id)
 
     # Save user message
     user_msg = Message(
         conversation_id=conversation.id,
         role="user",
         content=body.message,
+        message_type="chat",
     )
     session.add(user_msg)
     await session.commit()
@@ -363,3 +352,54 @@ async def set_agent_personality(
         agent.system_prompt = body.system_prompt
     await session.commit()
     return {"status": "ok", "name": agent.name}
+
+
+# ── Thread management (Dots model) ────────────────────
+
+
+@router.get("/agents/{agent_id}/thread")
+async def get_thread(
+    agent_id: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Get the single thread for an agent with all messages."""
+    from app.thread import get_or_create_thread
+
+    thread = await get_or_create_thread(session, agent_id)
+    result = await session.execute(
+        select(Message)
+        .where(Message.conversation_id == thread.id)
+        .order_by(Message.created_at.asc())
+    )
+    messages = result.scalars().all()
+    return {
+        "thread_id": thread.id,
+        "messages": [
+            {
+                "id": m.id,
+                "role": m.role,
+                "content": m.content,
+                "message_type": m.message_type,
+                "created_at": m.created_at.isoformat() if m.created_at else "",
+            }
+            for m in messages
+        ],
+    }
+
+
+@router.delete("/agents/{agent_id}/thread")
+async def clear_thread(
+    agent_id: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Clear all messages in the thread (soft reset). Keeps the conversation."""
+    from app.thread import get_or_create_thread
+
+    thread = await get_or_create_thread(session, agent_id)
+    await session.execute(
+        delete(Message).where(Message.conversation_id == thread.id)
+    )
+    await session.commit()
+    return {"status": "ok", "cleared": True}

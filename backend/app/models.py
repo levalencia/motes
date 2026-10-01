@@ -98,6 +98,7 @@ class Message(Base):
     )
     role: Mapped[str]  # user | assistant | system | tool
     content: Mapped[str] = mapped_column(Text)
+    message_type: Mapped[str] = mapped_column(default="chat")  # chat | call | proactive | system
     tool_call_id: Mapped[str | None] = mapped_column(default=None)
     tool_name: Mapped[str | None] = mapped_column(default=None)
     created_at: Mapped[datetime] = mapped_column(

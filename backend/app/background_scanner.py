@@ -33,8 +33,25 @@ async def _notify(
     body: str,
     category: str,
 ) -> None:
-    """Save notification to DB and push to active sessions via event bus."""
+    """Save notification to DB, push to event bus, and add to thread."""
     await create_notification(session, user_id, agent_id, title, body, category)
+
+    # Also save to the thread (Dots model — proactive appears in conversation)
+    from app.models import Message
+    from app.thread import get_or_create_thread
+
+    try:
+        thread = await get_or_create_thread(session, agent_id)
+        session.add(Message(
+            conversation_id=thread.id,
+            role="assistant",
+            content=f"💡 **{title}**\n{body}",
+            message_type="proactive",
+        ))
+        await session.commit()
+    except Exception:
+        pass  # Don't break notifications if thread fails
+
     if event_bus is not None:
         from app.event_bus import ProactiveEvent
 

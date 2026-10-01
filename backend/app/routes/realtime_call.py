@@ -18,7 +18,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
 from app.auth import decode_jwt
-from app.models import Agent, Conversation, Message
+from app.models import Agent, Message
 
 logger = structlog.get_logger()
 
@@ -97,34 +97,19 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                 await websocket.close()
                 return
 
-            # Use existing conversation or create new one for this call
-            client_conv_id = auth_msg.get("conversation_id")
-            if client_conv_id:
-                conv_result = await session.execute(
-                    select(Conversation).where(
-                        Conversation.id == client_conv_id,
-                        Conversation.agent_id == agent_id,
-                    )
-                )
-                conversation = conv_result.scalar_one_or_none()
-                if not conversation:
-                    conversation = Conversation(
-                        agent_id=agent_id,
-                        title="Voice call",
-                        conversation_type="call",
-                    )
-                    session.add(conversation)
-                    await session.commit()
-                    await session.refresh(conversation)
-            else:
-                conversation = Conversation(
-                    agent_id=agent_id,
-                    title="Voice call",
-                    conversation_type="call",
-                )
-                session.add(conversation)
-                await session.commit()
-                await session.refresh(conversation)
+            # Use the single thread (Dots model)
+            from app.thread import get_or_create_thread
+
+            conversation = await get_or_create_thread(session, agent_id)
+
+            # Add a system message marking call start
+            session.add(Message(
+                conversation_id=conversation.id,
+                role="system",
+                content="📞 Voice call started",
+                message_type="system",
+            ))
+            await session.commit()
 
             await websocket.send_json({
                 "type": "ready",
@@ -390,6 +375,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                     conversation_id=conversation.id,
                                     role="assistant",
                                     content=text,
+                                    message_type="call",
                                 ))
                                 await session.commit()
                                 full_response = text
@@ -423,6 +409,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                     conversation_id=conversation.id,
                                     role="user",
                                     content=text,
+                                    message_type="call",
                                 ))
                                 await session.commit()
 
@@ -553,6 +540,7 @@ async def _pipeline_call(
                 conversation_id=conversation.id,
                 role="user",
                 content=user_text,
+                message_type="call",
             ))
             await session.commit()
 
@@ -592,6 +580,7 @@ async def _pipeline_call(
                 conversation_id=conversation.id,
                 role="assistant",
                 content=full_response,
+                message_type="call",
             ))
             await session.commit()
 
