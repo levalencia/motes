@@ -13,16 +13,17 @@ struct LoginView: View {
                 .font(.title.bold())
 
             VStack(spacing: 16) {
-                TextField("Server URL", text: $vm.serverURL)
+                TextField("http://your-machine:8001", text: $vm.serverURL)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.URL)
-                    .autocapitalization(.none)
                     .font(.caption)
+                Text("Your Motes server via Tailscale (e.g., http://motes-mac:8001)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
 
                 TextField("Username", text: $vm.username)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.username)
-                    .autocapitalization(.none)
 
                 SecureField("Password", text: $vm.password)
                     .textFieldStyle(.roundedBorder)

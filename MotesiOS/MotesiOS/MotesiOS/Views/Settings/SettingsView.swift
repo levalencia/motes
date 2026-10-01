@@ -12,7 +12,6 @@ struct SettingsView: View {
                 Section("Server") {
                     TextField("Tailscale URL", text: $authVM.serverURL)
                         .textContentType(.URL)
-                        .autocapitalization(.none)
                         .font(.caption)
                 }
 
