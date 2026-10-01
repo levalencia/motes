@@ -133,12 +133,12 @@
 					>
 						<span class="truncate flex-1">{conv.title}</span>
 						<button
-							onclick={(e) => { e.stopPropagation(); startRename(conv); }}
+							onclick={(e) => { e.preventDefault(); e.stopPropagation(); startRename(conv); }}
 							class="opacity-0 group-hover:opacity-50 hover:!opacity-100 text-xs transition-opacity"
 							title="Rename"
 						>✏️</button>
 						<button
-							onclick={(e) => { e.stopPropagation(); onDelete(conv.id); }}
+							onclick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(conv.id); }}
 							class="opacity-0 group-hover:opacity-50 hover:!opacity-100 text-xs transition-opacity"
 							title="Delete"
 						>🗑️</button>
@@ -171,12 +171,12 @@
 					>
 						<span class="truncate flex-1">{conv.title}</span>
 						<button
-							onclick={(e) => { e.stopPropagation(); startRename(conv); }}
+							onclick={(e) => { e.preventDefault(); e.stopPropagation(); startRename(conv); }}
 							class="opacity-0 group-hover:opacity-50 hover:!opacity-100 text-xs transition-opacity"
 							title="Rename"
 						>✏️</button>
 						<button
-							onclick={(e) => { e.stopPropagation(); onDelete(conv.id); }}
+							onclick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(conv.id); }}
 							class="opacity-0 group-hover:opacity-50 hover:!opacity-100 text-xs transition-opacity"
 							title="Delete"
 						>🗑️</button>
