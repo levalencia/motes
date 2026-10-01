@@ -160,6 +160,7 @@
 	let keyInputs = $state<Record<string, string>>({});
 	let savingKey = $state(false);
 	let serviceStatuses = $state<Record<string, boolean>>({});
+	let successMessage = $state('');
 
 	const providerSetupHelp: Record<string, string> = {
 		google: 'Google Cloud Console → APIs & Services → Credentials → Create OAuth 2.0 Client',
@@ -294,6 +295,12 @@
 			{#if error}
 				<div class="bg-red-950 border border-red-900 rounded-lg px-4 py-3 mb-6 text-sm text-red-400">
 					{error}
+				</div>
+			{/if}
+
+			{#if successMessage}
+				<div class="rounded-lg px-4 py-3 mb-6 text-sm" style="background: #10B98120; border: 1px solid #10B98140; color: #10B981;">
+					{successMessage}
 				</div>
 			{/if}
 
@@ -526,9 +533,11 @@
 														method: 'POST',
 														body: JSON.stringify({ service: svcKey, keys: keyInputs }),
 													});
-													serviceStatuses[svcKey] = true;
+													serviceStatuses = { ...serviceStatuses, [svcKey]: true };
 													configuringService = '';
 													keyInputs = {};
+													successMessage = `✅ ${item.name} connected successfully!`;
+													setTimeout(() => { successMessage = ''; }, 4000);
 												} catch (e: any) { error = e.message; }
 												savingKey = false;
 											}}
