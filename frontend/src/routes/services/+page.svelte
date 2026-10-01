@@ -114,11 +114,14 @@
 		},
 		outlook: {
 			steps: [
-				'Go to Azure Portal → App Registrations → New registration',
-				'Add Microsoft Graph permissions: Mail.Read, Mail.Send, Calendars.Read',
-				'Get an access token via OAuth2 authorization code flow',
+				'Go to entra.microsoft.com → Applications → App registrations → New registration',
+				'Name it "Motes", set redirect URI to http://localhost:8001/api/oauth/microsoft/callback',
+				'Under API permissions, add: Microsoft Graph → Mail.Read, Mail.Send, Calendars.Read',
+				'Under Certificates & secrets, create a new client secret',
+				'Copy the Application (client) ID and Client Secret value',
+				'Paste them below — works with any personal Microsoft/Outlook/Hotmail account',
 			],
-			link: 'https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps',
+			link: 'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade',
 		},
 		flights: {
 			steps: [
