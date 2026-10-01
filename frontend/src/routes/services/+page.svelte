@@ -114,14 +114,15 @@
 		},
 		outlook: {
 			steps: [
-				'Go to entra.microsoft.com → Applications → App registrations → New registration',
-				'Name it "Motes", set redirect URI to http://localhost:8001/api/oauth/microsoft/callback',
-				'Under API permissions, add: Microsoft Graph → Mail.Read, Mail.Send, Calendars.Read',
-				'Under Certificates & secrets, create a new client secret',
-				'Copy the Application (client) ID and Client Secret value',
-				'Paste them below — works with any personal Microsoft/Outlook/Hotmail account',
+				'Go to apps.dev.microsoft.com or portal.azure.com → App registrations (free, no subscription)',
+				'Sign in with your personal Microsoft/Outlook/Hotmail account',
+				'Click "New registration" → Name: "Motes" → Account type: "Personal Microsoft accounts only"',
+				'Redirect URI: http://localhost:8001/api/oauth/microsoft/callback (Web)',
+				'Under API permissions → Add: Microsoft Graph → Mail.Read, Mail.Send, Calendars.Read',
+				'Under Certificates & secrets → New client secret → Copy the value',
+				'Copy the Application (client) ID from the Overview page',
 			],
-			link: 'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade',
+			link: 'https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade/quickStartType~/null/sourceType/Microsoft_AAD_IAM',
 		},
 		flights: {
 			steps: [
