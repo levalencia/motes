@@ -54,14 +54,12 @@ MCP_SERVER_CATALOG: list[dict[str, Any]] = [
         "name": "Gmail",
         "description": "Read, send, and search Gmail messages",
         "category": "email",
-        "built_in": True,
         "requires_oauth": True,
     },
     {
         "name": "Google Calendar",
         "description": "View and create Google Calendar events",
         "category": "calendar",
-        "built_in": True,
         "requires_oauth": True,
     },
     {

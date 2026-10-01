@@ -515,6 +515,23 @@
 					{/each}
 				</div>
 
+				<!-- OAuth required -->
+				{#if catalog.filter(c => c.requires_oauth && !c.built_in && !c.coming_soon).length > 0}
+					<h3 class="text-sm font-medium mb-3" style="color: var(--text-muted);">🔗 REQUIRES SIGN-IN (OAuth)</h3>
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+						{#each catalog.filter(c => c.requires_oauth && !c.built_in && !c.coming_soon) as item}
+							<div class="rounded-xl p-4" style="background: var(--bg-card); border: 1px solid var(--border);">
+								<div class="flex items-center gap-2 mb-1">
+									<span class="text-blue-500 text-xs">●</span>
+									<span class="font-medium text-sm" style="color: var(--text-primary);">{item.name}</span>
+								</div>
+								<p class="text-xs mb-2" style="color: var(--text-secondary);">{item.description}</p>
+								<span class="text-xs" style="color: var(--text-muted);">Connect above via OAuth ↑</span>
+							</div>
+						{/each}
+					</div>
+				{/if}
+
 				<!-- API key required -->
 				<h3 class="text-sm font-medium mb-3" style="color: var(--text-muted);">🔑 REQUIRES API KEY</h3>
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
