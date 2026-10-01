@@ -2,16 +2,25 @@
 	import { goto } from '$app/navigation';
 	import { clearAuth, username } from '$lib/stores/auth';
 	import { theme, toggleTheme } from '$lib/stores/theme';
+	import { onMount } from 'svelte';
+	import { api } from '$lib/api/client';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
+	let agentId = $state('');
 
 	const links = [
 		{ href: '/dashboard', label: 'Dashboard', icon: '🏠' },
-		{ href: '/agents', label: 'Agents', icon: '🤖' },
 		{ href: '/services', label: 'Services', icon: '🔗' },
 		{ href: '/providers', label: 'Providers', icon: '🖥️' },
 		{ href: '/settings', label: 'Settings', icon: '⚙️' },
 	];
+
+	onMount(async () => {
+		try {
+			const agents = await api<{id: string}[]>('/agents');
+			if (agents.length > 0) agentId = agents[0].id;
+		} catch { /* ignore */ }
+	});
 
 	function navigate(href: string) {
 		open = false;
@@ -49,6 +58,24 @@
 
 		<!-- Links -->
 		<nav class="flex-1 px-3 py-3 space-y-1">
+			{#if agentId}
+				<button
+					onclick={() => navigate(`/chat/${agentId}`)}
+					class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-left font-medium"
+					style="background: var(--accent); color: white;"
+				>
+					<span>💬</span>
+					<span>New Chat</span>
+				</button>
+				<button
+					onclick={() => navigate(`/call/${agentId}`)}
+					class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-left font-medium"
+					style="background: #10B981; color: white;"
+				>
+					<span>📞</span>
+					<span>Call Motes</span>
+				</button>
+			{/if}
 			{#each links as link}
 				<button
 					onclick={() => navigate(link.href)}

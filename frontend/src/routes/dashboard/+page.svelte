@@ -53,7 +53,7 @@
 <MobileDrawer bind:open={drawerOpen} />
 
 <!-- Main -->
-<main class="min-h-dvh flex flex-col md:ml-[var(--sidebar-width)]" style="background: var(--bg-app);">
+<main class="h-dvh flex flex-col md:ml-[var(--sidebar-width)] overflow-hidden" style="background: var(--bg-app);">
 	{#if loading}
 		<div class="flex-1 flex items-center justify-center">
 			<div class="stream-dot w-3 h-3 rounded-full" style="background: var(--accent);"></div>
