@@ -147,23 +147,42 @@ MOTES_SECRET_KEY=your-secret-key-here  # Auto-generated if not set, but set it t
 
 ### LLM Providers
 
-Go to **Settings → Providers** in the web UI. Motes supports:
-- **OpenAI** (GPT-4, GPT-4o)
-- **Anthropic** (Claude Opus, Sonnet, Haiku)
-- **Azure AI Foundry** (any model via Azure)
-- **OpenRouter** (100+ models)
-- **Any OpenAI-compatible endpoint** (Ollama, LM Studio, vLLM)
+Motes needs at least one LLM provider to chat. Configure it via the **web UI** after first login:
 
-### Voice Call Provider
+1. Open `http://localhost:5173` and create your account
+2. Go to **Settings** (gear icon)
+3. Under **AI Provider**, fill in:
 
-For voice calls, you need Azure OpenAI Realtime API:
+| Provider | Base URL | API Key | Model |
+|---|---|---|---|
+| OpenAI | `https://api.openai.com/v1` | `sk-...` | `gpt-4o` |
+| Anthropic | `https://api.anthropic.com/v1` | `sk-ant-...` | `claude-sonnet-4-20250514` |
+| Azure AI Foundry | `https://your-resource.openai.azure.com/openai/deployments/your-deployment` | Azure key | `gpt-4o` |
+| OpenRouter | `https://openrouter.ai/api/v1` | `sk-or-...` | `anthropic/claude-sonnet-4` |
+| Ollama (local) | `http://localhost:11434/v1` | _(empty)_ | `llama3.1` |
 
-1. Go to **Settings** in the web UI
-2. Under "Realtime Voice Calls", enter:
-   - **WebSocket URL**: `wss://your-resource.openai.azure.com/openai/v1/realtime?model=gpt-realtime-2.1-mini`
-   - **API Key**: Your Azure OpenAI key
+4. Select **API Format**: `openai` for most providers, `anthropic` for Anthropic direct
+5. Click **Save**
 
-Recommended model: `gpt-realtime-2.1-mini` (fastest, cheapest for voice)
+> **Quickest start**: Sign up at [OpenRouter](https://openrouter.ai) (free tier available), paste the API key, and pick any model.
+
+### Voice Call Provider (Optional)
+
+Voice calls require Azure OpenAI Realtime API. If you only need chat, skip this.
+
+1. Create an [Azure OpenAI resource](https://portal.azure.com/#create/Microsoft.CognitiveServicesOpenAI)
+2. Deploy `gpt-4o-realtime-preview` or `gpt-realtime-2.1-mini` model
+3. In the Motes web UI, go to **Settings**
+4. Under **Realtime Voice Calls**, enter:
+   - **WebSocket URL**: `wss://YOUR-RESOURCE.openai.azure.com/openai/v1/realtime?model=gpt-realtime-2.1-mini`
+   - **API Key**: Your Azure OpenAI key (from Azure Portal → Keys and Endpoint)
+
+| Model | Latency | Cost | Recommendation |
+|---|---|---|---|
+| `gpt-realtime-2.1-mini` | ~200ms | Low | Best for voice (fast + cheap) |
+| `gpt-4o-realtime-preview` | ~400ms | High | Better reasoning, slower |
+
+> **No Azure?** Voice calls won't work, but chat, tools, proactive — everything else works fine with any provider.
 
 ### Voice Personality
 
