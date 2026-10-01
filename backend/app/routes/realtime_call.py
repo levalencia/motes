@@ -344,7 +344,13 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                             etype = event.get("type", "")
                             logger.debug("realtime_call_azure_event", event_type=etype)
 
-                            if etype == "response.output_audio.delta":
+                            if etype == "response.created":
+                                # Clear input buffer to prevent stale audio
+                                await azure_ws.send(json.dumps({
+                                    "type": "input_audio_buffer.clear",
+                                }))
+
+                            elif etype == "response.output_audio.delta":
                                 # Collect audio on server side
                                 pcm = base64.b64decode(event.get("delta", ""))
                                 audio_chunks.append(pcm)

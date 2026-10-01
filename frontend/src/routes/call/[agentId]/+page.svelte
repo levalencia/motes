@@ -172,6 +172,7 @@
 	});
 
 	let recorder: MediaRecorder | null = null;
+	let recordingTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function startMic() {
 		listening = true;
@@ -190,7 +191,8 @@
 			};
 			recorder.onstop = () => {
 				const blob = new Blob(chunks, { type: 'audio/webm' });
-				if (blob.size > 5000 && socket && socket.readyState === WebSocket.OPEN) {
+				// Only send if still listening (not speaking)
+				if (blob.size > 5000 && listening && !speaking && socket && socket.readyState === WebSocket.OPEN) {
 					const reader = new FileReader();
 					reader.onload = () => {
 						const base64 = (reader.result as string).split(',')[1];
@@ -198,12 +200,13 @@
 					};
 					reader.readAsDataURL(blob);
 				}
+				// Auto-restart only if still listening and not speaking
 				if (connected && listening && !speaking) {
 					setTimeout(() => startRecording(stream), 100);
 				}
 			};
 			recorder.start();
-			setTimeout(() => {
+			recordingTimer = setTimeout(() => {
 				if (recorder && recorder.state === 'recording') {
 					recorder.stop();
 				}
@@ -221,6 +224,11 @@
 	}
 
 	function stopRecording() {
+		// Cancel pending recording timer
+		if (recordingTimer) {
+			clearTimeout(recordingTimer);
+			recordingTimer = null;
+		}
 		if (recorder && recorder.state === 'recording') {
 			recorder.stop();
 		}
