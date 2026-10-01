@@ -257,11 +257,23 @@
 		});
 		conversations = conversations.map(c => c.id === id ? { ...c, title } : c);
 	}
+	async function deleteConversation(id: string) {
+		const token = localStorage.getItem('motes_token');
+		await fetch(`http://localhost:8001/api/conversations/${id}`, {
+			method: 'DELETE',
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		conversations = conversations.filter(c => c.id !== id);
+		if (conversationId === id) {
+			messages = [];
+			conversationId = null;
+		}
+	}
 </script>
 
 <!-- Desktop sidebar (hidden on mobile) -->
 <div class="hidden md:block">
-	<Sidebar {agents} {conversations} onNewChat={() => { messages = []; conversationId = null; goto(`/chat/${agentId}`); }} onRename={renameConversation} />
+	<Sidebar {agents} {conversations} onNewChat={() => { messages = []; conversationId = null; goto(`/chat/${agentId}`); }} onRename={renameConversation} onDelete={deleteConversation} />
 </div>
 
 <!-- Mobile header + drawer -->

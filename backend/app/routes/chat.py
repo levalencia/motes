@@ -7,7 +7,7 @@ import json
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
@@ -276,3 +276,33 @@ async def get_messages(
         MessageResponse(id=m.id, role=m.role, content=m.content, tool_name=m.tool_name)
         for m in msgs
     ]
+
+
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(
+    conversation_id: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Delete a conversation and its messages."""
+    result = await session.execute(
+        select(Conversation).where(Conversation.id == conversation_id)
+    )
+    conv = result.scalar_one_or_none()
+    if conv is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    # Verify agent belongs to user
+    agent_result = await session.execute(
+        select(Agent).where(Agent.id == conv.agent_id, Agent.user_id == user.id)
+    )
+    if agent_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    # Delete messages first, then conversation
+    await session.execute(
+        delete(Message).where(Message.conversation_id == conversation_id)
+    )
+    await session.delete(conv)
+    await session.commit()
+    return {"status": "ok"}

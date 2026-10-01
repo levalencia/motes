@@ -6,11 +6,12 @@
 
 	interface ConvItem { id: string; title: string; conversation_type: string; updated_at?: string; }
 
-	let { agents = [], conversations = [], onNewChat = () => {}, onRename = (_id: string, _title: string) => {} }: {
+	let { agents = [], conversations = [], onNewChat = () => {}, onRename = (_id: string, _title: string) => {}, onDelete = (_id: string) => {} }: {
 		agents?: { id: string; name: string }[];
 		conversations?: ConvItem[];
 		onNewChat?: () => void;
 		onRename?: (id: string, title: string) => void;
+		onDelete?: (id: string) => void;
 	} = $props();
 
 	const currentPath = $derived($page.url.pathname);
@@ -19,7 +20,7 @@
 
 	const chats = $derived(conversations.filter(c => c.conversation_type === 'chat'));
 	const calls = $derived(conversations.filter(c => c.conversation_type === 'call'));
-	const defaultAgentId = $derived(agents.length > 0 ? agents[0].id : '');
+	const defaultAgentId = $derived(agents.length > 0 ? agents[0].id : 'default');
 
 	function isActive(path: string): boolean {
 		return currentPath === path || currentPath.startsWith(path + '/');
@@ -123,6 +124,11 @@
 							class="opacity-0 group-hover:opacity-50 hover:!opacity-100 text-xs transition-opacity"
 							title="Rename"
 						>✏️</button>
+						<button
+							onclick={(e) => { e.stopPropagation(); onDelete(conv.id); }}
+							class="opacity-0 group-hover:opacity-50 hover:!opacity-100 text-xs transition-opacity"
+							title="Delete"
+						>🗑️</button>
 					</a>
 				{/if}
 			{/each}
@@ -156,6 +162,11 @@
 							class="opacity-0 group-hover:opacity-50 hover:!opacity-100 text-xs transition-opacity"
 							title="Rename"
 						>✏️</button>
+						<button
+							onclick={(e) => { e.stopPropagation(); onDelete(conv.id); }}
+							class="opacity-0 group-hover:opacity-50 hover:!opacity-100 text-xs transition-opacity"
+							title="Delete"
+						>🗑️</button>
 					</a>
 				{/if}
 			{/each}
