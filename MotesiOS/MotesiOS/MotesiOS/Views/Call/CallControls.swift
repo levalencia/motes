@@ -13,7 +13,7 @@ struct CallControls: View {
                 Image(systemName: isMuted ? "mic.slash.fill" : "mic.fill")
                     .font(.title2)
                     .frame(width: 56, height: 56)
-                    .background(Color(.tertiarySystemBackground))
+                    .background(Color(uiColor: .tertiarySystemBackground))
                     .clipShape(Circle())
             }
 
@@ -31,7 +31,7 @@ struct CallControls: View {
                 Image(systemName: "captions.bubble.fill")
                     .font(.title2)
                     .frame(width: 56, height: 56)
-                    .background(showCaptions ? MotesTheme.accent : Color(.tertiarySystemBackground))
+                    .background(showCaptions ? MotesTheme.accent : Color(uiColor: .tertiarySystemBackground))
                     .foregroundStyle(showCaptions ? .white : .primary)
                     .clipShape(Circle())
             }

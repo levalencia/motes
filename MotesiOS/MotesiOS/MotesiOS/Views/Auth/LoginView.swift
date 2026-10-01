@@ -48,7 +48,7 @@ struct LoginView: View {
                 .disabled(vm.isLoading || vm.username.isEmpty || vm.password.isEmpty)
             }
             .padding(24)
-            .background(Color(.secondarySystemBackground))
+            .background(Color(uiColor: .secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .padding(.horizontal, 24)
             .padding(.top, 24)

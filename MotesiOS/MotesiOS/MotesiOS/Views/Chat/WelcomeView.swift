@@ -35,7 +35,7 @@ struct WelcomeView: View {
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 10)
-                            .background(Color(.tertiarySystemBackground))
+                            .background(Color(uiColor: .tertiarySystemBackground))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                         .buttonStyle(.plain)

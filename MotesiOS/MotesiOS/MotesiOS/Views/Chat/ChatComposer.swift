@@ -24,14 +24,18 @@ struct ChatComposer: View {
                     .font(.subheadline.bold())
                     .foregroundStyle(.white)
                     .frame(width: 32, height: 32)
-                    .background(text.trimmingCharacters(in: .whitespaces).isEmpty ? Color.gray.opacity(0.3) : MotesTheme.gradient)
+                    .background(
+                        text.trimmingCharacters(in: .whitespaces).isEmpty
+                            ? AnyShapeStyle(Color.gray.opacity(0.3))
+                            : AnyShapeStyle(MotesTheme.gradient)
+                    )
                     .clipShape(Circle())
             }
             .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty || isStreaming)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(Color(.secondarySystemBackground))
+        .background(Color(uiColor: .secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
         .padding(.horizontal, 12)

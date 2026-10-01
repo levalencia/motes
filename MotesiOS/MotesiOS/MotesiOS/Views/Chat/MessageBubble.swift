@@ -27,7 +27,7 @@ struct MessageBubble: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(8)
-                .background(Color(.tertiarySystemBackground))
+                .background(Color(uiColor: .tertiarySystemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 Spacer(minLength: 60)
             } else {
