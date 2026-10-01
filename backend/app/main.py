@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -54,6 +55,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from app.event_bus import EventBus
 
     app.state.event_bus = EventBus()
+
+    # Load saved service keys into environment
+    from app.app_settings import get_setting
+    from app.routes.service_keys import SERVICE_ENV_MAP
+
+    async with app.state.session_factory() as key_session:
+        for _svc, env_vars in SERVICE_ENV_MAP.items():
+            for var in env_vars:
+                val = await get_setting(key_session, f"service_key:{var}")
+                if val:
+                    os.environ[var] = val
 
     logger.info(
         "motes_starting",
@@ -144,6 +156,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Realtime voice call (Azure OpenAI Realtime API)
     from app.routes.realtime_call import router as realtime_call_router
     from app.routes.scheduler import router as scheduler_router
+    from app.routes.service_keys import router as service_keys_router
     from app.routes.voice import router as voice_router
     from app.routes.voice_call import router as voice_call_router
 
@@ -156,6 +169,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(memory_router)
     app.include_router(approvals_router)
     app.include_router(scheduler_router)
+    app.include_router(service_keys_router)
     app.include_router(voice_router)
     app.include_router(mcp_router)
     app.include_router(oauth_router)

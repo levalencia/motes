@@ -52,11 +52,97 @@
 	let adminSaving = $state(false);
 
 	const serviceIcons: Record<string, string> = {
-		gmail: '📧',
-		calendar: '📅',
-		github: '💻',
-		slack: '💬',
+		gmail: '📧', calendar: '📅', github: '💻', slack: '💬',
+		weather: '🌤️', reminders: '✅', notes: '📝', maps: '🗺️',
+		news: '📰', files: '📁', todoist: '☑️', notion: '📓',
+		spotify: '🎵', homeassistant: '🏠', outlook: '📮',
+		flights: '✈️', telegram: '📱', drive: '💾', whatsapp: '💬',
 	};
+
+	// Setup instructions for each API-key service
+	const serviceGuides: Record<string, { steps: string[]; link: string }> = {
+		github: {
+			steps: [
+				'Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)',
+				'Click "Generate new token (classic)"',
+				'Select scopes: repo, read:user, read:org',
+				'Copy the token (starts with ghp_)',
+			],
+			link: 'https://github.com/settings/tokens',
+		},
+		slack: {
+			steps: [
+				'Go to api.slack.com/apps → Create New App → From scratch',
+				'Under OAuth & Permissions, add scopes: channels:read, chat:write, channels:history',
+				'Install the app to your workspace',
+				'Copy the Bot User OAuth Token (starts with xoxb-)',
+			],
+			link: 'https://api.slack.com/apps',
+		},
+		todoist: {
+			steps: [
+				'Go to todoist.com → Settings → Integrations → Developer',
+				'Copy your API token',
+			],
+			link: 'https://todoist.com/app/settings/integrations/developer',
+		},
+		notion: {
+			steps: [
+				'Go to notion.so/my-integrations → Create new integration',
+				'Give it a name and select your workspace',
+				'Copy the Internal Integration Secret (starts with ntn_)',
+				'Share your Notion pages with the integration',
+			],
+			link: 'https://www.notion.so/my-integrations',
+		},
+		spotify: {
+			steps: [
+				'Go to developer.spotify.com/dashboard → Create app',
+				'Set redirect URI to http://localhost:8001/callback',
+				'Use the Client Credentials flow or get a user token',
+				'Copy the access token',
+			],
+			link: 'https://developer.spotify.com/dashboard',
+		},
+		homeassistant: {
+			steps: [
+				'Open your Home Assistant instance',
+				'Go to Profile → Long-Lived Access Tokens → Create Token',
+				'Copy the token and your HA URL (e.g., http://homeassistant.local:8123)',
+			],
+			link: '',
+		},
+		outlook: {
+			steps: [
+				'Go to Azure Portal → App Registrations → New registration',
+				'Add Microsoft Graph permissions: Mail.Read, Mail.Send, Calendars.Read',
+				'Get an access token via OAuth2 authorization code flow',
+			],
+			link: 'https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps',
+		},
+		flights: {
+			steps: [
+				'Go to developers.amadeus.com → Register for free',
+				'Create a new app in the dashboard',
+				'Copy the API Key and API Secret (test environment is free)',
+			],
+			link: 'https://developers.amadeus.com/',
+		},
+		telegram: {
+			steps: [
+				'Message @BotFather on Telegram',
+				'Send /newbot and follow the prompts',
+				'Copy the bot token',
+				'Send a message to your bot, then get your chat ID from api.telegram.org/bot<TOKEN>/getUpdates',
+			],
+			link: 'https://t.me/BotFather',
+		},
+	};
+
+	let configuringService = $state('');
+	let keyInputs = $state<Record<string, string>>({});
+	let savingKey = $state(false);
+	let serviceStatuses = $state<Record<string, boolean>>({});
 
 	const providerSetupHelp: Record<string, string> = {
 		google: 'Google Cloud Console → APIs & Services → Credentials → Create OAuth 2.0 Client',
@@ -91,6 +177,16 @@
 			catalog = await api<CatalogEntry[]>('/mcp/catalog');
 		} catch {
 			// Catalog is non-critical
+		}
+
+		// Load service key statuses
+		try {
+			const statuses = await api<{service: string; configured: boolean}[]>('/service-keys');
+			for (const s of statuses) {
+				serviceStatuses[s.service] = s.configured;
+			}
+		} catch {
+			// Non-critical
 		}
 
 		loading = false;
@@ -362,19 +458,87 @@
 
 				<!-- API key required -->
 				<h3 class="text-sm font-medium mb-3" style="color: var(--text-muted);">🔑 REQUIRES API KEY</h3>
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
 					{#each catalog.filter(c => !c.built_in && !c.coming_soon && c.env_vars) as item}
+						{@const svcKey = item.name.toLowerCase().replace(/[^a-z]/g, '').replace('office365', 'outlook').replace('hotels', 'flights')}
 						<div class="rounded-xl p-4" style="background: var(--bg-card); border: 1px solid var(--border);">
 							<div class="flex items-center gap-2 mb-1">
-								<span class="text-yellow-500 text-xs">●</span>
+								<span class="text-xs">{serviceStatuses[svcKey] ? '🟢' : '🟡'}</span>
 								<span class="font-medium text-sm" style="color: var(--text-primary);">{item.name}</span>
+								{#if serviceStatuses[svcKey]}
+									<span class="text-xs px-1.5 py-0.5 rounded-full" style="background: #10B98120; color: #10B981;">Connected</span>
+								{/if}
 							</div>
-							<p class="text-xs mb-2" style="color: var(--text-secondary);">{item.description}</p>
-							<div class="text-xs font-mono" style="color: var(--text-muted);">
-								{#each item.env_vars || [] as env}
-									<span class="inline-block px-1.5 py-0.5 rounded mr-1 mb-1" style="background: var(--bg-hover);">{env}</span>
-								{/each}
-							</div>
+							<p class="text-xs mb-3" style="color: var(--text-secondary);">{item.description}</p>
+
+							{#if configuringService === svcKey}
+								<!-- Setup guide -->
+								{#if serviceGuides[svcKey]}
+									<div class="mb-3 text-xs space-y-1" style="color: var(--text-secondary);">
+										{#each serviceGuides[svcKey].steps as step, i}
+											<p>{i + 1}. {step}</p>
+										{/each}
+										{#if serviceGuides[svcKey].link}
+											<a href={serviceGuides[svcKey].link} target="_blank" class="text-xs underline" style="color: var(--accent);">
+												Open {item.name} →
+											</a>
+										{/if}
+									</div>
+								{/if}
+								<!-- Key inputs -->
+								<div class="space-y-2">
+									{#each item.env_vars || [] as envVar}
+										<div>
+											<label class="text-xs font-mono block mb-1" style="color: var(--text-muted);">{envVar}</label>
+											<input
+												type="password"
+												placeholder="Paste your key..."
+												value={keyInputs[envVar] || ''}
+												oninput={(e) => { keyInputs[envVar] = (e.target as HTMLInputElement).value; }}
+												class="w-full px-3 py-2 rounded-lg text-xs outline-none"
+												style="background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary);"
+											/>
+										</div>
+									{/each}
+									<div class="flex gap-2 mt-2">
+										<button
+											onclick={async () => {
+												savingKey = true;
+												try {
+													await api('/service-keys', {
+														method: 'POST',
+														body: JSON.stringify({ service: svcKey, keys: keyInputs }),
+													});
+													serviceStatuses[svcKey] = true;
+													configuringService = '';
+													keyInputs = {};
+												} catch (e: any) { error = e.message; }
+												savingKey = false;
+											}}
+											disabled={savingKey}
+											class="px-3 py-1.5 rounded-lg text-xs font-medium text-white"
+											style="background: var(--accent);"
+										>
+											{savingKey ? 'Saving...' : 'Save'}
+										</button>
+										<button
+											onclick={() => { configuringService = ''; }}
+											class="px-3 py-1.5 rounded-lg text-xs"
+											style="color: var(--text-muted);"
+										>
+											Cancel
+										</button>
+									</div>
+								</div>
+							{:else}
+								<button
+									onclick={() => { configuringService = svcKey; keyInputs = {}; }}
+									class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+									style="background: {serviceStatuses[svcKey] ? 'var(--bg-hover)' : 'var(--accent)'}; color: {serviceStatuses[svcKey] ? 'var(--text-secondary)' : 'white'};"
+								>
+									{serviceStatuses[svcKey] ? '⚙️ Reconfigure' : '🔧 Setup'}
+								</button>
+							{/if}
 						</div>
 					{/each}
 				</div>
