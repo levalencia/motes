@@ -181,6 +181,7 @@ async def scan_calendar(
 async def check_patterns(
     session: AsyncSession, user_id: str, agent_id: str,
     event_bus: Any = None,
+    interval_minutes: int = 60,
 ) -> None:
     """Generate proactive suggestions based on learned user patterns."""
     from datetime import datetime
@@ -201,7 +202,7 @@ async def check_patterns(
             topic = key_parts[0]
             pattern_hour = int(key_parts[1])
             if pattern_hour == hour:
-                # Dedup: only fire once per user/topic/hour
+                # Dedup: based on user's interval setting
                 dedup_key = f"{user_id}:{topic}:{hour}"
                 if dedup_key in _notified_patterns:
                     continue
@@ -290,6 +291,10 @@ async def run_scanner(
                 users = result.scalars().all()
 
                 for user in users:
+                    # Skip if user disabled proactive
+                    if not getattr(user, "proactive_enabled", True):
+                        continue
+
                     # Get user's first agent (for notification scoping)
                     agent_result = await session.execute(
                         select(Agent).where(Agent.user_id == user.id).limit(1)
@@ -309,7 +314,11 @@ async def run_scanner(
                         await scan_calendar(session, user.id, agent.id, cal_token, event_bus)
 
                     # Proactive suggestions based on patterns
-                    await check_patterns(session, user.id, agent.id, event_bus)
+                    interval = getattr(user, "proactive_interval_minutes", 60)
+                    await check_patterns(
+                        session, user.id, agent.id, event_bus,
+                        interval_minutes=interval,
+                    )
 
                     logger.debug("scanner_user_complete", user_id=user.id)
 

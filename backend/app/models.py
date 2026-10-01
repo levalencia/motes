@@ -20,6 +20,9 @@ class User(Base):
     username: Mapped[str] = mapped_column(unique=True)
     password_hash: Mapped[str]
     voice_personality: Mapped[str] = mapped_column(default="")
+    proactive_enabled: Mapped[bool] = mapped_column(default=True)
+    proactive_interval_minutes: Mapped[int] = mapped_column(default=60)  # how often patterns fire
+    scan_interval_seconds: Mapped[int] = mapped_column(default=60)  # background scan frequency
     is_admin: Mapped[bool] = mapped_column(default=False)
     is_setup_complete: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(

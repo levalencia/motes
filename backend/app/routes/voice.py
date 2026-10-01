@@ -256,3 +256,40 @@ async def set_voice_personality(
     user.voice_personality = body.personality
     await session.commit()
     return {"personality": body.personality}
+
+
+# ── Proactive settings ────────────────────────────────
+
+
+class ProactiveSettingsRequest(BaseModel):
+    enabled: bool = True
+    interval_minutes: int = Field(default=60, ge=5, le=1440)
+
+
+@router.get("/proactive-settings")
+async def get_proactive_settings(
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Get user's proactive intelligence settings."""
+    return {
+        "enabled": getattr(user, "proactive_enabled", True),
+        "interval_minutes": getattr(user, "proactive_interval_minutes", 60),
+        "scan_interval_seconds": getattr(user, "scan_interval_seconds", 60),
+    }
+
+
+@router.post("/proactive-settings")
+async def set_proactive_settings(
+    body: ProactiveSettingsRequest,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Configure proactive intelligence behavior."""
+    user.proactive_enabled = body.enabled
+    user.proactive_interval_minutes = body.interval_minutes
+    await session.commit()
+    return {
+        "enabled": body.enabled,
+        "interval_minutes": body.interval_minutes,
+    }
