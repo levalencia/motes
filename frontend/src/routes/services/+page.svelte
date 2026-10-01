@@ -84,8 +84,8 @@
 			connected = conn;
 			oauthApps = apps;
 			catalog = cat;
-		} catch {
-			goto('/login');
+		} catch (e: any) {
+			if (e?.message?.includes('401')) goto('/login');
 		} finally {
 			loading = false;
 		}

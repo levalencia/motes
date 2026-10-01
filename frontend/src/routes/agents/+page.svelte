@@ -15,8 +15,8 @@
 	onMount(async () => {
 		try {
 			[agents, providers] = await Promise.all([listAgents(), listProviders()]);
-		} catch {
-			goto('/login');
+		} catch (e: any) {
+			if (e?.message?.includes('401')) goto('/login');
 		}
 	});
 

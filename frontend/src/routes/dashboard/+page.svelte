@@ -27,8 +27,8 @@
 			providers = p;
 			connectedServices = svc.length;
 			unreadCount = notif.count;
-		} catch {
-			goto('/login');
+		} catch (e: any) {
+			if (e?.message?.includes('401')) goto('/login');
 		} finally {
 			loading = false;
 		}

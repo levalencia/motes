@@ -155,8 +155,8 @@
 		try {
 			const apps = await api<{ provider: string }[]>('/oauth/apps');
 			alreadyConfigured = apps.some((a) => a.provider === provider);
-		} catch {
-			goto('/login');
+		} catch (e: any) {
+			if (e?.message?.includes('401')) goto('/login');
 		}
 	});
 

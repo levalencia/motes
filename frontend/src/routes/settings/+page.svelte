@@ -74,8 +74,8 @@
 			const rtConfig = await api<{ realtime_url: string; has_key: boolean }>('/voice/realtime-config');
 			realtimeUrl = rtConfig.realtime_url;
 			realtimeConfigured = rtConfig.has_key;
-		} catch {
-			goto('/login');
+		} catch (e: any) {
+			if (e?.message?.includes('401')) goto('/login');
 		} finally {
 			loading = false;
 		}
