@@ -25,9 +25,21 @@
 		is_configured: boolean;
 	}
 
+	interface CatalogEntry {
+		name: string;
+		description: string;
+		category: string;
+		built_in?: boolean;
+		requires_oauth?: boolean;
+		macos_only?: boolean;
+		env_vars?: string[];
+		coming_soon?: boolean;
+	}
+
 	let services = $state<OAuthService[]>([]);
 	let connected = $state<ConnectedService[]>([]);
 	let oauthApps = $state<OAuthApp[]>([]);
+	let catalog = $state<CatalogEntry[]>([]);
 	let loading = $state(true);
 	let error = $state('');
 	let justConnected = $state('');
@@ -62,14 +74,16 @@
 		}
 
 		try {
-			const [svc, conn, apps] = await Promise.all([
+			const [svc, conn, apps, cat] = await Promise.all([
 				api<OAuthService[]>('/oauth/services'),
 				api<ConnectedService[]>('/oauth/connected'),
 				api<OAuthApp[]>('/oauth/apps'),
+				api<CatalogEntry[]>('/mcp/catalog'),
 			]);
 			services = svc;
 			connected = conn;
 			oauthApps = apps;
+			catalog = cat;
 		} catch {
 			goto('/login');
 		} finally {
@@ -315,6 +329,66 @@
 						</div>
 					{/each}
 				</div>
+			</div>
+
+			<!-- All Integrations (from catalog) -->
+			<div class="mt-10">
+				<h2 class="text-lg font-semibold mb-2" style="color: var(--text-primary);">All Integrations ({catalog.length})</h2>
+				<p class="text-sm mb-4" style="color: var(--text-secondary);">
+					Built-in tools work instantly. Others need an API key set in your environment.
+				</p>
+
+				<!-- Built-in (free) -->
+				<h3 class="text-sm font-medium mb-3" style="color: var(--text-muted);">✅ BUILT-IN (free, no setup)</h3>
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+					{#each catalog.filter(c => c.built_in) as item}
+						<div class="rounded-xl p-4" style="background: var(--bg-card); border: 1px solid var(--border);">
+							<div class="flex items-center gap-2 mb-1">
+								<span class="text-green-500 text-xs">●</span>
+								<span class="font-medium text-sm" style="color: var(--text-primary);">{item.name}</span>
+								{#if item.macos_only}
+									<span class="text-xs px-1.5 py-0.5 rounded" style="background: var(--bg-hover); color: var(--text-muted);">macOS</span>
+								{/if}
+							</div>
+							<p class="text-xs" style="color: var(--text-secondary);">{item.description}</p>
+						</div>
+					{/each}
+				</div>
+
+				<!-- API key required -->
+				<h3 class="text-sm font-medium mb-3" style="color: var(--text-muted);">🔑 REQUIRES API KEY</h3>
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+					{#each catalog.filter(c => !c.built_in && !c.coming_soon && c.env_vars) as item}
+						<div class="rounded-xl p-4" style="background: var(--bg-card); border: 1px solid var(--border);">
+							<div class="flex items-center gap-2 mb-1">
+								<span class="text-yellow-500 text-xs">●</span>
+								<span class="font-medium text-sm" style="color: var(--text-primary);">{item.name}</span>
+							</div>
+							<p class="text-xs mb-2" style="color: var(--text-secondary);">{item.description}</p>
+							<div class="text-xs font-mono" style="color: var(--text-muted);">
+								{#each item.env_vars || [] as env}
+									<span class="inline-block px-1.5 py-0.5 rounded mr-1 mb-1" style="background: var(--bg-hover);">{env}</span>
+								{/each}
+							</div>
+						</div>
+					{/each}
+				</div>
+
+				<!-- Coming soon -->
+				{#if catalog.filter(c => c.coming_soon).length > 0}
+					<h3 class="text-sm font-medium mb-3" style="color: var(--text-muted);">🔜 COMING SOON</h3>
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+						{#each catalog.filter(c => c.coming_soon) as item}
+							<div class="rounded-xl p-4 opacity-50" style="background: var(--bg-card); border: 1px solid var(--border);">
+								<div class="flex items-center gap-2 mb-1">
+									<span class="text-gray-500 text-xs">●</span>
+									<span class="font-medium text-sm" style="color: var(--text-primary);">{item.name}</span>
+								</div>
+								<p class="text-xs" style="color: var(--text-secondary);">{item.description}</p>
+							</div>
+						{/each}
+					</div>
+				{/if}
 			</div>
 
 			<!-- Security note -->
