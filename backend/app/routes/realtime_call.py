@@ -196,7 +196,11 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                         "instructions": (
                             f"You are Motes, a friendly AI assistant on a voice call with {user_name}. "
                             f"Keep responses conversational and concise. "
-                            f"If the user switches languages, follow them. "
+                            f"CRITICAL LANGUAGE RULE: Detect the user's language from their "
+                            f"first words and respond ONLY in that language for the rest of the call. "
+                            f"If the user speaks Spanish, ALL your responses must be in Spanish. "
+                            f"If the user speaks French, ALL your responses must be in French. "
+                            f"Never switch to English unless the user speaks English. "
                             f"IMPORTANT: Only respond when the user speaks to you. "
                             f"Do NOT speak unprompted. Wait for the user to finish talking before responding. "
                             f"If there is silence, stay quiet — do not fill silence with speech. "
@@ -240,11 +244,20 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                     event_type=first_event.get('type', 'unknown'),
                 )
 
+                # Determine greeting language from voice personality
+                greeting_lang = ""
+                if voice_personality:
+                    lp = voice_personality.lower()
+                    if "spanish" in lp or "español" in lp or "paisa" in lp or "colombian" in lp:
+                        greeting_lang = "Greet in Spanish."
+                    elif "french" in lp or "français" in lp:
+                        greeting_lang = "Greet in French."
+
                 # Trigger a single greeting
                 await azure_ws.send(json.dumps({
                     "type": "response.create",
                     "response": {
-                        "instructions": f"Greet {user_name} briefly. One short sentence only.",
+                        "instructions": f"Greet {user_name} briefly. One short sentence only. {greeting_lang}",
                     },
                 }))
 
