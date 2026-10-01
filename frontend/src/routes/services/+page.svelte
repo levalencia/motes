@@ -139,6 +139,19 @@
 		},
 	};
 
+	// Map catalog names to service keys
+	const catalogToKey: Record<string, string> = {
+		'GitHub': 'github',
+		'Slack': 'slack',
+		'Todoist': 'todoist',
+		'Notion': 'notion',
+		'Spotify': 'spotify',
+		'Home Assistant': 'homeassistant',
+		'Outlook / Office 365': 'outlook',
+		'Flights & Hotels': 'flights',
+		'Telegram': 'telegram',
+	};
+
 	let configuringService = $state('');
 	let keyInputs = $state<Record<string, string>>({});
 	let savingKey = $state(false);
@@ -460,7 +473,7 @@
 				<h3 class="text-sm font-medium mb-3" style="color: var(--text-muted);">🔑 REQUIRES API KEY</h3>
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
 					{#each catalog.filter(c => !c.built_in && !c.coming_soon && c.env_vars) as item}
-						{@const svcKey = item.name.toLowerCase().replace(/[^a-z]/g, '').replace('office365', 'outlook').replace('hotels', 'flights')}
+						{@const svcKey = catalogToKey[item.name] || item.name.toLowerCase()}
 						<div class="rounded-xl p-4" style="background: var(--bg-card); border: 1px solid var(--border);">
 							<div class="flex items-center gap-2 mb-1">
 								<span class="text-xs">{serviceStatuses[svcKey] ? '🟢' : '🟡'}</span>
