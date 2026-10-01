@@ -158,68 +158,20 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
             ) as azure_ws:
                 logger.info("realtime_call_connected")
 
-                # Build tool definitions for the realtime session
-                from app.file_tools import (
-                    FileListTool,
-                    FileReadTool,
-                    FileSearchTool,
-                    PptxInspectTool,
-                )
-                from app.google_tools import (
-                    CalendarListTool,
-                    GmailReadTool,
-                )
-                from app.token_refresh import get_valid_token
-                from app.web_search_tool import WebSearchTool
+                # Build tool registry using shared service (same tools as chat)
+                from app.services import build_tool_registry
 
+                registry = await build_tool_registry(session, user_id)
                 rt_tools = []
                 tool_instances = {}
-
-                # Always available tools
-                for tool_cls in [
-                    FileListTool, FileReadTool, FileSearchTool,
-                    PptxInspectTool, WebSearchTool,
-                ]:
-                    if tool_cls == WebSearchTool:
-                        inst = tool_cls()
-                    elif hasattr(tool_cls, '__init__'):
-                        inst = tool_cls(str(Path.home()))
-                    else:
-                        inst = tool_cls()
+                for _name, tool in registry._tools.items():
                     rt_tools.append({
                         "type": "function",
-                        "name": inst.name,
-                        "description": inst.description,
-                        "parameters": inst.parameters,
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.parameters,
                     })
-                    tool_instances[inst.name] = inst
-
-                # Gmail/Calendar if connected
-                gmail_tk = await get_valid_token(
-                    session, user_id, "gmail"
-                )
-                if gmail_tk:
-                    gmail_inst = GmailReadTool(gmail_tk)
-                    rt_tools.append({
-                        "type": "function",
-                        "name": gmail_inst.name,
-                        "description": gmail_inst.description,
-                        "parameters": gmail_inst.parameters,
-                    })
-                    tool_instances[gmail_inst.name] = gmail_inst
-
-                cal_tk = await get_valid_token(
-                    session, user_id, "calendar"
-                )
-                if cal_tk:
-                    cal_inst = CalendarListTool(cal_tk)
-                    rt_tools.append({
-                        "type": "function",
-                        "name": cal_inst.name,
-                        "description": cal_inst.description,
-                        "parameters": cal_inst.parameters,
-                    })
-                    tool_instances[cal_inst.name] = cal_inst
+                    tool_instances[tool.name] = tool
 
                 logger.info("realtime_call_tools", tools=[t['name'] for t in rt_tools])
 
