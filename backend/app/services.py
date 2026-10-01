@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 
 import structlog
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.file_tools import (
@@ -20,6 +21,7 @@ from app.file_tools import (
     PptxAddSlideTool,
     PptxInspectTool,
 )
+from app.models import Agent
 from app.token_refresh import get_valid_token
 from app.tools import ToolRegistry, create_default_registry
 from app.web_search_tool import WebSearchTool
@@ -54,6 +56,17 @@ async def build_tool_registry(
     from app.weather_tool import WeatherTool
 
     tools.register(WeatherTool())
+
+    # Memory (save/recall facts about the user)
+    from app.memory_tools import MemoryRecallTool, MemorySaveTool
+
+    agent_result = await session.execute(
+        select(Agent).where(Agent.user_id == user_id)
+    )
+    agent_for_memory = agent_result.scalars().first()
+    if agent_for_memory:
+        tools.register(MemorySaveTool(session, agent_for_memory.id))
+        tools.register(MemoryRecallTool(session, agent_for_memory.id))
 
     # Apple Reminders + Notes (macOS only, no API key)
     import platform

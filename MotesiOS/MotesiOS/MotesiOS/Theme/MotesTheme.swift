@@ -7,12 +7,14 @@ enum MotesTheme {
     static let purple = Color(hex: "#7B4FBF")
     static let magenta = Color(hex: "#C850C0")
     static let gradient = LinearGradient(colors: [accent, purple], startPoint: .topLeading, endPoint: .bottomTrailing)
-    static let bgPrimary = Color.primary.opacity(0)
+
+    // Pure SwiftUI semantic colors — no UIKit bridging
+    static let textPrimary = Color.primary
+    static let textSecondary = Color.secondary
+    static let textMuted = Color.gray
+    static let border = Color.gray.opacity(0.3)
     static let bgSecondary = Color.gray.opacity(0.1)
-    static let textPrimary = Color(.label)
-    static let textSecondary = Color(.secondaryLabel)
-    static let textMuted = Color(.tertiaryLabel)
-    static let border = Color(.separator)
+    static let bgTertiary = Color.gray.opacity(0.08)
 }
 
 extension Color {

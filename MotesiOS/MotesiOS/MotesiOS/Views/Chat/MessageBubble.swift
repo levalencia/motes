@@ -25,6 +25,7 @@ struct MessageBubble: View {
                     Text(message.content)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(3)
                 }
                 .padding(8)
                 .background(Color.gray.opacity(0.08))
@@ -34,10 +35,9 @@ struct MessageBubble: View {
                 Image("mascot-sm")
                     .resizable()
                     .frame(width: 24, height: 24)
-                Text(LocalizedStringKey(message.content))
-                    .font(.subheadline)
-                    .textSelection(.enabled)
-                Spacer(minLength: 40)
+                    .padding(.top, 2)
+                MarkdownView(content: message.content)
+                Spacer(minLength: 20)
             }
         }
     }

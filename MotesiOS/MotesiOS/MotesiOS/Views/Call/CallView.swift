@@ -4,6 +4,7 @@ struct CallView: View {
     let agentId: String
     var conversationId: String? = nil
     @State private var vm = CallViewModel()
+    @State private var errorMessage = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,6 +22,23 @@ struct CallView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.top, 2)
+
+            // Show error prominently
+            if !errorMessage.isEmpty {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                    .padding(.top, 8)
+
+                Button("Retry") {
+                    errorMessage = ""
+                    vm.startCall(agentId: agentId, conversationId: conversationId)
+                }
+                .tint(MotesTheme.accent)
+                .padding(.top, 8)
+            }
 
             if vm.isConnected {
                 Text(vm.formattedDuration)
@@ -44,14 +62,22 @@ struct CallView: View {
             Spacer()
 
             CallControls(
+                isMuted: !vm.isListening,
+                isSpeaker: vm.isSpeaker,
                 showCaptions: vm.showCaptions,
                 onMute: { vm.isListening.toggle() },
+                onSpeaker: { vm.toggleSpeaker() },
                 onHangUp: { vm.hangUp() },
                 onCaptions: { vm.showCaptions.toggle() }
             )
             .padding(.bottom, 48)
         }
-        .onAppear { vm.startCall(agentId: agentId, conversationId: conversationId) }
+        .onAppear {
+            vm.voiceService.onError = { error in
+                errorMessage = error
+            }
+            vm.startCall(agentId: agentId, conversationId: conversationId)
+        }
         .onDisappear { vm.hangUp() }
     }
 }

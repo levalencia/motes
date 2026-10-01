@@ -13,13 +13,18 @@ struct LoginView: View {
                 .font(.title.bold())
 
             VStack(spacing: 16) {
-                TextField("http://your-machine:8001", text: $vm.serverURL)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.URL)
-                    .font(.caption)
-                Text("Your Motes server via Tailscale (e.g., http://motes-mac:8001)")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Server URL")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("http://your-machine:8001", text: $vm.serverURL)
+                        .textFieldStyle(.roundedBorder)
+                        .textContentType(.URL)
+                        .font(.caption)
+                    Text("Your Motes server via Tailscale")
+                        .font(.caption2)
+                        .foregroundStyle(.gray)
+                }
 
                 TextField("Username", text: $vm.username)
                     .textFieldStyle(.roundedBorder)
@@ -49,7 +54,7 @@ struct LoginView: View {
                 .disabled(vm.isLoading || vm.username.isEmpty || vm.password.isEmpty)
             }
             .padding(24)
-            .background(Color.gray.opacity(0.1))
+            .background(MotesTheme.bgSecondary)
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .padding(.horizontal, 24)
             .padding(.top, 24)

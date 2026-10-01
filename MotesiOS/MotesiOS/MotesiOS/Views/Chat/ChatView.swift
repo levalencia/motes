@@ -44,8 +44,11 @@ struct ChatView: View {
                     onSend: { Task { await vm.sendMessage() } }
                 )
             }
-            .navigationBarTitleDisplayMode(.inline)
+#if os(macOS)
+            .navigationTitle("Motes")
+#endif
             .toolbar {
+#if os(iOS)
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 6) {
                         Image("mascot-sm")
@@ -55,6 +58,19 @@ struct ChatView: View {
                             .font(.headline)
                     }
                 }
+#else
+                ToolbarItem(placement: .automatic) {
+                    HStack(spacing: 6) {
+                        Image("mascot-sm")
+                            .resizable()
+                            .frame(width: 22, height: 22)
+                        Text("Motes")
+                            .font(.headline)
+                    }
+                }
+#endif
+
+#if os(iOS)
                 ToolbarItem(placement: .topBarTrailing) {
                     if !vm.agentId.isEmpty {
                         NavigationLink(destination: CallView(agentId: vm.agentId)) {
@@ -63,6 +79,16 @@ struct ChatView: View {
                         }
                     }
                 }
+#else
+                ToolbarItem(placement: .primaryAction) {
+                    if !vm.agentId.isEmpty {
+                        NavigationLink(destination: CallView(agentId: vm.agentId)) {
+                            Image(systemName: "phone.fill")
+                                .foregroundStyle(Color.green)
+                        }
+                    }
+                }
+#endif
             }
         }
         .task { await vm.loadData() }

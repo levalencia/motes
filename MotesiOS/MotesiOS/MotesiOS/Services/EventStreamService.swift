@@ -18,7 +18,7 @@ class EventStreamService {
 
         task = Task {
             do {
-                let (bytes, _) = try await URLSession.shared.bytes(from: url)
+                let (bytes, _) = try await APIClient.shared.session.bytes(from: url)
                 for try await line in bytes.lines {
                     guard !Task.isCancelled else { break }
                     guard line.hasPrefix("data: ") else { continue }

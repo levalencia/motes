@@ -194,11 +194,12 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                     "session": {
                         "type": "realtime",
                         "instructions": (
-                            f"You are Motes, a friendly AI assistant on a voice call. "
-                            f"The user's name is {user_name}. "
-                            f"Start the call with a warm greeting using their name. "
-                            f"Keep responses conversational and concise (under 5 seconds). "
+                            f"You are Motes, a friendly AI assistant on a voice call with {user_name}. "
+                            f"Keep responses conversational and concise. "
                             f"If the user switches languages, follow them. "
+                            f"IMPORTANT: Only respond when the user speaks to you. "
+                            f"Do NOT speak unprompted. Wait for the user to finish talking before responding. "
+                            f"If there is silence, stay quiet — do not fill silence with speech. "
                             + (f"Voice personality: {voice_personality}. " if voice_personality else "")
                             + agent.system_prompt
                             + context_summary
@@ -210,10 +211,10 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                     "rate": 24000,
                                 },
                                 "turn_detection": {
-                                    "type": "server_vad",
-                                    "threshold": 0.5,
-                                    "prefix_padding_ms": 300,
-                                    "silence_duration_ms": 500,
+                                    "type": "semantic_vad",
+                                    "eagerness": "low",
+                                    "create_response": True,
+                                    "interrupt_response": True,
                                 },
                             },
                             "output": {
@@ -239,9 +240,12 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                     event_type=first_event.get('type', 'unknown'),
                 )
 
-                # Trigger the agent to greet the user first
+                # Trigger a single greeting
                 await azure_ws.send(json.dumps({
                     "type": "response.create",
+                    "response": {
+                        "instructions": f"Greet {user_name} briefly. One short sentence only.",
+                    },
                 }))
 
                 # Three tasks: client→azure, azure→client, proactive→client
@@ -283,55 +287,60 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                     try:
                         while True:
                             msg = await websocket.receive_json()
-                            if msg.get("type") == "end":
+                            msg_type = msg.get("type", "unknown")
+                            logger.info("realtime_call_client_msg", msg_type=msg_type, msg_size=len(str(msg)))
+                            if msg_type == "end":
                                 break
-                            if msg.get("type") == "audio":
-                                # Convert webm→PCM16 24kHz for Azure Realtime
-                                import subprocess
-                                import tempfile
+                            if msg_type == "audio":
+                                audio_format = msg.get("format", "webm")
+                                if audio_format == "pcm16":
+                                    # iOS sends 24kHz PCM16 — forward directly to Azure
+                                    await azure_ws.send(json.dumps({
+                                        "type": "input_audio_buffer.append",
+                                        "audio": msg["data"],
+                                    }))
+                                    logger.info("realtime_call_audio_forwarded", b64_len=len(msg["data"]))
+                                else:
+                                    # Web browser sends webm — convert to PCM16
+                                    import subprocess
+                                    import tempfile
 
-                                audio_bytes = base64.b64decode(msg["data"])
-                                logger.debug("realtime_call_audio_received", size=len(audio_bytes))
-                                with tempfile.NamedTemporaryFile(
-                                    suffix=".webm", delete=False
-                                ) as f:
-                                    f.write(audio_bytes)
-                                    tmp_in = f.name
-                                try:
-                                    result = subprocess.run(
-                                        [
-                                            "ffmpeg", "-y", "-i", tmp_in,
-                                            "-ar", "24000", "-ac", "1",
-                                            "-f", "s16le", "-acodec", "pcm_s16le",
-                                            "pipe:1",
-                                        ],
-                                        capture_output=True,
-                                        timeout=10,
-                                    )
-                                    if result.returncode == 0 and result.stdout:
-                                        # Only send if enough audio (>2400 bytes = 100ms at 24kHz)
-                                        if len(result.stdout) > 2400:
-                                            pcm_b64 = base64.b64encode(
-                                                result.stdout
-                                            ).decode()
-                                            logger.debug(
-                                                "realtime_call_pcm_sent",
-                                                size=len(result.stdout),
-                                            )
-                                            await azure_ws.send(json.dumps({
-                                                "type": "input_audio_buffer.append",
-                                                "audio": pcm_b64,
-                                            }))
-                                            await azure_ws.send(json.dumps({
-                                                "type": "input_audio_buffer.commit",
-                                            }))
-                                    else:
-                                        logger.warning(
-                                            "realtime_call_ffmpeg_error",
-                                            returncode=result.returncode,
+                                    audio_bytes = base64.b64decode(msg["data"])
+                                    with tempfile.NamedTemporaryFile(
+                                        suffix=".webm", delete=False
+                                    ) as f:
+                                        f.write(audio_bytes)
+                                        tmp_in = f.name
+                                    try:
+                                        result = subprocess.run(
+                                            [
+                                                "ffmpeg", "-y", "-i", tmp_in,
+                                                "-ar", "24000", "-ac", "1",
+                                                "-f", "s16le", "-acodec", "pcm_s16le",
+                                                "pipe:1",
+                                            ],
+                                            capture_output=True,
+                                            timeout=10,
                                         )
-                                finally:
-                                    Path(tmp_in).unlink(missing_ok=True)
+                                        if result.returncode == 0 and result.stdout:
+                                            if len(result.stdout) > 2400:
+                                                pcm_b64 = base64.b64encode(
+                                                    result.stdout
+                                                ).decode()
+                                                await azure_ws.send(json.dumps({
+                                                    "type": "input_audio_buffer.append",
+                                                    "audio": pcm_b64,
+                                                }))
+                                                await azure_ws.send(json.dumps({
+                                                    "type": "input_audio_buffer.commit",
+                                                }))
+                                        else:
+                                            logger.warning(
+                                                "realtime_call_ffmpeg_error",
+                                                returncode=result.returncode,
+                                            )
+                                    finally:
+                                        Path(tmp_in).unlink(missing_ok=True)
                     except WebSocketDisconnect:
                         pass
 
@@ -403,6 +412,13 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                     content=text,
                                 ))
                                 await session.commit()
+
+                                # Learn patterns from voice (same as chat)
+                                try:
+                                    from app.proactive import learn_from_message
+                                    await learn_from_message(session, user_id, agent_id, text)
+                                except Exception:
+                                    pass
 
                             elif etype == "response.function_call_arguments.done":
                                 # Azure wants to call a tool

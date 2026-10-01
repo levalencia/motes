@@ -10,13 +10,22 @@ class VoiceCallService {
     private var webSocket: URLSessionWebSocketTask?
     private var audioPlayer: AVAudioPlayer?
 
+    var onReady: (() -> Void)?
     var onAudioReceived: ((Data) -> Void)?
     var onResponseDone: ((String) -> Void)?
+    var onError: ((String) -> Void)?
 
     func connect(agentId: String, token: String, conversationId: String? = nil) {
-        let baseURL = APIClient.shared.baseURL.replacingOccurrences(of: "http", with: "ws")
-        guard let url = URL(string: "\(baseURL)/api/realtime-call/\(agentId)") else { return }
-        let session = URLSession(configuration: .default)
+        let baseURL = APIClient.shared.baseURL.replacingOccurrences(of: "http://", with: "ws://")
+            .replacingOccurrences(of: "https://", with: "wss://")
+        guard let url = URL(string: "\(baseURL)/api/realtime-call/\(agentId)") else {
+            onError?("Invalid server URL")
+            return
+        }
+
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 15
+        let session = URLSession(configuration: config)
         webSocket = session.webSocketTask(with: url)
         webSocket?.resume()
 
@@ -27,7 +36,14 @@ class VoiceCallService {
         if let cid = conversationId { auth["conversation_id"] = cid }
         if let data = try? JSONSerialization.data(withJSONObject: auth),
            let str = String(data: data, encoding: .utf8) {
-            webSocket?.send(.string(str)) { _ in }
+            webSocket?.send(.string(str)) { [weak self] error in
+                if let error {
+                    Task { @MainActor in
+                        self?.status = "Auth failed"
+                        self?.onError?("Send auth failed: \(error.localizedDescription)")
+                    }
+                }
+            }
         }
 
         receiveMessages()
@@ -47,10 +63,11 @@ class VoiceCallService {
                     }
                 }
                 self.receiveMessages()
-            case .failure:
+            case .failure(let error):
                 Task { @MainActor in
                     self.status = "Disconnected"
                     self.isConnected = false
+                    self.onError?(error.localizedDescription)
                 }
             }
         }
@@ -62,6 +79,7 @@ class VoiceCallService {
         case "ready":
             isConnected = true
             status = "Connected"
+            onReady?()
         case "audio_wav":
             if let b64 = obj["data"] as? String, let data = Data(base64Encoded: b64) {
                 status = "Speaking..."
@@ -84,11 +102,17 @@ class VoiceCallService {
         }
     }
 
-    func sendAudio(base64: String) {
-        let msg: [String: Any] = ["type": "audio", "data": base64]
+    func sendAudio(base64: String, sampleRate: Double = 48000) {
+        let msg: [String: Any] = ["type": "audio", "data": base64, "format": "pcm16", "sample_rate": "\(Int(sampleRate))"]
         if let data = try? JSONSerialization.data(withJSONObject: msg),
            let str = String(data: data, encoding: .utf8) {
-            webSocket?.send(.string(str)) { _ in }
+            webSocket?.send(.string(str)) { error in
+                if let error {
+                    print("[Motes] Audio send error: \(error.localizedDescription)")
+                } else {
+                    print("[Motes] Audio sent OK: \(str.count) chars")
+                }
+            }
         }
     }
 

@@ -20,6 +20,10 @@ class APIClient {
         KeychainHelper.readString(key: "motes_token")
     }
 
+    let session = URLSession.shared
+
+    private init() {}
+
     private func request(_ method: String, path: String, body: Data? = nil) async throws -> (Data, URLResponse) {
         guard let url = URL(string: "\(baseURL)\(path)") else { throw URLError(.badURL) }
         var req = URLRequest(url: url)
@@ -27,7 +31,7 @@ class APIClient {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let t = token { req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization") }
         if let b = body { req.httpBody = b }
-        return try await URLSession.shared.data(for: req)
+        return try await session.data(for: req)
     }
 
     func get<T: Decodable>(_ path: String) async throws -> T {
@@ -65,7 +69,7 @@ class APIClient {
                     if let t = token { req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization") }
                     req.httpBody = try JSONEncoder().encode(body)
 
-                    let (bytes, _) = try await URLSession.shared.bytes(for: req)
+                    let (bytes, _) = try await APIClient.shared.session.bytes(for: req)
                     for try await line in bytes.lines {
                         guard line.hasPrefix("data: ") else { continue }
                         let json = String(line.dropFirst(6))
@@ -95,6 +99,22 @@ class APIClient {
                 }
                 continuation.finish()
             }
+        }
+    }
+}
+
+/// Trusts self-signed certificates for local/Tailscale HTTPS
+class SelfSignedCertDelegate: NSObject, URLSessionDelegate {
+    func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+           let trust = challenge.protectionSpace.serverTrust {
+            completionHandler(.useCredential, URLCredential(trust: trust))
+        } else {
+            completionHandler(.performDefaultHandling, nil)
         }
     }
 }

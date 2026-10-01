@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import UIKit
 
 @Observable
 class CallViewModel {
@@ -10,6 +11,7 @@ class CallViewModel {
     var isListening = false
     var transcripts: [(role: String, text: String)] = []
     var showCaptions = false
+    var isSpeaker = true
 
     let voiceService = VoiceCallService()
     private var timer: Timer?
@@ -22,14 +24,20 @@ class CallViewModel {
         playRingTone()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            self.voiceService.connect(agentId: agentId, token: token, conversationId: conversationId)
+            self.voiceService.onReady = {
+                self.isConnected = true
+                self.status = "Connected"
+                self.startTimer()
+                self.startRecording()
+            }
             self.voiceService.onResponseDone = { text in
                 self.transcripts.append((role: "assistant", text: text))
             }
-            self.isConnected = true
-            self.status = "Connected"
-            self.startTimer()
-            self.startRecording()
+            self.voiceService.onError = { error in
+                self.status = "Error: \(error)"
+                self.isConnected = false
+            }
+            self.voiceService.connect(agentId: agentId, token: token, conversationId: conversationId)
         }
     }
 
@@ -56,8 +64,18 @@ class CallViewModel {
     }
 
     private func playRingTone() {
-        // Simple tone via system sound
-        AudioServicesPlaySystemSound(1007) // Standard ring
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            generator.impactOccurred()
+        }
+    }
+
+    func toggleSpeaker() {
+        isSpeaker.toggle()
+        do {
+            try AVAudioSession.sharedInstance().overrideOutputAudioPort(isSpeaker ? .speaker : .none)
+        } catch { /* ignore */ }
     }
 
     func startRecording() {
@@ -65,32 +83,59 @@ class CallViewModel {
         audioEngine = AVAudioEngine()
         guard let engine = audioEngine else { return }
         let input = engine.inputNode
-        let format = input.outputFormat(forBus: 0)
-
-        input.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, _ in
-            guard let self, self.isListening else { return }
-            // Convert buffer to Data and send
-            let pcm = buffer.floatChannelData?[0]
-            let count = Int(buffer.frameLength)
-            guard let pcm else { return }
-            var int16 = [Int16](repeating: 0, count: count)
-            for i in 0..<count {
-                int16[i] = Int16(max(-1, min(1, pcm[i])) * Float(Int16.max))
-            }
-            let data = Data(bytes: int16, count: count * 2)
-            let b64 = data.base64EncodedString()
-            self.voiceService.sendAudio(base64: b64)
-        }
 
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat)
+            try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
             try AVAudioSession.sharedInstance().setActive(true)
+
+            // CRITICAL: Enable hardware echo cancellation so agent doesn't hear itself
+            try input.setVoiceProcessingEnabled(true)
+
+            let inputFormat = input.outputFormat(forBus: 0)
+
+            // Target format: 24kHz PCM16 Mono — what Azure Realtime API expects
+            guard let targetFormat = AVAudioFormat(commonFormat: .pcmFormatInt16,
+                                                    sampleRate: 24000,
+                                                    channels: 1,
+                                                    interleaved: true),
+                  let converter = AVAudioConverter(from: inputFormat, to: targetFormat) else {
+                status = "Audio format error"
+                return
+            }
+
+            // Stream directly from tap — no timer, no buffering
+            input.installTap(onBus: 0, bufferSize: 2400, format: inputFormat) { [weak self] buffer, _ in
+                guard let self, self.isListening else { return }
+
+                let capacity = AVAudioFrameCount(targetFormat.sampleRate / inputFormat.sampleRate * Double(buffer.frameLength))
+                guard let targetBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: capacity) else { return }
+
+                var error: NSError?
+                let inputBlock: AVAudioConverterInputBlock = { _, outStatus in
+                    outStatus.pointee = .haveData
+                    return buffer
+                }
+
+                converter.convert(to: targetBuffer, error: &error, withInputFrom: inputBlock)
+
+                if error == nil, let channelData = targetBuffer.int16ChannelData {
+                    let count = Int(targetBuffer.frameLength)
+                    let data = Data(bytes: channelData[0], count: count * 2)
+                    if data.count > 100 {
+                        let b64 = data.base64EncodedString()
+                        self.voiceService.sendAudio(base64: b64, sampleRate: 24000)
+                    }
+                }
+            }
+
             try engine.start()
             isRecording = true
             isListening = true
             status = "Listening..."
         } catch {
-            status = "Mic error"
+            status = "Mic unavailable: \(error.localizedDescription)"
+            audioEngine?.inputNode.removeTap(onBus: 0)
+            audioEngine = nil
         }
     }
 
