@@ -3,6 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { clearAuth, username } from '$lib/stores/auth';
 	import { theme, toggleTheme } from '$lib/stores/theme';
+	import { onMount } from 'svelte';
+	import { api } from '$lib/api/client';
 
 	interface ConvItem { id: string; title: string; conversation_type: string; updated_at?: string; }
 
@@ -17,10 +19,21 @@
 	const currentPath = $derived($page.url.pathname);
 	let editingId = $state('');
 	let editTitle = $state('');
+	let sidebarAgents = $state<{id: string; name: string}[]>([]);
 
+	const allAgents = $derived(agents.length > 0 ? agents : sidebarAgents);
 	const chats = $derived(conversations.filter(c => c.conversation_type === 'chat'));
 	const calls = $derived(conversations.filter(c => c.conversation_type === 'call'));
-	const defaultAgentId = $derived(agents.length > 0 ? agents[0].id : 'default');
+	const defaultAgentId = $derived(allAgents.length > 0 ? allAgents[0].id : '');
+
+	onMount(async () => {
+		// If no agents passed as props, fetch them
+		if (agents.length === 0) {
+			try {
+				sidebarAgents = await api<{id: string; name: string}[]>('/agents');
+			} catch { /* ignore */ }
+		}
+	});
 
 	function isActive(path: string): boolean {
 		return currentPath === path || currentPath.startsWith(path + '/');
