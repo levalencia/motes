@@ -78,13 +78,51 @@ class Notification(Base):
 # ── Pattern extraction from messages ─────────────────────────────
 
 TOPIC_KEYWORDS: dict[str, list[str]] = {
-    "weather": ["weather", "temperature", "forecast", "rain", "sunny"],
-    "email": ["email", "inbox", "unread", "gmail", "send email", "mail"],
-    "calendar": ["calendar", "meeting", "schedule", "appointment", "event"],
-    "news": ["news", "latest", "headlines", "what happened"],
-    "files": ["file", "document", "pptx", "powerpoint", "pdf", "folder"],
-    "search": ["search", "google", "look up", "find out", "web search"],
-    "time": ["time", "what time", "date", "clock"],
+    "weather": [
+        "weather", "temperature", "forecast", "rain", "sunny", "cold", "hot",
+        "clima", "temperatura", "pronóstico", "lluvia", "soleado", "frío", "calor",
+        "météo", "température", "prévisions", "pluie",
+    ],
+    "email": [
+        "email", "inbox", "unread", "gmail", "send email", "mail", "outlook",
+        "correo", "correos", "bandeja", "enviar correo",
+        "courriel", "boîte de réception",
+    ],
+    "calendar": [
+        "calendar", "meeting", "schedule", "appointment", "event", "agenda",
+        "calendario", "reunión", "cita", "evento", "horario",
+        "calendrier", "réunion", "rendez-vous",
+    ],
+    "news": [
+        "news", "latest", "headlines", "what happened", "today's news",
+        "noticias", "últimas noticias", "qué pasó", "novedades",
+        "actualités", "nouvelles",
+    ],
+    "files": [
+        "file", "document", "pptx", "powerpoint", "pdf", "folder",
+        "archivo", "documento", "carpeta",
+        "fichier", "dossier",
+    ],
+    "search": [
+        "search", "google", "look up", "find out", "web search",
+        "buscar", "busca", "busqueda",
+        "chercher", "recherche",
+    ],
+    "time": [
+        "time", "what time", "date", "clock",
+        "hora", "qué hora", "fecha",
+        "heure", "quelle heure",
+    ],
+    "reminders": [
+        "reminder", "remind", "remember", "todo", "task",
+        "recuerda", "recordar", "recordatorio", "tarea",
+        "rappel", "rappeler",
+    ],
+    "maps": [
+        "directions", "navigate", "how to get", "route", "distance",
+        "cómo llego", "direcciones", "ruta", "distancia",
+        "itinéraire", "comment aller",
+    ],
 }
 
 

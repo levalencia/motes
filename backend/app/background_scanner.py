@@ -22,6 +22,7 @@ logger = structlog.get_logger()
 
 # Track notified email IDs to avoid duplicates (per-process, cleared on restart)
 _notified_email_ids: set[str] = set()
+_notified_patterns: set[str] = set()  # "user_id:topic:hour" — fires once per hour
 
 
 async def _notify(
@@ -193,33 +194,85 @@ async def check_patterns(
         if pattern.pattern_type != "time_action":
             continue
         if pattern.frequency < 3:
-            continue  # Only suggest frequent actions
+            continue  # Only trigger on frequent actions
 
         key_parts = pattern.pattern_key.split("_h")
         if len(key_parts) == 2:
             topic = key_parts[0]
             pattern_hour = int(key_parts[1])
             if pattern_hour == hour:
-                suggestions = {
-                    "email": "You usually check emails now. Want me to show your inbox?",
-                    "calendar": "You often check your calendar now. Show today's events?",
-                    "news": "Time for your news catch-up. Want the latest?",
-                    "weather": "Time for your weather check!",
-                    "search": "You often search around now. Anything to find?",
-                }
-                if topic in suggestions:
+                # Dedup: only fire once per user/topic/hour
+                dedup_key = f"{user_id}:{topic}:{hour}"
+                if dedup_key in _notified_patterns:
+                    continue
+                # Actually execute the tool and deliver results
+                result = await _execute_proactive_tool(topic)
+                if result:
                     await _notify(
                         session, event_bus, user_id, agent_id,
-                        title=f"💡 {topic.title()} time",
-                        body=suggestions[topic],
-                        category="suggestion",
+                        title=result["title"],
+                        body=result["body"],
+                        category=topic,
                     )
+                    _notified_patterns.add(dedup_key)
                     logger.info(
-                        "scanner_pattern_suggestion",
+                        "scanner_pattern_executed",
                         user_id=user_id,
                         topic=topic,
                         hour=hour,
                     )
+
+
+async def _execute_proactive_tool(topic: str) -> dict | None:
+    """Execute a tool proactively based on the topic pattern."""
+    try:
+        if topic == "weather":
+            from app.weather_tool import WeatherTool
+
+            tool = WeatherTool()
+            result = await tool.execute({"location": "auto"})
+            import json
+
+            data = json.loads(result)
+            temp = data.get("current_temperature", "?")
+            desc = data.get("description", "")
+            return {
+                "title": f"🌤️ Weather: {temp}°C",
+                "body": desc[:200] if desc else f"Current temperature: {temp}°C",
+            }
+
+        elif topic == "news":
+            from app.news_tool import NewsTool
+
+            tool = NewsTool()
+            result = await tool.execute({"query": "top news today"})
+            import json
+
+            data = json.loads(result)
+            headlines = data.get("articles", data.get("results", []))
+            if isinstance(headlines, list) and headlines:
+                top3 = headlines[:3]
+                body = "\n".join(
+                    f"• {h.get('title', h) if isinstance(h, dict) else h}"
+                    for h in top3
+                )
+                return {"title": "📰 Your daily news", "body": body[:300]}
+
+        elif topic == "email":
+            return {
+                "title": "📧 Email time",
+                "body": "You usually check your email now. Say 'read my email' to catch up.",
+            }
+
+        elif topic == "calendar":
+            return {
+                "title": "📅 Calendar check",
+                "body": "You often check your schedule now. Say 'what's on my calendar today?' to see events.",
+            }
+
+    except Exception:
+        pass
+    return None
 
 
 async def run_scanner(
