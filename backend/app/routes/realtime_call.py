@@ -117,7 +117,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                 "conversation_id": conversation.id,
             })
 
-            # Build context from previous messages in this conversation
+            # Build context from the unified thread (includes chat, calls, proactive)
             prev_msgs = await session.execute(
                 select(Message)
                 .where(Message.conversation_id == conversation.id)
@@ -126,10 +126,18 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
             prev_history = prev_msgs.scalars().all()
             context_summary = ""
             if prev_history:
-                recent = prev_history[-10:]  # Last 10 messages
-                context_summary = "\n\nPrevious conversation context:\n"
+                recent = prev_history[-20:]  # Last 20 messages for full context
+                context_summary = "\n\nConversation history (chat + calls + notifications):\n"
                 for m in recent:
-                    context_summary += f"- {m.role}: {m.content[:150]}\n"
+                    prefix = ""
+                    mt = getattr(m, "message_type", "chat")
+                    if mt == "call":
+                        prefix = "📞 "
+                    elif mt == "proactive":
+                        prefix = "💡 "
+                    elif mt == "system":
+                        prefix = "⚙️ "
+                    context_summary += f"- {prefix}{m.role}: {m.content[:200]}\n"
 
             # If no realtime key, fall back to pipeline mode
             if not realtime_key:
