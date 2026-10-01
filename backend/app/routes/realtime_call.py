@@ -59,6 +59,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
             return
 
         user_id = payload["sub"]
+        user_name = payload.get("username", "friend")
 
         logger.info("realtime_call_auth_ok", user_id=user_id)
 
@@ -180,7 +181,15 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                     "type": "session.update",
                     "session": {
                         "type": "realtime",
-                        "instructions": agent.system_prompt + context_summary,
+                        "instructions": (
+                            f"You are Motes, a friendly AI assistant on a voice call. "
+                            f"The user's name is {user_name}. "
+                            f"Start the call with a warm greeting using their name. "
+                            f"Keep responses conversational and concise (under 5 seconds). "
+                            f"If the user switches languages, follow them. "
+                            + agent.system_prompt
+                            + context_summary
+                        ),
                         "audio": {
                             "input": {
                                 "format": {
@@ -216,6 +225,11 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                     "realtime_call_first_event",
                     event_type=first_event.get('type', 'unknown'),
                 )
+
+                # Trigger the agent to greet the user first
+                await azure_ws.send(json.dumps({
+                    "type": "response.create",
+                }))
 
                 # Three tasks: client→azure, azure→client, proactive→client
                 async def proactive_to_client():

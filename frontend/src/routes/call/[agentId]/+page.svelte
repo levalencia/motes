@@ -20,6 +20,28 @@
 	let socket: WebSocket | null = null;
 	let micStream: MediaStream | null = null;
 
+	async function playRingTone(): Promise<void> {
+		const ctx = new AudioContext();
+		// Two ring tones like a phone
+		for (let ring = 0; ring < 2; ring++) {
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
+			osc.connect(gain);
+			gain.connect(ctx.destination);
+			osc.frequency.value = 440;
+			gain.gain.value = 0.15;
+			osc.start();
+			// Ring for 0.4s
+			await new Promise(r => setTimeout(r, 400));
+			osc.stop();
+			// Pause 0.3s between rings
+			if (ring < 1) await new Promise(r => setTimeout(r, 300));
+		}
+		// Brief pause before "answering"
+		await new Promise(r => setTimeout(r, 500));
+		ctx.close();
+	}
+
 	function writeString(view: DataView, offset: number, str: string) {
 		for (let i = 0; i < str.length; i++) {
 			view.setUint8(offset + i, str.charCodeAt(i));
@@ -59,11 +81,15 @@
 		socket = new WebSocket(`ws://localhost:8001/api/realtime-call/${agentId}`);
 
 		socket.onopen = () => {
-			socket!.send(JSON.stringify({
-				type: 'auth',
-				token,
-				conversation_id: conversationId,
-			}));
+			status = 'Ringing...';
+			// Play ring tone, then send auth after 2 rings
+			playRingTone().then(() => {
+				socket!.send(JSON.stringify({
+					type: 'auth',
+					token,
+					conversation_id: conversationId,
+				}));
+			});
 		};
 
 		socket.onmessage = async (event) => {
@@ -301,7 +327,10 @@
 	{/if}
 
 	<!-- Mascot -->
-	<img src="/mascot.png" alt="Motes" class="w-32 h-32 object-contain mb-4 {speaking ? 'animate-bounce' : 'mascot-float'}" style="animation-duration: {speaking ? '1s' : '4s'};" />
+	<img src="/mascot.png" alt="Motes"
+		class="w-32 h-32 object-contain mb-4 {speaking ? 'animate-bounce' : status === 'Ringing...' ? '' : 'mascot-float'}"
+		style="animation-duration: {speaking ? '1s' : '4s'}; {status === 'Ringing...' ? 'animation: mascot-float 1s ease-in-out infinite;' : ''}"
+	/>
 
 	<h1 class="text-2xl font-semibold mb-1">{agentName}</h1>
 	<p class="text-sm mb-2" style="color: var(--text-secondary);">{status}</p>

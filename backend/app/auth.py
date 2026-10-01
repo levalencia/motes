@@ -47,11 +47,12 @@ def verify_password(password: str, encoded: str) -> bool:
         return False
 
 
-def create_jwt(user_id: str, secret: str) -> str:
+def create_jwt(user_id: str, secret: str, username: str = "") -> str:
     """Create a signed JWT for the given user."""
     now = datetime.now(UTC)
     payload = {
         "sub": user_id,
+        "username": username,
         "iat": now,
         "exp": now + _JWT_EXPIRY,
     }

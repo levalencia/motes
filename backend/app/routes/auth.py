@@ -50,7 +50,7 @@ async def setup(
         user = await setup_first_user(session, body.username, body.password)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from None
-    token = create_jwt(user.id, settings.secret_key)
+    token = create_jwt(user.id, settings.secret_key, user.username)
     return TokenResponse(token=token, user_id=user.id, username=user.username)
 
 
@@ -64,5 +64,5 @@ async def login(
     user = await authenticate(session, body.username, body.password)
     if user is None:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = create_jwt(user.id, settings.secret_key)
+    token = create_jwt(user.id, settings.secret_key, user.username)
     return TokenResponse(token=token, user_id=user.id, username=user.username)
