@@ -243,6 +243,16 @@
 		} catch { playingTTS = null; }
 	}
 
+	function formatTime(iso: string): string {
+		if (!iso) return '';
+		const d = new Date(iso);
+		const now = new Date();
+		const isToday = d.toDateString() === now.toDateString();
+		const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+		if (isToday) return time;
+		return `${d.toLocaleDateString([], { day: 'numeric', month: 'short' })} ${time}`;
+	}
+
 	function getMessageStyle(msg: ThreadMessage): { prefix: string; bgClass: string; textClass: string; isSystem: boolean } {
 		switch (msg.message_type) {
 			case 'call':
@@ -313,8 +323,13 @@
 					{:else if msg.role === 'user'}
 						<!-- User message -->
 						<div class="flex justify-end">
-							<div class="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-tr-md text-[15px]" style="background: var(--accent); color: white;">
-								{msg.content}
+							<div class="max-w-[80%]">
+								<div class="px-4 py-2.5 rounded-2xl text-[15px] leading-relaxed" style="background: var(--accent); color: white;">
+									{msg.content}
+								</div>
+								<div class="text-right mt-0.5">
+									<span class="text-[10px]" style="color: var(--text-muted);">{formatTime(msg.created_at)}</span>
+								</div>
 							</div>
 						</div>
 					{:else if msg.role === 'tool'}
@@ -348,7 +363,7 @@
 									</div>
 								{/if}
 								{#if !streaming && msg.content && msg.role === 'assistant'}
-									<div class="flex items-center gap-3 mt-2">
+									<div class="flex items-center gap-3 mt-1.5">
 										<button
 											onclick={() => playTTS(msg.content, msg.id)}
 											class="text-xs flex items-center gap-1 transition-opacity hover:opacity-70"
@@ -356,6 +371,7 @@
 										>
 											{playingTTS === msg.id ? '⏹ Stop' : '🔊 Listen'}
 										</button>
+										<span class="text-[10px]" style="color: var(--text-muted);">{formatTime(msg.created_at)}</span>
 									</div>
 								{/if}
 							</div>
