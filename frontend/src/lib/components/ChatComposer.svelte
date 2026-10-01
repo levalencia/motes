@@ -40,7 +40,7 @@
 	});
 </script>
 
-<div class="w-full max-w-[var(--content-max)] mx-auto px-4 pb-4 md:pb-6">
+<div class="w-full max-w-[var(--content-max)] mx-auto px-3 pb-2 md:px-4 md:pb-6" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
 	<div
 		class="flex items-end gap-2 px-4 py-3 rounded-3xl transition-shadow duration-200"
 		style="background: var(--bg-composer); border: 1px solid var(--border); box-shadow: var(--shadow-md);"

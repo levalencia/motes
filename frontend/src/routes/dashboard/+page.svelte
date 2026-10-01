@@ -53,7 +53,7 @@
 <MobileDrawer bind:open={drawerOpen} />
 
 <!-- Main -->
-<main class="h-dvh flex flex-col md:ml-[var(--sidebar-width)] overflow-hidden" style="background: var(--bg-app);">
+<main class="flex flex-col md:ml-[var(--sidebar-width)] overflow-hidden md:h-dvh" style="background: var(--bg-app); height: calc(100dvh - 49px);">
 	{#if loading}
 		<div class="flex-1 flex items-center justify-center">
 			<div class="stream-dot w-3 h-3 rounded-full" style="background: var(--accent);"></div>
@@ -63,8 +63,8 @@
 		<div class="flex-1 flex flex-col">
 			<WelcomeScreen onSend={handleSend} />
 
-			<!-- Stats cards -->
-			<div class="max-w-lg mx-auto w-full px-4 pb-8 grid grid-cols-3 gap-3">
+			<!-- Stats cards (desktop only) -->
+			<div class="hidden md:grid max-w-lg mx-auto w-full px-4 pb-8 grid-cols-3 gap-3">
 				<a href="/agents" class="px-4 py-3 rounded-2xl text-center transition-all duration-200 hover:-translate-y-0.5" style="background: var(--bg-card); border: 1px solid var(--border);">
 					<div class="text-2xl font-semibold" style="color: var(--text-primary);">{agents.length}</div>
 					<div class="text-xs mt-0.5" style="color: var(--text-muted);">Agents</div>
