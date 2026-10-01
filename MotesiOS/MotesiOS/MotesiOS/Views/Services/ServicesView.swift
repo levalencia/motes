@@ -1,0 +1,62 @@
+import SwiftUI
+
+struct ServicesView: View {
+    @State private var vm = ServicesViewModel()
+    @State private var configuringService = ""
+    @State private var keyInputs: [String: String] = [:]
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(vm.catalog) { item in
+                    let isBuiltIn = item.built_in == true
+                    let isComingSoon = item.coming_soon == true
+                    let key = item.name.lowercased()
+                    let isConfigured = vm.serviceStatuses[key] == true
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(item.name)
+                                .font(.subheadline.bold())
+                            Spacer()
+                            if isBuiltIn {
+                                Text("Active")
+                                    .font(.caption2)
+                                    .foregroundStyle(MotesTheme.teal)
+                            } else if isConfigured {
+                                Text("Connected")
+                                    .font(.caption2)
+                                    .foregroundStyle(.green)
+                            } else if isComingSoon {
+                                Text("Coming soon")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Text(item.description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        if !isBuiltIn && !isComingSoon {
+                            if let envVars = item.env_vars, !envVars.isEmpty {
+                                if isConfigured {
+                                    Button("Disconnect", role: .destructive) {
+                                        Task { await vm.disconnect(service: key) }
+                                    }
+                                    .font(.caption)
+                                } else {
+                                    Button("Setup") { configuringService = key }
+                                        .font(.caption)
+                                        .tint(MotesTheme.accent)
+                                }
+                            }
+                        }
+                    }
+                    .opacity(isComingSoon ? 0.5 : 1)
+                }
+            }
+            .navigationTitle("Services")
+            .task { await vm.loadData() }
+        }
+    }
+}
