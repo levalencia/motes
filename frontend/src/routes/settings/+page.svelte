@@ -27,6 +27,84 @@
 	let realtimeConfigured = $state(false);
 	let realtimeSaving = $state(false);
 
+	// Agent personality state
+	let agentId = $state('');
+	let agentName = $state('Motes');
+	let systemPrompt = $state('');
+	let voicePersonality = $state('');
+	let personalitySaving = $state(false);
+	let personalitySaved = $state(false);
+
+	const personalityPresets: Record<string, { label: string; emoji: string; prompt: string; voice: string }> = {
+		friendly: {
+			label: 'Friendly Assistant',
+			emoji: '😊',
+			prompt: 'You are Motes, a warm and friendly AI assistant. You are helpful, encouraging, and use casual language. You remember things about the user and bring them up naturally.',
+			voice: '',
+		},
+		professional: {
+			label: 'Professional',
+			emoji: '💼',
+			prompt: 'You are Motes, a concise professional assistant. Be direct, efficient, and actionable. Use bullet points when listing items. No small talk unless the user initiates.',
+			voice: '',
+		},
+		spanish_paisa: {
+			label: 'Paisa Colombiano',
+			emoji: '🇨🇴',
+			prompt: 'Eres Motes, un asistente personal amigable con estilo paisa colombiano. Siempre respondes en español con tono cálido, cercano y coloquial. Usas expresiones paisas cuando es natural. Recuerdas lo que el usuario te dice.',
+			voice: 'Colombian paisa Spanish accent, warm and casual',
+		},
+		french: {
+			label: 'Français',
+			emoji: '🇫🇷',
+			prompt: 'Tu es Motes, un assistant personnel sympathique. Tu réponds toujours en français avec un ton chaleureux et professionnel. Tu te souviens des détails personnels de l\'utilisateur.',
+			voice: 'Native French accent, warm and professional',
+		},
+		bilingual: {
+			label: 'Bilingual ES/EN',
+			emoji: '🌍',
+			prompt: 'You are Motes, a bilingual assistant. Detect the user\'s language and respond in that language. Switch seamlessly between English and Spanish. Be warm and helpful.',
+			voice: '',
+		},
+		sarcastic: {
+			label: 'Witty & Sarcastic',
+			emoji: '😏',
+			prompt: 'You are Motes, a witty assistant with a dry sense of humor. You\'re helpful but add clever observations and light sarcasm. Never mean — just entertaining. Get the job done with personality.',
+			voice: '',
+		},
+	};
+
+	function applyPersonalityPreset(key: string) {
+		const p = personalityPresets[key];
+		if (p) {
+			systemPrompt = p.prompt;
+			if (p.voice) voicePersonality = p.voice;
+		}
+	}
+
+	async function savePersonality() {
+		personalitySaving = true;
+		personalitySaved = false;
+		try {
+			if (agentId) {
+				await api(`/agents/${agentId}/personality`, {
+					method: 'PUT',
+					body: JSON.stringify({ name: agentName, system_prompt: systemPrompt }),
+				});
+			}
+			await api('/voice/voice-personality', {
+				method: 'POST',
+				body: JSON.stringify({ personality: voicePersonality }),
+			});
+			personalitySaved = true;
+			setTimeout(() => personalitySaved = false, 3000);
+		} catch (e: any) {
+			error = e.message;
+		} finally {
+			personalitySaving = false;
+		}
+	}
+
 	// Form state
 	let name = $state('OpenAI Voice');
 	let providerType = $state('openai');
@@ -74,6 +152,15 @@
 			const rtConfig = await api<{ realtime_url: string; has_key: boolean }>('/voice/realtime-config');
 			realtimeUrl = rtConfig.realtime_url;
 			realtimeConfigured = rtConfig.has_key;
+			// Load agent personality
+			const agents = await api<{ id: string; name: string }[]>('/agents');
+			if (agents.length > 0) {
+				agentId = agents[0].id;
+				const personality = await api<{ name: string; system_prompt: string; voice_personality: string }>(`/agents/${agentId}/personality`);
+				agentName = personality.name;
+				systemPrompt = personality.system_prompt;
+				voicePersonality = personality.voice_personality || '';
+			}
 		} catch (e: any) {
 			if (e?.message?.includes('401')) goto('/login');
 		} finally {
@@ -159,6 +246,66 @@
 			{#if error && !showForm}
 				<div class="bg-red-950 border border-red-900 rounded-lg px-4 py-3 mb-6 text-sm text-red-400">{error}</div>
 			{/if}
+
+			<!-- Agent Personality -->
+			<div class="mb-8">
+				<h2 class="text-lg font-semibold mb-4">🎭 Agent Personality</h2>
+				<div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+					<p class="text-gray-400 text-sm mb-4">Choose a preset or customize how Motes talks and behaves.</p>
+
+					<!-- Preset grid -->
+					<div class="grid grid-cols-3 gap-2 mb-5">
+						{#each Object.entries(personalityPresets) as [key, preset]}
+							<button
+								onclick={() => applyPersonalityPreset(key)}
+								class="p-3 rounded-lg text-left border transition-colors {systemPrompt === preset.prompt ? 'bg-blue-900/30 border-blue-500' : 'bg-gray-800 border-gray-700 hover:border-gray-600'}"
+							>
+								<span class="text-xl">{preset.emoji}</span>
+								<p class="text-sm font-medium mt-1">{preset.label}</p>
+							</button>
+						{/each}
+					</div>
+
+					<!-- Custom fields -->
+					<div class="space-y-4">
+						<div>
+							<label for="agent-name" class="block text-sm text-gray-300">Agent Name</label>
+							<input id="agent-name" bind:value={agentName} class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white" />
+						</div>
+						<div>
+							<label for="sys-prompt" class="block text-sm text-gray-300">System Prompt</label>
+							<textarea
+								id="sys-prompt"
+								bind:value={systemPrompt}
+								rows="4"
+								placeholder="Describe how Motes should behave, what language to use, personality traits..."
+								class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-600"
+							></textarea>
+						</div>
+						<div>
+							<label for="voice-pers" class="block text-sm text-gray-300">Voice Accent (for calls)</label>
+							<input
+								id="voice-pers"
+								bind:value={voicePersonality}
+								placeholder="e.g., Colombian paisa Spanish, warm and casual"
+								class="w-full mt-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-600"
+							/>
+						</div>
+					</div>
+					<div class="flex items-center gap-3 mt-4">
+						<button
+							onclick={savePersonality}
+							disabled={personalitySaving}
+							class="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-lg text-sm font-medium"
+						>
+							{personalitySaving ? 'Saving...' : 'Save Personality'}
+						</button>
+						{#if personalitySaved}
+							<span class="text-green-400 text-sm">✓ Saved!</span>
+						{/if}
+					</div>
+				</div>
+			</div>
 
 			{#if showForm}
 				<div class="bg-gray-900 border border-blue-500/30 rounded-xl p-6 mb-8">
