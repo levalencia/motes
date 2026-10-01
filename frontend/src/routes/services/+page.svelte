@@ -200,9 +200,11 @@
 		// Load service key statuses
 		try {
 			const statuses = await api<{service: string; configured: boolean}[]>('/service-keys');
+			const newStatuses: Record<string, boolean> = {};
 			for (const s of statuses) {
-				serviceStatuses[s.service] = s.configured;
+				newStatuses[s.service] = s.configured;
 			}
+			serviceStatuses = newStatuses;
 		} catch {
 			// Non-critical
 		}
@@ -408,6 +410,39 @@
 										Disconnect
 									</button>
 								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			<!-- Connected API-key services -->
+			{#if Object.entries(serviceStatuses).filter(([_, v]) => v).length > 0}
+				<div class="mb-10">
+					<h2 class="text-lg font-semibold mb-4" style="color: var(--text-primary);">
+						Connected via API Key ({Object.values(serviceStatuses).filter(v => v).length})
+					</h2>
+					<div class="space-y-3">
+						{#each Object.entries(serviceStatuses).filter(([_, v]) => v) as [svc, _]}
+							<div class="rounded-xl p-4 flex items-center justify-between" style="background: var(--bg-card); border: 1px solid var(--border);">
+								<div class="flex items-center gap-3">
+									<div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style="background: #10B98120; border: 1px solid #10B98140;">
+										🟢
+									</div>
+									<div>
+										<h3 class="font-medium capitalize" style="color: var(--text-primary);">{svc}</h3>
+										<p class="text-xs" style="color: var(--text-muted);">API key configured</p>
+									</div>
+								</div>
+								<button
+									onclick={async () => {
+										await api(`/service-keys/${svc}`, { method: 'DELETE' });
+										serviceStatuses = { ...serviceStatuses, [svc]: false };
+									}}
+									class="text-xs px-2 py-1 rounded" style="color: #EF4444; border: 1px solid #EF444440;"
+								>
+									Disconnect
+								</button>
 							</div>
 						{/each}
 					</div>
