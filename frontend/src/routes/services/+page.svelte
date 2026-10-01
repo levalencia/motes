@@ -74,21 +74,26 @@
 		}
 
 		try {
-			const [svc, conn, apps, cat] = await Promise.all([
+			const [svc, conn, apps] = await Promise.all([
 				api<OAuthService[]>('/oauth/services'),
 				api<ConnectedService[]>('/oauth/connected'),
 				api<OAuthApp[]>('/oauth/apps'),
-				api<CatalogEntry[]>('/mcp/catalog'),
 			]);
 			services = svc;
 			connected = conn;
 			oauthApps = apps;
-			catalog = cat;
 		} catch (e: any) {
 			if (e?.message?.includes('401')) goto('/login');
-		} finally {
-			loading = false;
 		}
+
+		// Load catalog separately (doesn't need OAuth to be configured)
+		try {
+			catalog = await api<CatalogEntry[]>('/mcp/catalog');
+		} catch {
+			// Catalog is non-critical
+		}
+
+		loading = false;
 	});
 
 	async function connectService(provider: string, service: string) {
