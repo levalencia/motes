@@ -47,9 +47,6 @@ struct ChatView: View {
                     onMicStop: { vm.stopDictation() }
                 )
             }
-#if os(macOS)
-            .navigationTitle("Motes")
-#endif
             .toolbar {
 #if os(iOS)
                 ToolbarItem(placement: .principal) {
@@ -75,19 +72,26 @@ struct ChatView: View {
 
 #if os(iOS)
                 ToolbarItem(placement: .topBarTrailing) {
-                    if !vm.agentId.isEmpty {
-                        NavigationLink(destination: CallView(agentId: vm.agentId)) {
-                            Image(systemName: "phone.fill")
-                                .foregroundStyle(Color.green)
+                    HStack(spacing: 12) {
+                        // Clear thread
+                        if !vm.messages.isEmpty {
+                            Button {
+                                Task { await vm.clearThread() }
+                            } label: {
+                                Image(systemName: "trash")
+                                    .foregroundStyle(.red.opacity(0.7))
+                            }
                         }
                     }
                 }
 #else
                 ToolbarItem(placement: .primaryAction) {
-                    if !vm.agentId.isEmpty {
-                        NavigationLink(destination: CallView(agentId: vm.agentId)) {
-                            Image(systemName: "phone.fill")
-                                .foregroundStyle(Color.green)
+                    if !vm.messages.isEmpty {
+                        Button {
+                            Task { await vm.clearThread() }
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundStyle(.red.opacity(0.7))
                         }
                     }
                 }

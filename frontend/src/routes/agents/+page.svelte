@@ -95,12 +95,12 @@
 			<div class="space-y-3">
 				{#each agents as agent}
 					<div class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex justify-between items-center">
-						<a href="/chat/{agent.id}" class="flex-1">
+						<a href="/dashboard" class="flex-1">
 							<h3 class="font-semibold">{agent.name}</h3>
 							<p class="text-gray-400 text-sm">{agent.model || agent.provider_name || 'Unknown'}</p>
 						</a>
 						<div class="flex items-center gap-3">
-							<a href="/chat/{agent.id}" class="text-blue-400 hover:text-blue-300 text-sm">Chat →</a>
+							<a href="/dashboard" class="text-blue-400 hover:text-blue-300 text-sm">Open →</a>
 							<button onclick={() => handleDelete(agent.id)} class="text-red-400 hover:text-red-300 text-sm">Delete</button>
 						</div>
 					</div>

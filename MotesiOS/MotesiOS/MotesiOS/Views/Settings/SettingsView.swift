@@ -17,6 +17,16 @@ let personalityPresets: [PersonalityPreset] = [
     .init(id: "sarcastic", emoji: "😏", label: "Witty", prompt: "You are Motes, a witty assistant with a dry sense of humor. You're helpful but add clever observations and light sarcasm. Never mean — just entertaining.", voice: ""),
 ]
 
+private let proactiveIntervals: [(label: String, minutes: Int)] = [
+    ("15 min", 15),
+    ("30 min", 30),
+    ("1 hour", 60),
+    ("2 hours", 120),
+    ("4 hours", 240),
+    ("8 hours", 480),
+    ("24 hours", 1440),
+]
+
 struct SettingsView: View {
     @Bindable var authVM: AuthViewModel
     @State private var voicePersonality = ""
@@ -27,6 +37,11 @@ struct SettingsView: View {
     @State private var agentId = ""
     @State private var saved = false
     @State private var selectedPreset = ""
+
+    // Proactive Intelligence
+    @State private var proactiveEnabled = false
+    @State private var proactiveInterval = 60
+    @State private var proactiveSaved = false
 
     var body: some View {
         NavigationStack {
@@ -89,6 +104,28 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("💡 Proactive Intelligence") {
+                    Toggle("Enabled", isOn: $proactiveEnabled)
+
+                    Picker("Check interval", selection: $proactiveInterval) {
+                        ForEach(proactiveIntervals, id: \.minutes) { item in
+                            Text(item.label).tag(item.minutes)
+                        }
+                    }
+
+                    Button {
+                        Task { await saveProactiveSettings() }
+                    } label: {
+                        HStack {
+                            Text("Save Proactive Settings")
+                            if proactiveSaved {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                            }
+                        }
+                    }
+                }
+
                 Section("Server") {
                     TextField("Tailscale URL", text: $authVM.serverURL)
                         .textContentType(.URL)
@@ -115,7 +152,10 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .task { await loadPersonality() }
+            .task {
+                await loadPersonality()
+                await loadProactiveSettings()
+            }
         }
     }
 
@@ -124,7 +164,6 @@ struct SettingsView: View {
             let agents: [Agent] = try await APIClient.shared.get("/api/agents")
             if let first = agents.first {
                 agentId = first.id
-                // Load personality (simple dict response)
                 let url = URL(string: "\(APIClient.shared.baseURL)/api/agents/\(agentId)/personality")!
                 var req = URLRequest(url: url)
                 if let t = APIClient.shared.token {
@@ -169,6 +208,44 @@ struct SettingsView: View {
 
             saved = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { saved = false }
+        } catch { /* ignore */ }
+    }
+
+    // MARK: - Proactive Settings
+
+    func loadProactiveSettings() async {
+        do {
+            let url = URL(string: "\(APIClient.shared.baseURL)/api/voice/proactive-settings")!
+            var req = URLRequest(url: url)
+            if let t = APIClient.shared.token {
+                req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
+            }
+            let (data, _) = try await APIClient.shared.session.data(for: req)
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                proactiveEnabled = json["enabled"] as? Bool ?? false
+                proactiveInterval = json["interval_minutes"] as? Int ?? 60
+            }
+        } catch { /* ignore */ }
+    }
+
+    func saveProactiveSettings() async {
+        do {
+            let url = URL(string: "\(APIClient.shared.baseURL)/api/voice/proactive-settings")!
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            if let t = APIClient.shared.token {
+                req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
+            }
+            let body: [String: Any] = [
+                "enabled": proactiveEnabled,
+                "interval_minutes": proactiveInterval,
+            ]
+            req.httpBody = try JSONSerialization.data(withJSONObject: body)
+            let _ = try await APIClient.shared.session.data(for: req)
+
+            proactiveSaved = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { proactiveSaved = false }
         } catch { /* ignore */ }
     }
 }

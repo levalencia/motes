@@ -11,6 +11,17 @@ enum ChatService {
         return APIClient.shared.streamSSE(path: "/api/agents/\(agentId)/chat", body: body)
     }
 
+    /// Load all messages in the single thread for an agent
+    static func loadThread(agentId: String) async throws -> [ChatMessage] {
+        try await APIClient.shared.get("/api/agents/\(agentId)/thread")
+    }
+
+    /// Clear the entire thread
+    static func clearThread(agentId: String) async throws {
+        try await APIClient.shared.delete("/api/agents/\(agentId)/thread")
+    }
+
+    // Legacy methods kept for compatibility
     static func loadConversations(agentId: String) async throws -> [Conversation] {
         try await APIClient.shared.get("/api/agents/\(agentId)/conversations")
     }

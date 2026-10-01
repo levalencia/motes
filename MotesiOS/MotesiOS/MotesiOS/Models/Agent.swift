@@ -19,4 +19,8 @@ struct ChatMessage: Codable, Identifiable {
     let role: String
     let content: String
     var tool_name: String?
+    var message_type: String?
+
+    /// Resolved type: defaults to "chat" if nil
+    var resolvedType: String { message_type ?? "chat" }
 }

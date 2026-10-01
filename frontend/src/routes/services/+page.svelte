@@ -3,9 +3,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { api } from '$lib/api/client';
-	import Sidebar from '$lib/components/Sidebar.svelte';
-	import MobileHeader from '$lib/components/MobileHeader.svelte';
-	import MobileDrawer from '$lib/components/MobileDrawer.svelte';
+	import TopNav from '$lib/components/TopNav.svelte';
 
 	interface CatalogEntry {
 		name: string;
@@ -22,7 +20,6 @@
 	let connectedOAuth = $state<string[]>([]);  // service names like 'gmail', 'calendar'
 	let serviceStatuses = $state<Record<string, boolean>>({});
 	let loading = $state(true);
-	let drawerOpen = $state(false);
 	let error = $state('');
 	let successMessage = $state('');
 	let configuringService = $state('');
@@ -116,13 +113,9 @@
 	});
 </script>
 
-<div class="hidden md:block">
-	<Sidebar />
-</div>
-<MobileHeader onMenu={() => { drawerOpen = true; }} />
-<MobileDrawer bind:open={drawerOpen} />
+<TopNav />
 
-<main class="min-h-dvh md:ml-[var(--sidebar-width)]" style="background: var(--bg-app);">
+<main class="min-h-dvh pt-14" style="background: var(--bg-app);">
 	{#if loading}
 		<div class="flex items-center justify-center min-h-[50vh]">
 			<div class="stream-dot w-3 h-3 rounded-full" style="background: var(--accent);"></div>

@@ -253,7 +253,7 @@
 			socket.send(JSON.stringify({ type: 'end' }));
 		}
 		cleanUp();
-		goto(`/chat/${agentId}`);
+		goto('/dashboard');
 	}
 
 	function cleanUp() {

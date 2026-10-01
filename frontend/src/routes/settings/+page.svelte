@@ -27,6 +27,21 @@
 	let realtimeConfigured = $state(false);
 	let realtimeSaving = $state(false);
 
+	// Proactive intelligence state
+	let proactiveEnabled = $state(false);
+	let proactiveInterval = $state(60);
+	let proactiveSaving = $state(false);
+	let proactiveSaved = $state(false);
+	const intervalOptions = [
+		{ value: 15, label: '15 min' },
+		{ value: 30, label: '30 min' },
+		{ value: 60, label: '1 hour' },
+		{ value: 120, label: '2 hours' },
+		{ value: 240, label: '4 hours' },
+		{ value: 480, label: '8 hours' },
+		{ value: 1440, label: '24 hours' },
+	];
+
 	// Agent personality state
 	let agentId = $state('');
 	let agentName = $state('Motes');
@@ -156,6 +171,12 @@
 			const rtConfig = await api<{ realtime_url: string; has_key: boolean }>('/voice/realtime-config');
 			realtimeUrl = rtConfig.realtime_url;
 			realtimeConfigured = rtConfig.has_key;
+			// Load proactive settings
+			try {
+				const ps = await api<{ enabled: boolean; interval_minutes: number }>('/voice/proactive-settings');
+				proactiveEnabled = ps.enabled;
+				proactiveInterval = ps.interval_minutes;
+			} catch { /* endpoint may not exist yet */ }
 			// Load agent personality
 			const agents = await api<{ id: string; name: string }[]>('/agents');
 			if (agents.length > 0) {
@@ -185,6 +206,23 @@
 			error = e.message;
 		} finally {
 			realtimeSaving = false;
+		}
+	}
+
+	async function handleSaveProactive() {
+		proactiveSaving = true;
+		proactiveSaved = false;
+		try {
+			await api('/voice/proactive-settings', {
+				method: 'POST',
+				body: JSON.stringify({ enabled: proactiveEnabled, interval_minutes: proactiveInterval }),
+			});
+			proactiveSaved = true;
+			setTimeout(() => proactiveSaved = false, 3000);
+		} catch (e: any) {
+			error = e.message;
+		} finally {
+			proactiveSaving = false;
 		}
 	}
 
@@ -232,7 +270,7 @@
 <div class="min-h-screen bg-gray-950 text-white">
 	<nav class="border-b border-gray-800 px-6 py-4 flex justify-between items-center">
 		<div class="flex items-center gap-4">
-			<a href="/dashboard" class="text-gray-400 hover:text-white">← Dashboard</a>
+			<a href="/dashboard" class="text-gray-400 hover:text-white">← Back</a>
 			<h1 class="text-xl font-bold">Voice Settings</h1>
 		</div>
 		<button
@@ -305,6 +343,63 @@
 							{personalitySaving ? 'Saving...' : 'Save Personality'}
 						</button>
 						{#if personalitySaved}
+							<span class="text-green-400 text-sm">✓ Saved!</span>
+						{/if}
+					</div>
+				</div>
+			</div>
+
+			<!-- Proactive Intelligence -->
+			<div class="mb-8">
+				<h2 class="text-lg font-semibold mb-4">💡 Proactive Intelligence</h2>
+				<div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+					<p class="text-gray-400 text-sm mb-4">
+						When enabled, Motes will periodically check your connected services and proactively push insights to your thread.
+					</p>
+
+					<!-- Enable toggle -->
+					<div class="flex items-center justify-between mb-5">
+						<div>
+							<p class="text-sm font-medium">Enable proactive messages</p>
+							<p class="text-xs text-gray-500 mt-0.5">Motes will send you insights without being asked</p>
+						</div>
+						<button
+							onclick={() => { proactiveEnabled = !proactiveEnabled; }}
+							class="relative w-11 h-6 rounded-full transition-colors duration-200"
+							style="background: {proactiveEnabled ? '#10B981' : '#374151'};"
+						>
+							<span
+								class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
+								style="transform: translateX({proactiveEnabled ? '20px' : '0'});"
+							></span>
+						</button>
+					</div>
+
+					<!-- Interval selector -->
+					<div class="mb-5">
+						<label for="proactive-interval" class="block text-sm text-gray-300 mb-2">Check interval</label>
+						<div class="flex flex-wrap gap-2">
+							{#each intervalOptions as opt}
+								<button
+									onclick={() => { proactiveInterval = opt.value; }}
+									class="px-3 py-1.5 rounded-lg text-sm transition-colors {proactiveInterval === opt.value ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}"
+									disabled={!proactiveEnabled}
+								>
+									{opt.label}
+								</button>
+							{/each}
+						</div>
+					</div>
+
+					<div class="flex items-center gap-3">
+						<button
+							onclick={handleSaveProactive}
+							disabled={proactiveSaving}
+							class="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-lg text-sm font-medium"
+						>
+							{proactiveSaving ? 'Saving...' : 'Save'}
+						</button>
+						{#if proactiveSaved}
 							<span class="text-green-400 text-sm">✓ Saved!</span>
 						{/if}
 					</div>

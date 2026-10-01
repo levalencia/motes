@@ -74,7 +74,37 @@ export const createAgent = (data: { name: string; provider_id: string; system_pr
 export const deleteAgent = (id: string) =>
 	api<void>(`/agents/${id}`, { method: 'DELETE' });
 
-// Conversations
+// Thread (single-thread model)
+export interface ThreadMessage {
+	id: string;
+	role: string;
+	content: string;
+	message_type: string;
+	created_at: string;
+}
+export interface Thread {
+	thread_id: string;
+	messages: ThreadMessage[];
+}
+export const getThread = (agentId: string) =>
+	api<Thread>(`/agents/${agentId}/thread`);
+export const clearThread = (agentId: string) =>
+	api<void>(`/agents/${agentId}/thread`, { method: 'DELETE' });
+
+// Proactive settings
+export interface ProactiveSettings {
+	enabled: boolean;
+	interval_minutes: number;
+}
+export const getProactiveSettings = () =>
+	api<ProactiveSettings>('/voice/proactive-settings');
+export const saveProactiveSettings = (settings: ProactiveSettings) =>
+	api<ProactiveSettings>('/voice/proactive-settings', {
+		method: 'POST',
+		body: JSON.stringify(settings)
+	});
+
+// Conversations (legacy — kept for compatibility)
 export interface Conversation {
 	id: string;
 	agent_id: string;
@@ -83,7 +113,7 @@ export interface Conversation {
 export const listConversations = (agentId: string) =>
 	api<Conversation[]>(`/agents/${agentId}/conversations`);
 
-// Messages
+// Messages (legacy)
 export interface Message {
 	id: string;
 	role: string;

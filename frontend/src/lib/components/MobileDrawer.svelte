@@ -9,7 +9,7 @@
 	let agentId = $state('');
 
 	const links = [
-		{ href: '/dashboard', label: 'Dashboard', icon: '🏠' },
+		{ href: '/dashboard', label: 'Home', icon: '🏠' },
 		{ href: '/services', label: 'Services', icon: '🔗' },
 		{ href: '/providers', label: 'Providers', icon: '🖥️' },
 		{ href: '/settings', label: 'Settings', icon: '⚙️' },
@@ -60,12 +60,12 @@
 		<nav class="flex-1 px-3 py-3 space-y-1">
 			{#if agentId}
 				<button
-					onclick={() => navigate(`/chat/${agentId}`)}
+					onclick={() => navigate('/dashboard')}
 					class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-left font-medium"
 					style="background: var(--accent); color: white;"
 				>
 					<span>💬</span>
-					<span>New Chat</span>
+					<span>Thread</span>
 				</button>
 				<button
 					onclick={() => navigate(`/call/${agentId}`)}
