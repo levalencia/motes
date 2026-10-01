@@ -110,19 +110,38 @@ async def run_agentic_proactive(
 
     # Run the agent with tools
     try:
-        from app.agent_loop import run_agent_sync
-        from app.config import decrypt_value
+        api_key = provider.api_key_encrypted  # stored as-is despite column name
 
-        api_key = decrypt_value(provider.api_key_encrypted)
-        response = await run_agent_sync(
-            base_url=provider.base_url,
-            api_key=api_key,
-            model=provider.model,
-            messages=messages,
-            tools=tool_registry,
-            temperature=0.3,
-            max_tokens=500,
-        )
+        if getattr(provider, "api_format", "openai") == "anthropic":
+            from app.agent_loop_anthropic import run_anthropic_stream
+
+            response = ""
+            async for event in run_anthropic_stream(
+                base_url=provider.base_url,
+                api_key=api_key,
+                model=provider.model,
+                messages=messages,
+                tools=tool_registry,
+                system_prompt=system,
+                temperature=0.3,
+                max_tokens=500,
+            ):
+                if event["type"] == "done":
+                    response = event["content"]
+                elif event["type"] == "error":
+                    raise RuntimeError(event["message"])
+        else:
+            from app.agent_loop import run_agent_sync
+
+            response = await run_agent_sync(
+                base_url=provider.base_url,
+                api_key=api_key,
+                model=provider.model,
+                messages=messages,
+                tools=tool_registry,
+                temperature=0.3,
+                max_tokens=500,
+            )
     except Exception as e:
         logger.warning("agentic_proactive_error", error=str(e))
         return None

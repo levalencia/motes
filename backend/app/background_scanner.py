@@ -13,6 +13,7 @@ from typing import Any
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.orm import selectinload
 
 from app.models import Agent, User
 from app.proactive import create_notification, get_top_patterns
@@ -326,7 +327,10 @@ async def run_scanner(
 
                     # Get user's first agent (for notification scoping)
                     agent_result = await session.execute(
-                        select(Agent).where(Agent.user_id == user.id).limit(1)
+                        select(Agent)
+                        .where(Agent.user_id == user.id)
+                        .options(selectinload(Agent.provider))
+                        .limit(1)
                     )
                     agent = agent_result.scalar_one_or_none()
                     if not agent:
@@ -343,23 +347,39 @@ async def run_scanner(
                         await scan_calendar(session, user.id, agent.id, cal_token, event_bus)
 
                     # Agentic proactive — LLM decides what to check
-                    if getattr(user, "proactive_enabled", True):
+                    proactive_on = getattr(user, "proactive_enabled", True)
+                    logger.info(
+                        "scanner_proactive_check",
+                        user_id=user.id,
+                        proactive_enabled=proactive_on,
+                    )
+                    if proactive_on:
                         import time
 
                         interval = getattr(user, "proactive_interval_minutes", 60)
                         last_run = _last_agentic_run.get(user.id, 0)
-                        if time.time() - last_run >= interval * 60:
+                        elapsed = time.time() - last_run
+                        needed = interval * 60
+                        logger.info(
+                            "scanner_proactive_timing",
+                            elapsed=int(elapsed),
+                            needed=needed,
+                            will_run=elapsed >= needed,
+                        )
+                        if elapsed >= needed:
                             try:
                                 from app.agentic_proactive import run_agentic_proactive
 
-                                await run_agentic_proactive(
+                                logger.info("scanner_agentic_starting")
+                                result = await run_agentic_proactive(
                                     session, user, agent, agent.provider, event_bus,
                                 )
+                                logger.info("scanner_agentic_done", result_len=len(result) if result else 0)
                                 _last_agentic_run[user.id] = time.time()
                             except Exception:
-                                logger.debug("agentic_proactive_skip", exc_info=True)
+                                logger.warning("agentic_proactive_skip", exc_info=True)
 
-                    logger.debug("scanner_user_complete", user_id=user.id)
+                    logger.info("scanner_user_complete", user_id=user.id)
 
         except Exception:
             logger.warning("scanner_cycle_error", exc_info=True)
