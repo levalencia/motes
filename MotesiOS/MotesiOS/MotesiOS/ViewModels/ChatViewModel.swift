@@ -60,18 +60,19 @@ class ChatViewModel {
     }
 
     func fetchApprovals() async {
+        guard !agentId.isEmpty else { return }
         do {
-            let all: [Approval] = try await APIClient.shared.get("/api/approvals")
+            let all: [Approval] = try await APIClient.shared.get("/api/agents/\(agentId)/approvals")
             pendingApprovals = all.filter { $0.isPending }
         } catch { /* ignore */ }
     }
 
     func approveItem(_ approval: Approval) async {
         do {
-            struct Empty: Codable {}
-            let _: Approval = try await APIClient.shared.post(
-                "/api/approvals/\(approval.id)/approve",
-                body: Empty()
+            let body = ResolveBody(approved: true)
+            let _: [String: String] = try await APIClient.shared.post(
+                "/api/approvals/\(approval.id)/resolve",
+                body: body
             )
             if let idx = pendingApprovals.firstIndex(where: { $0.id == approval.id }) {
                 pendingApprovals[idx].status = "approved"
@@ -88,10 +89,10 @@ class ChatViewModel {
 
     func denyItem(_ approval: Approval) async {
         do {
-            struct Empty: Codable {}
-            let _: Approval = try await APIClient.shared.post(
-                "/api/approvals/\(approval.id)/deny",
-                body: Empty()
+            let body = ResolveBody(approved: false)
+            let _: [String: String] = try await APIClient.shared.post(
+                "/api/approvals/\(approval.id)/resolve",
+                body: body
             )
             if let idx = pendingApprovals.firstIndex(where: { $0.id == approval.id }) {
                 pendingApprovals[idx].status = "denied"

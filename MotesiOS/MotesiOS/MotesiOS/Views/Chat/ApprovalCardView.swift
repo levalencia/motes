@@ -16,9 +16,13 @@ struct ApprovalCardView: View {
                 Spacer()
             }
 
-            Text(approval.description)
-                .font(.subheadline)
+            Text(approval.displayName)
+                .font(.subheadline.bold())
                 .foregroundStyle(.primary)
+
+            Text(approval.displayArgs)
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             if approval.isPending {
                 HStack(spacing: 12) {
