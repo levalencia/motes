@@ -25,6 +25,8 @@ async def run_agent_stream(
     *,
     temperature: float = 0.7,
     max_tokens: int = 4096,
+    session: Any = None,
+    agent_id: str | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Run the agent loop with streaming. Yields SSE-friendly events.
 
@@ -144,6 +146,62 @@ async def run_agent_stream(
                 if tool is None:
                     result = json.dumps({"error": f"Unknown tool: {tool_name}"})
                 else:
+                    # Approval gate: check if tool needs user approval
+                    if session and agent_id:
+                        from app.approvals import (
+                            ActionRisk,
+                            classify_action,
+                            create_approval_request,
+                        )
+
+                        risk = await classify_action(session, agent_id, tool_name)
+                        if risk == ActionRisk.FORBIDDEN:
+                            result = json.dumps({"error": f"Tool '{tool_name}' is forbidden by policy"})
+                            yield {"type": "tool_result", "name": tool_name, "result": result}
+                            messages.append({
+                                "role": "tool",
+                                "tool_call_id": tc["id"],
+                                "content": result,
+                            })
+                            continue
+                        elif risk == ActionRisk.NEEDS_APPROVAL:
+                            # Create approval request and wait
+                            approval = await create_approval_request(
+                                session, agent_id, tool_name, json.dumps(args),
+                            )
+                            yield {
+                                "type": "approval_needed",
+                                "approval_id": approval.id,
+                                "tool_name": tool_name,
+                                "arguments": args,
+                            }
+                            # Poll for approval (max 5 minutes)
+                            import asyncio
+
+                            from app.approvals import ApprovalStatus
+
+                            approved = False
+                            for _ in range(60):  # 60 * 5s = 5 minutes
+                                await asyncio.sleep(5)
+                                await session.refresh(approval)
+                                if approval.status == ApprovalStatus.APPROVED:
+                                    approved = True
+                                    break
+                                elif approval.status == ApprovalStatus.DENIED:
+                                    break
+                            if not approved:
+                                result = json.dumps({
+                                    "status": "denied",
+                                    "message": "User denied or approval timed out",
+                                })
+                                yield {"type": "tool_result", "name": tool_name, "result": result}
+                                messages.append({
+                                    "role": "tool",
+                                    "tool_call_id": tc["id"],
+                                    "content": result,
+                                })
+                                continue
+                    # Safe or approved — execute
                     try:
                         result = await tool.execute(args)
                     except Exception as exc:

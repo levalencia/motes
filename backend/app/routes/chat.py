@@ -148,6 +148,8 @@ async def chat(
                     model=provider.model,
                     messages=messages,
                     tools=tools,
+                    session=session,
+                    agent_id=agent_id,
                 )
 
             async for event in stream:
@@ -156,6 +158,8 @@ async def chat(
                     yield {"event": "token", "data": json.dumps(event)}
                 elif event["type"] in ("tool_call", "tool_result"):
                     yield {"event": event["type"], "data": json.dumps(event)}
+                elif event["type"] == "approval_needed":
+                    yield {"event": "approval_needed", "data": json.dumps(event)}
                 elif event["type"] == "done":
                     full_content = event["content"]
                     yield {"event": "done", "data": json.dumps({

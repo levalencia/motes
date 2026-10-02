@@ -73,8 +73,32 @@ class ApprovalRequest(Base):
 
 # Default risk classification for built-in tools
 DEFAULT_RISK_MAP: dict[str, ActionRisk] = {
+    # Safe: read-only, no side effects
     "current_time": ActionRisk.SAFE,
     "calculator": ActionRisk.SAFE,
+    "weather": ActionRisk.SAFE,
+    "web_search": ActionRisk.SAFE,
+    "news": ActionRisk.SAFE,
+    "maps": ActionRisk.SAFE,
+    "file_list": ActionRisk.SAFE,
+    "file_read": ActionRisk.SAFE,
+    "file_search": ActionRisk.SAFE,
+    "memory_recall": ActionRisk.SAFE,
+    "memory_save": ActionRisk.SAFE,
+    "gmail_read": ActionRisk.SAFE,
+    "calendar_list": ActionRisk.SAFE,
+    "outlook_read_email": ActionRisk.SAFE,
+    "outlook_calendar": ActionRisk.SAFE,
+    "notes_list": ActionRisk.SAFE,
+    "notes_read": ActionRisk.SAFE,
+    "reminders_list": ActionRisk.SAFE,
+    # Needs approval: writes, sends, deletes
+    "gmail_send": ActionRisk.NEEDS_APPROVAL,
+    "outlook_send_email": ActionRisk.NEEDS_APPROVAL,
+    "calendar_create": ActionRisk.NEEDS_APPROVAL,
+    "reminders_create": ActionRisk.NEEDS_APPROVAL,
+    "file_download_url": ActionRisk.NEEDS_APPROVAL,
+    "pptx_add_slide": ActionRisk.NEEDS_APPROVAL,
     # MCP tools default to NEEDS_APPROVAL unless overridden
 }
 
