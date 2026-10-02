@@ -183,6 +183,7 @@ async def run_agent_stream(
                             approved = False
                             for _ in range(60):  # 60 * 5s = 5 minutes
                                 await asyncio.sleep(5)
+                                session.expire(approval)
                                 await session.refresh(approval)
                                 if approval.status == ApprovalStatus.APPROVED:
                                     approved = True
