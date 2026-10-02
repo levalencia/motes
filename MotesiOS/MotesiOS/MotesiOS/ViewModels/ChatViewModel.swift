@@ -9,8 +9,10 @@ class ChatViewModel {
     var agentId = ""
     var agents: [Agent] = []
     var error: String?
+    var pendingApprovals: [Approval] = []
     let eventStream = EventStreamService()
     let speechRecognizer = SpeechRecognizerService()
+    private var approvalPollingTask: Task<Void, Never>?
 
     func startDictation() {
         speechRecognizer.startListening()
@@ -42,6 +44,65 @@ class ChatViewModel {
             }
         } catch { /* ignore */ }
         eventStream.start()
+        startApprovalPolling()
+    }
+
+    // MARK: - Approval Polling
+
+    func startApprovalPolling() {
+        approvalPollingTask?.cancel()
+        approvalPollingTask = Task {
+            while !Task.isCancelled {
+                await fetchApprovals()
+                try? await Task.sleep(for: .seconds(5))
+            }
+        }
+    }
+
+    func fetchApprovals() async {
+        do {
+            let all: [Approval] = try await APIClient.shared.get("/api/approvals")
+            pendingApprovals = all.filter { $0.isPending }
+        } catch { /* ignore */ }
+    }
+
+    func approveItem(_ approval: Approval) async {
+        do {
+            struct Empty: Codable {}
+            let _: Approval = try await APIClient.shared.post(
+                "/api/approvals/\(approval.id)/approve",
+                body: Empty()
+            )
+            if let idx = pendingApprovals.firstIndex(where: { $0.id == approval.id }) {
+                pendingApprovals[idx].status = "approved"
+                // Remove from pending after a brief delay so user sees the result
+                Task {
+                    try? await Task.sleep(for: .seconds(1.5))
+                    pendingApprovals.removeAll { $0.id == approval.id }
+                }
+            }
+        } catch {
+            self.error = "Failed to approve"
+        }
+    }
+
+    func denyItem(_ approval: Approval) async {
+        do {
+            struct Empty: Codable {}
+            let _: Approval = try await APIClient.shared.post(
+                "/api/approvals/\(approval.id)/deny",
+                body: Empty()
+            )
+            if let idx = pendingApprovals.firstIndex(where: { $0.id == approval.id }) {
+                pendingApprovals[idx].status = "denied"
+                Task {
+                    try? await Task.sleep(for: .seconds(1.5))
+                    pendingApprovals.removeAll { $0.id == approval.id }
+                }
+            }
+        } catch {
+            self.error = "Failed to deny"
+        }
     }
 
     func sendMessage() async {

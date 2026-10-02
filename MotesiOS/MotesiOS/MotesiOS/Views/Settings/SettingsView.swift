@@ -126,6 +126,30 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("📋 Scheduled Tasks") {
+                    NavigationLink {
+                        ScheduledTasksView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .foregroundStyle(MotesTheme.accent)
+                            Text("Manage Scheduled Tasks")
+                        }
+                    }
+                }
+
+                Section("🔌 MCP Integrations") {
+                    NavigationLink {
+                        MCPServersView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "server.rack")
+                                .foregroundStyle(MotesTheme.purple)
+                            Text("Manage MCP Servers")
+                        }
+                    }
+                }
+
                 Section("Server") {
                     TextField("Tailscale URL", text: $authVM.serverURL)
                         .textContentType(.URL)

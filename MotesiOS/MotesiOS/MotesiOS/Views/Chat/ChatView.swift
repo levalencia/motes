@@ -38,6 +38,24 @@ struct ChatView: View {
                         .padding(.horizontal)
                 }
 
+                // Pending approval cards
+                if !vm.pendingApprovals.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(vm.pendingApprovals) { approval in
+                                ApprovalCardView(
+                                    approval: approval,
+                                    onApprove: { Task { await vm.approveItem(approval) } },
+                                    onDeny: { Task { await vm.denyItem(approval) } }
+                                )
+                                .frame(width: 280)
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                    }
+                }
+
                 ChatComposer(
                     text: $vm.input,
                     isStreaming: vm.isStreaming,

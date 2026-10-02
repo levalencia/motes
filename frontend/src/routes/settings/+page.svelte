@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api/client';
+	import { api, listTasks, createTask, deleteTask, pauseTask, resumeTask, listMcpServers, addMcpServer, deleteMcpServer, testMcpServer, type ScheduledTask, type McpServer, type McpTestResult } from '$lib/api/client';
 
 	interface VoiceProvider {
 		id: string;
@@ -100,6 +100,36 @@
 	let resetting = $state(false);
 	let resetDone = $state(false);
 
+	// Scheduled Tasks state
+	let tasks = $state<ScheduledTask[]>([]);
+	let showTaskForm = $state(false);
+	let taskPrompt = $state('');
+	let taskSchedule = $state('0 8 * * *');
+	let taskCustomCron = $state('');
+	let taskSaving = $state(false);
+	let taskDeleting = $state<string | null>(null);
+	let taskToggling = $state<string | null>(null);
+	const schedulePresets = [
+		{ label: 'Every morning 8am', cron: '0 8 * * *' },
+		{ label: 'Every hour', cron: '0 * * * *' },
+		{ label: 'Daily 7pm', cron: '0 19 * * *' },
+		{ label: 'Every 30 min', cron: '*/30 * * * *' },
+		{ label: 'Custom', cron: 'custom' },
+	];
+
+	// MCP Servers state
+	let mcpServers = $state<McpServer[]>([]);
+	let showMcpForm = $state(false);
+	let mcpName = $state('');
+	let mcpType = $state<'stdio' | 'http'>('stdio');
+	let mcpCommand = $state('');
+	let mcpArgs = $state('');
+	let mcpUrl = $state('');
+	let mcpSaving = $state(false);
+	let mcpTesting = $state<string | null>(null);
+	let mcpTestResults = $state<Record<string, McpTestResult>>({});
+	let mcpDeleting = $state<string | null>(null);
+
 	async function resetAll() {
 		if (!confirm('This will delete ALL messages, memories, patterns, and notifications. Are you sure?')) return;
 		resetting = true;
@@ -111,6 +141,111 @@
 			error = e.message;
 		} finally {
 			resetting = false;
+		}
+	}
+
+	// Scheduled Tasks handlers
+	async function handleCreateTask() {
+		if (!taskPrompt.trim()) return;
+		taskSaving = true;
+		try {
+			const cron = taskSchedule === 'custom' ? taskCustomCron : taskSchedule;
+			const task = await createTask({ prompt: taskPrompt, cron_expression: cron });
+			tasks = [...tasks, task];
+			taskPrompt = '';
+			taskSchedule = '0 8 * * *';
+			taskCustomCron = '';
+			showTaskForm = false;
+		} catch (e: any) {
+			error = e.message;
+		} finally {
+			taskSaving = false;
+		}
+	}
+
+	async function handleDeleteTask(id: string) {
+		taskDeleting = id;
+		try {
+			await deleteTask(id);
+			tasks = tasks.filter(t => t.id !== id);
+		} catch (e: any) {
+			error = e.message;
+		} finally {
+			taskDeleting = null;
+		}
+	}
+
+	async function handleToggleTask(task: ScheduledTask) {
+		taskToggling = task.id;
+		try {
+			const updated = task.enabled ? await pauseTask(task.id) : await resumeTask(task.id);
+			tasks = tasks.map(t => t.id === task.id ? updated : t);
+		} catch (e: any) {
+			error = e.message;
+		} finally {
+			taskToggling = null;
+		}
+	}
+
+	function formatCron(cron: string): string {
+		const map: Record<string, string> = {
+			'0 8 * * *': 'Every day at 8:00 AM',
+			'0 * * * *': 'Every hour',
+			'0 19 * * *': 'Every day at 7:00 PM',
+			'*/30 * * * *': 'Every 30 minutes',
+		};
+		return map[cron] || cron;
+	}
+
+	// MCP Servers handlers
+	async function handleAddMcpServer() {
+		if (!mcpName.trim()) return;
+		mcpSaving = true;
+		try {
+			const data: any = { name: mcpName, server_type: mcpType };
+			if (mcpType === 'stdio') {
+				data.command = mcpCommand;
+				data.args = mcpArgs.trim() ? mcpArgs.split(/\s+/) : [];
+			} else {
+				data.url = mcpUrl;
+			}
+			const server = await addMcpServer(data);
+			mcpServers = [...mcpServers, server];
+			mcpName = '';
+			mcpCommand = '';
+			mcpArgs = '';
+			mcpUrl = '';
+			showMcpForm = false;
+		} catch (e: any) {
+			error = e.message;
+		} finally {
+			mcpSaving = false;
+		}
+	}
+
+	async function handleTestMcpServer(id: string) {
+		mcpTesting = id;
+		try {
+			const result = await testMcpServer(id);
+			mcpTestResults = { ...mcpTestResults, [id]: result };
+		} catch (e: any) {
+			mcpTestResults = { ...mcpTestResults, [id]: { connected: false, tools_count: 0, tools: [] } };
+		} finally {
+			mcpTesting = null;
+		}
+	}
+
+	async function handleDeleteMcpServer(id: string) {
+		mcpDeleting = id;
+		try {
+			await deleteMcpServer(id);
+			mcpServers = mcpServers.filter(s => s.id !== id);
+			const { [id]: _, ...rest } = mcpTestResults;
+			mcpTestResults = rest;
+		} catch (e: any) {
+			error = e.message;
+		} finally {
+			mcpDeleting = null;
 		}
 	}
 
@@ -203,6 +338,10 @@
 				systemPrompt = personality.system_prompt;
 				voicePersonality = personality.voice_personality || '';
 			}
+			// Load scheduled tasks
+			try { tasks = await listTasks(); } catch {}
+			// Load MCP servers
+			try { mcpServers = await listMcpServers(); } catch {}
 		} catch (e: any) {
 			if (e?.message?.includes('401')) goto('/login');
 		} finally {
@@ -594,6 +733,260 @@
 							<span class="text-gray-500 text-xs">Not configured — using pipeline mode</span>
 						{/if}
 					</div>
+				</div>
+			</div>
+
+			<!-- Scheduled Tasks -->
+			<div class="mt-8">
+				<div class="flex items-center justify-between mb-4">
+					<h2 class="text-lg font-semibold">⏰ Scheduled Tasks</h2>
+					<button
+						onclick={() => { showTaskForm = !showTaskForm; }}
+						class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs font-medium"
+					>
+						{showTaskForm ? 'Cancel' : '+ New Task'}
+					</button>
+				</div>
+				<div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+					<p class="text-gray-400 text-sm mb-4">
+						Schedule prompts to run automatically on a cron schedule. Great for daily briefings, recurring checks, or periodic summaries.
+					</p>
+
+					{#if showTaskForm}
+						<div class="mb-5 p-4 rounded-xl" style="background: #1E293B; border: 1px solid #334155;">
+							<div class="space-y-3">
+								<div>
+									<label for="task-prompt" class="block text-sm text-gray-300 mb-1">Prompt</label>
+									<textarea
+										id="task-prompt"
+										bind:value={taskPrompt}
+										rows="2"
+										placeholder="e.g., Summarize my unread emails and calendar for today"
+										class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-600"
+									></textarea>
+								</div>
+								<div>
+									<label class="block text-sm text-gray-300 mb-2">Schedule</label>
+									<div class="flex flex-wrap gap-2">
+										{#each schedulePresets as preset}
+											<button
+												onclick={() => { taskSchedule = preset.cron; }}
+												class="px-3 py-1.5 rounded-lg text-xs transition-colors {taskSchedule === preset.cron ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}"
+											>
+												{preset.label}
+											</button>
+										{/each}
+									</div>
+									{#if taskSchedule === 'custom'}
+										<input
+											bind:value={taskCustomCron}
+											placeholder="e.g., */15 * * * *"
+											class="w-full mt-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm font-mono placeholder-gray-600"
+										/>
+									{/if}
+								</div>
+								<button
+									onclick={handleCreateTask}
+									disabled={taskSaving || !taskPrompt.trim()}
+									class="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-lg text-sm font-medium"
+								>
+									{taskSaving ? 'Creating...' : 'Create Task'}
+								</button>
+							</div>
+						</div>
+					{/if}
+
+					{#if tasks.length === 0}
+						<div class="text-center py-6">
+							<p class="text-gray-500 text-sm">No scheduled tasks yet</p>
+						</div>
+					{:else}
+						<div class="space-y-2">
+							{#each tasks as task}
+								<div class="flex items-center justify-between p-3 rounded-xl bg-gray-800/50 border border-gray-700/50">
+									<div class="flex-1 min-w-0 mr-3">
+										<p class="text-sm font-medium text-white truncate">{task.prompt}</p>
+										<div class="flex items-center gap-3 mt-1">
+											<span class="text-xs text-gray-400">🕐 {formatCron(task.cron_expression)}</span>
+											<span class="text-xs {task.enabled ? 'text-green-400' : 'text-gray-500'}">
+												{task.enabled ? '● Active' : '○ Paused'}
+											</span>
+											{#if task.run_count > 0}
+												<span class="text-xs text-gray-500">Runs: {task.run_count}</span>
+											{/if}
+											{#if task.last_run_at}
+												<span class="text-xs text-gray-500">Last: {new Date(task.last_run_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+											{/if}
+										</div>
+									</div>
+									<div class="flex items-center gap-2 flex-shrink-0">
+										<button
+											onclick={() => handleToggleTask(task)}
+											disabled={taskToggling === task.id}
+											class="relative w-9 h-5 rounded-full transition-colors duration-200"
+											style="background: {task.enabled ? '#10B981' : '#374151'};"
+										>
+											<span
+												class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"
+												style="transform: translateX({task.enabled ? '16px' : '0'});"
+											></span>
+										</button>
+										<button
+											onclick={() => handleDeleteTask(task.id)}
+											disabled={taskDeleting === task.id}
+											class="text-xs px-2 py-1 rounded-lg text-red-400 hover:bg-red-900/20 transition-colors"
+										>
+											{taskDeleting === task.id ? '...' : '✕'}
+										</button>
+									</div>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			</div>
+
+			<!-- MCP Integrations -->
+			<div class="mt-8">
+				<div class="flex items-center justify-between mb-4">
+					<h2 class="text-lg font-semibold">🔌 MCP Integrations</h2>
+					<button
+						onclick={() => { showMcpForm = !showMcpForm; }}
+						class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs font-medium"
+					>
+						{showMcpForm ? 'Cancel' : '+ Add Server'}
+					</button>
+				</div>
+				<div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+					<p class="text-gray-400 text-sm mb-4">
+						Connect MCP (Model Context Protocol) servers to extend Motes with external tools and capabilities.
+					</p>
+
+					{#if showMcpForm}
+						<div class="mb-5 p-4 rounded-xl" style="background: #1E293B; border: 1px solid #334155;">
+							<div class="space-y-3">
+								<div>
+									<label for="mcp-name" class="block text-sm text-gray-300 mb-1">Server Name</label>
+									<input
+										id="mcp-name"
+										bind:value={mcpName}
+										placeholder="e.g., File System"
+										class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-600"
+									/>
+								</div>
+								<div>
+									<label class="block text-sm text-gray-300 mb-2">Type</label>
+									<div class="flex gap-2">
+										<button
+											onclick={() => { mcpType = 'stdio'; }}
+											class="px-4 py-1.5 rounded-lg text-xs transition-colors {mcpType === 'stdio' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}"
+										>
+											stdio (local)
+										</button>
+										<button
+											onclick={() => { mcpType = 'http'; }}
+											class="px-4 py-1.5 rounded-lg text-xs transition-colors {mcpType === 'http' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}"
+										>
+											HTTP (remote)
+										</button>
+									</div>
+								</div>
+								{#if mcpType === 'stdio'}
+									<div>
+										<label for="mcp-cmd" class="block text-sm text-gray-300 mb-1">Command</label>
+										<input
+											id="mcp-cmd"
+											bind:value={mcpCommand}
+											placeholder="e.g., npx -y @modelcontextprotocol/server-filesystem"
+											class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm font-mono placeholder-gray-600"
+										/>
+									</div>
+									<div>
+										<label for="mcp-args" class="block text-sm text-gray-300 mb-1">Arguments (space-separated)</label>
+										<input
+											id="mcp-args"
+											bind:value={mcpArgs}
+											placeholder="e.g., /home/user/documents"
+											class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm font-mono placeholder-gray-600"
+										/>
+									</div>
+								{:else}
+									<div>
+										<label for="mcp-url" class="block text-sm text-gray-300 mb-1">Server URL</label>
+										<input
+											id="mcp-url"
+											bind:value={mcpUrl}
+											placeholder="e.g., http://localhost:3001/mcp"
+											class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-600"
+										/>
+									</div>
+								{/if}
+								<button
+									onclick={handleAddMcpServer}
+									disabled={mcpSaving || !mcpName.trim()}
+									class="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-lg text-sm font-medium"
+								>
+									{mcpSaving ? 'Adding...' : 'Add Server'}
+								</button>
+							</div>
+						</div>
+					{/if}
+
+					{#if mcpServers.length === 0}
+						<div class="text-center py-6">
+							<p class="text-gray-500 text-sm">No MCP servers configured</p>
+						</div>
+					{:else}
+						<div class="space-y-2">
+							{#each mcpServers as server}
+								{@const testResult = mcpTestResults[server.id]}
+								<div class="p-3 rounded-xl bg-gray-800/50 border border-gray-700/50">
+									<div class="flex items-center justify-between">
+										<div class="flex-1 min-w-0 mr-3">
+											<div class="flex items-center gap-2">
+												<p class="text-sm font-medium text-white">{server.name}</p>
+												<span class="text-[10px] px-1.5 py-0.5 rounded" style="background: {server.server_type === 'stdio' ? '#6366F120' : '#8B5CF620'}; color: {server.server_type === 'stdio' ? '#818CF8' : '#A78BFA'};">
+													{server.server_type}
+												</span>
+												{#if testResult}
+													<span class="text-[10px] px-1.5 py-0.5 rounded" style="background: {testResult.connected ? '#10B98120' : '#EF444420'}; color: {testResult.connected ? '#10B981' : '#EF4444'};">
+														{testResult.connected ? `✓ ${testResult.tools_count} tools` : '✕ Failed'}
+													</span>
+												{/if}
+											</div>
+											<p class="text-xs text-gray-500 mt-0.5 font-mono truncate">{server.command_or_url}</p>
+											{#if server.tools.length > 0}
+												<div class="flex flex-wrap gap-1 mt-1">
+													{#each server.tools.slice(0, 5) as tool}
+														<span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-400">{tool}</span>
+													{/each}
+													{#if server.tools.length > 5}
+														<span class="text-[10px] text-gray-500">+{server.tools.length - 5} more</span>
+													{/if}
+												</div>
+											{/if}
+										</div>
+										<div class="flex items-center gap-2 flex-shrink-0">
+											<button
+												onclick={() => handleTestMcpServer(server.id)}
+												disabled={mcpTesting === server.id}
+												class="text-xs px-2.5 py-1 rounded-lg transition-colors bg-gray-700 hover:bg-gray-600 text-gray-300"
+											>
+												{mcpTesting === server.id ? 'Testing...' : '🔌 Test'}
+											</button>
+											<button
+												onclick={() => handleDeleteMcpServer(server.id)}
+												disabled={mcpDeleting === server.id}
+												class="text-xs px-2 py-1 rounded-lg text-red-400 hover:bg-red-900/20 transition-colors"
+											>
+												{mcpDeleting === server.id ? '...' : '✕'}
+											</button>
+										</div>
+									</div>
+								</div>
+							{/each}
+						</div>
+					{/if}
 				</div>
 			</div>
 

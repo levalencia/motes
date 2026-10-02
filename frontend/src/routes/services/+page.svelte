@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { api } from '$lib/api/client';
+	import { api, configureSlackWebhook, configureTelegramWebhook, listAgents } from '$lib/api/client';
 	import TopNav from '$lib/components/TopNav.svelte';
 
 	interface CatalogEntry {
@@ -25,6 +25,16 @@
 	let configuringService = $state('');
 	let keyInputs = $state<Record<string, string>>({});
 	let savingKey = $state(false);
+
+	// Slack/Telegram webhook config
+	let defaultAgentId = $state('');
+	let slackChannelId = $state('');
+	let slackSaving = $state(false);
+	let slackSaved = $state(false);
+	let telegramChatId = $state('');
+	let telegramSaving = $state(false);
+	let telegramSaved = $state(false);
+	const webhookBaseUrl = 'http://localhost:8001/api/webhooks';
 
 	// Map catalog names to service keys and OAuth names
 	const catalogToKey: Record<string, string> = {
@@ -109,8 +119,43 @@
 			serviceStatuses = s;
 		} catch {}
 
+		try {
+			const agents = await listAgents();
+			if (agents.length > 0) defaultAgentId = agents[0].id;
+		} catch {}
+
 		loading = false;
 	});
+
+	async function handleSlackConfig() {
+		if (!slackChannelId.trim() || !defaultAgentId) return;
+		slackSaving = true;
+		slackSaved = false;
+		try {
+			await configureSlackWebhook({ slack_channel_id: slackChannelId, agent_id: defaultAgentId });
+			slackSaved = true;
+			setTimeout(() => slackSaved = false, 3000);
+		} catch (e: any) {
+			error = e.message;
+		} finally {
+			slackSaving = false;
+		}
+	}
+
+	async function handleTelegramConfig() {
+		if (!telegramChatId.trim() || !defaultAgentId) return;
+		telegramSaving = true;
+		telegramSaved = false;
+		try {
+			await configureTelegramWebhook({ telegram_chat_id: telegramChatId, agent_id: defaultAgentId });
+			telegramSaved = true;
+			setTimeout(() => telegramSaved = false, 3000);
+		} catch (e: any) {
+			error = e.message;
+		} finally {
+			telegramSaving = false;
+		}
+	}
 </script>
 
 <TopNav />
@@ -227,6 +272,123 @@
 						{/if}
 					</div>
 				{/each}
+			</div>
+
+			<!-- Messaging Integrations -->
+			<div class="mt-10">
+				<h2 class="text-xl font-semibold mb-1" style="color: var(--text-primary);">Messaging Integrations</h2>
+				<p class="text-sm mb-6" style="color: var(--text-secondary);">Connect Slack or Telegram so you can message Motes from those platforms.</p>
+
+				<!-- Slack -->
+				<div class="rounded-xl p-5 mb-4" style="background: var(--bg-card); border: 1px solid var(--border);">
+					<div class="flex items-center gap-3 mb-3">
+						<span class="text-2xl">💬</span>
+						<div>
+							<h3 class="text-sm font-semibold" style="color: var(--text-primary);">Slack</h3>
+							<p class="text-xs" style="color: var(--text-secondary);">Send messages to Motes from Slack channels</p>
+						</div>
+					</div>
+
+					<div class="rounded-lg p-3 mb-3" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+						<p class="text-xs font-medium mb-2" style="color: var(--text-primary);">Setup Instructions</p>
+						<ol class="text-xs space-y-1" style="color: var(--text-secondary);">
+							<li>1. Go to <a href="https://api.slack.com/apps" target="_blank" class="underline" style="color: var(--accent);">api.slack.com/apps</a> → Create New App → From Scratch</li>
+							<li>2. Under "Event Subscriptions", enable events and set Request URL to:</li>
+						</ol>
+						<div class="mt-2 flex items-center gap-2">
+							<code class="text-xs px-2 py-1 rounded flex-1 font-mono" style="background: var(--bg-app); color: #10B981; border: 1px solid var(--border);">{webhookBaseUrl}/slack</code>
+							<button
+								onclick={() => navigator.clipboard.writeText(`${webhookBaseUrl}/slack`)}
+								class="text-xs px-2 py-1 rounded transition-colors"
+								style="background: var(--bg-hover); color: var(--text-muted);"
+							>📋 Copy</button>
+						</div>
+						<ol start={3} class="text-xs space-y-1 mt-2" style="color: var(--text-secondary);">
+							<li>3. Subscribe to bot events: <code class="px-1 rounded" style="background: var(--bg-app);">message.channels</code>, <code class="px-1 rounded" style="background: var(--bg-app);">app_mention</code></li>
+							<li>4. Install the app to your workspace</li>
+							<li>5. Enter your Slack channel ID below</li>
+						</ol>
+					</div>
+
+					<div class="space-y-3">
+						<div>
+							<label for="slack-channel" class="text-xs block mb-1" style="color: var(--text-muted);">Slack Channel ID</label>
+							<input
+								id="slack-channel"
+								bind:value={slackChannelId}
+								placeholder="e.g., C01ABCDEF23"
+								class="w-full px-3 py-2 rounded-lg text-sm outline-none"
+								style="background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary);"
+							/>
+						</div>
+						<div class="flex items-center gap-3">
+							<button
+								onclick={handleSlackConfig}
+								disabled={slackSaving || !slackChannelId.trim() || !defaultAgentId}
+								class="px-4 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50"
+								style="background: var(--accent);"
+							>{slackSaving ? 'Saving...' : 'Save Slack Config'}</button>
+							{#if slackSaved}
+								<span class="text-xs" style="color: #10B981;">✓ Configured!</span>
+							{/if}
+						</div>
+					</div>
+				</div>
+
+				<!-- Telegram -->
+				<div class="rounded-xl p-5" style="background: var(--bg-card); border: 1px solid var(--border);">
+					<div class="flex items-center gap-3 mb-3">
+						<span class="text-2xl">✈️</span>
+						<div>
+							<h3 class="text-sm font-semibold" style="color: var(--text-primary);">Telegram</h3>
+							<p class="text-xs" style="color: var(--text-secondary);">Chat with Motes via Telegram bot</p>
+						</div>
+					</div>
+
+					<div class="rounded-lg p-3 mb-3" style="background: var(--bg-secondary); border: 1px solid var(--border);">
+						<p class="text-xs font-medium mb-2" style="color: var(--text-primary);">Setup Instructions</p>
+						<ol class="text-xs space-y-1" style="color: var(--text-secondary);">
+							<li>1. Message <a href="https://t.me/BotFather" target="_blank" class="underline" style="color: var(--accent);">@BotFather</a> on Telegram → <code class="px-1 rounded" style="background: var(--bg-app);">/newbot</code></li>
+							<li>2. Configure the bot's webhook URL (via BotFather or API):</li>
+						</ol>
+						<div class="mt-2 flex items-center gap-2">
+							<code class="text-xs px-2 py-1 rounded flex-1 font-mono" style="background: var(--bg-app); color: #10B981; border: 1px solid var(--border);">{webhookBaseUrl}/telegram</code>
+							<button
+								onclick={() => navigator.clipboard.writeText(`${webhookBaseUrl}/telegram`)}
+								class="text-xs px-2 py-1 rounded transition-colors"
+								style="background: var(--bg-hover); color: var(--text-muted);"
+							>📋 Copy</button>
+						</div>
+						<ol start={3} class="text-xs space-y-1 mt-2" style="color: var(--text-secondary);">
+							<li>3. Send a message to the bot, then get your chat ID from <code class="px-1 rounded" style="background: var(--bg-app);">/getUpdates</code></li>
+							<li>4. Enter your Telegram chat ID below</li>
+						</ol>
+					</div>
+
+					<div class="space-y-3">
+						<div>
+							<label for="telegram-chat" class="text-xs block mb-1" style="color: var(--text-muted);">Telegram Chat ID</label>
+							<input
+								id="telegram-chat"
+								bind:value={telegramChatId}
+								placeholder="e.g., 123456789"
+								class="w-full px-3 py-2 rounded-lg text-sm outline-none"
+								style="background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary);"
+							/>
+						</div>
+						<div class="flex items-center gap-3">
+							<button
+								onclick={handleTelegramConfig}
+								disabled={telegramSaving || !telegramChatId.trim() || !defaultAgentId}
+								class="px-4 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-50"
+								style="background: var(--accent);"
+							>{telegramSaving ? 'Saving...' : 'Save Telegram Config'}</button>
+							{#if telegramSaved}
+								<span class="text-xs" style="color: #10B981;">✓ Configured!</span>
+							{/if}
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 	{/if}

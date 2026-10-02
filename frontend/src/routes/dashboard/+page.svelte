@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';
-	import { listAgents, api, getThread, clearThread, type Agent, type ThreadMessage } from '$lib/api/client';
+	import { listAgents, api, getThread, clearThread, listApprovals, approveAction, denyAction, type Agent, type ThreadMessage, type Approval } from '$lib/api/client';
 	import ChatComposer from '$lib/components/ChatComposer.svelte';
 	import StreamingIndicator from '$lib/components/StreamingIndicator.svelte';
 	import TopNav from '$lib/components/TopNav.svelte';
@@ -14,6 +14,8 @@
 	let input = $state('');
 	let streaming = $state(false);
 	let error = $state('');
+	let pendingApprovals = $state<Approval[]>([]);
+	let processingApproval = $state<string | null>(null);
 	let loading = $state(true);
 	let recording = $state(false);
 	let hasVoiceProvider = $state(false);
@@ -81,6 +83,17 @@
 				};
 				messages = [...messages, newMsg];
 			});
+
+			// Poll for pending approvals every 5 seconds
+			async function pollApprovals() {
+				try {
+					const all = await listApprovals();
+					pendingApprovals = all.filter(a => a.status === 'pending');
+				} catch {}
+			}
+			pollApprovals();
+			const approvalInterval = setInterval(pollApprovals, 5000);
+			return () => clearInterval(approvalInterval);
 		} catch (err: any) {
 			if (err?.message?.includes('401') || err?.message?.includes('auth')) {
 				goto('/login');
@@ -89,6 +102,19 @@
 			loading = false;
 		}
 	});
+
+	async function handleApproval(id: string, action: 'approve' | 'deny') {
+		processingApproval = id;
+		try {
+			if (action === 'approve') await approveAction(id);
+			else await denyAction(id);
+			pendingApprovals = pendingApprovals.filter(a => a.id !== id);
+		} catch (e: any) {
+			error = e.message;
+		} finally {
+			processingApproval = null;
+		}
+	}
 
 	async function sendMessage(text?: string) {
 		let msg = text || input;
@@ -377,6 +403,50 @@
 							</div>
 						</div>
 					{/if}
+				{/each}
+
+				<!-- Pending Approval Cards -->
+				{#each pendingApprovals as approval}
+					<div class="flex gap-3">
+						<div class="w-6 h-6 flex-shrink-0 mt-0.5 flex items-center justify-center rounded-full" style="background: #F59E0B20;">
+							<span class="text-xs">⚡</span>
+						</div>
+						<div class="max-w-[85%] w-full">
+							<div class="rounded-2xl p-4" style="background: #F59E0B10; border: 1px solid #F59E0B30;">
+								<div class="flex items-center gap-2 mb-2">
+									<span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background: #F59E0B30; color: #F59E0B;">
+										🔐 Approval Required
+									</span>
+									<span class="text-[10px]" style="color: var(--text-muted);">{formatTime(approval.created_at)}</span>
+								</div>
+								<p class="text-sm font-medium mb-1" style="color: var(--text-primary);">
+									{approval.action_type}
+								</p>
+								<pre class="text-xs mb-3 whitespace-pre-wrap rounded-lg p-2" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border);">{JSON.stringify(approval.action_data, null, 2)}</pre>
+								{#if approval.expires_at}
+									<p class="text-[10px] mb-2" style="color: var(--text-muted);">Expires: {formatTime(approval.expires_at)}</p>
+								{/if}
+								<div class="flex gap-2">
+									<button
+										onclick={() => handleApproval(approval.id, 'approve')}
+										disabled={processingApproval === approval.id}
+										class="px-4 py-1.5 rounded-lg text-sm font-medium text-white transition-colors hover:brightness-110 disabled:opacity-50"
+										style="background: #10B981;"
+									>
+										{processingApproval === approval.id ? '...' : '✓ Approve'}
+									</button>
+									<button
+										onclick={() => handleApproval(approval.id, 'deny')}
+										disabled={processingApproval === approval.id}
+										class="px-4 py-1.5 rounded-lg text-sm font-medium text-white transition-colors hover:brightness-110 disabled:opacity-50"
+										style="background: #EF4444;"
+									>
+										{processingApproval === approval.id ? '...' : '✕ Deny'}
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
 				{/each}
 
 				{#if streaming && messages[messages.length - 1]?.content === ''}

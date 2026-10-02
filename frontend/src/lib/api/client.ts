@@ -122,3 +122,65 @@ export interface Message {
 }
 export const getMessages = (conversationId: string) =>
 	api<Message[]>(`/conversations/${conversationId}/messages`);
+
+// Approvals
+export interface Approval {
+	id: string;
+	action_type: string;
+	action_data: Record<string, any>;
+	status: string;
+	created_at: string;
+	expires_at: string;
+}
+export const listApprovals = () => api<Approval[]>('/approvals');
+export const approveAction = (id: string) =>
+	api<{ status: string }>(`/approvals/${id}/approve`, { method: 'POST' });
+export const denyAction = (id: string) =>
+	api<{ status: string }>(`/approvals/${id}/deny`, { method: 'POST' });
+
+// Scheduled Tasks
+export interface ScheduledTask {
+	id: string;
+	prompt: string;
+	cron_expression: string;
+	enabled: boolean;
+	run_count: number;
+	last_run_at: string | null;
+}
+export const listTasks = () => api<ScheduledTask[]>('/tasks');
+export const createTask = (data: { prompt: string; cron_expression: string }) =>
+	api<ScheduledTask>('/tasks', { method: 'POST', body: JSON.stringify(data) });
+export const deleteTask = (id: string) =>
+	api<void>(`/tasks/${id}`, { method: 'DELETE' });
+export const pauseTask = (id: string) =>
+	api<ScheduledTask>(`/tasks/${id}/pause`, { method: 'POST' });
+export const resumeTask = (id: string) =>
+	api<ScheduledTask>(`/tasks/${id}/resume`, { method: 'POST' });
+
+// MCP Servers
+export interface McpServer {
+	id: string;
+	name: string;
+	server_type: string;
+	command_or_url: string;
+	enabled: boolean;
+	tools: string[];
+}
+export interface McpTestResult {
+	connected: boolean;
+	tools_count: number;
+	tools: string[];
+}
+export const listMcpServers = () => api<McpServer[]>('/mcp/servers');
+export const addMcpServer = (data: { name: string; server_type: string; command?: string; args?: string[]; url?: string }) =>
+	api<McpServer>('/mcp/servers', { method: 'POST', body: JSON.stringify(data) });
+export const deleteMcpServer = (id: string) =>
+	api<void>(`/mcp/servers/${id}`, { method: 'DELETE' });
+export const testMcpServer = (id: string) =>
+	api<McpTestResult>(`/mcp/servers/${id}/test`, { method: 'POST' });
+
+// Webhook Config (Slack / Telegram)
+export const configureSlackWebhook = (data: { slack_channel_id: string; agent_id: string }) =>
+	api<{ status: string }>('/webhooks/slack/config', { method: 'POST', body: JSON.stringify(data) });
+export const configureTelegramWebhook = (data: { telegram_chat_id: string; agent_id: string }) =>
+	api<{ status: string }>('/webhooks/telegram/config', { method: 'POST', body: JSON.stringify(data) });
