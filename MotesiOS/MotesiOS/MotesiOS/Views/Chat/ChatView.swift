@@ -12,22 +12,38 @@ struct ChatView: View {
                         Task { await vm.sendMessage() }
                     }
                 } else {
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            LazyVStack(alignment: .leading, spacing: 12) {
-                                ForEach(vm.messages) { msg in
-                                    MessageBubble(message: msg)
-                                        .id(msg.id)
+                    ZStack(alignment: .bottomTrailing) {
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                LazyVStack(alignment: .leading, spacing: 12) {
+                                    ForEach(vm.messages) { msg in
+                                        MessageBubble(message: msg)
+                                            .id(msg.id)
+                                    }
                                 }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                        }
-                        .onChange(of: vm.messages.count) {
-                            if let last = vm.messages.last {
-                                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                            .onChange(of: vm.messages.count) {
+                                scrollToBottom(proxy)
+                            }
+                            .onAppear {
+                                scrollToBottom(proxy)
                             }
                         }
+
+                        // Scroll to bottom button
+                        Button {
+                            // Trigger re-scroll by toggling a state
+                            vm.scrollTrigger += 1
+                        } label: {
+                            Image(systemName: "arrow.down.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(.white)
+                                .background(Circle().fill(Color.blue))
+                        }
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 8)
                     }
                 }
 
@@ -38,7 +54,7 @@ struct ChatView: View {
                         .padding(.horizontal)
                 }
 
-                // Pending approval cards
+                // Approval cards
                 if !vm.pendingApprovals.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
@@ -56,6 +72,7 @@ struct ChatView: View {
                     }
                 }
 
+                // Chat composer
                 ChatComposer(
                     text: $vm.input,
                     isStreaming: vm.isStreaming,
@@ -67,30 +84,19 @@ struct ChatView: View {
             }
             .toolbar {
 #if os(iOS)
-                ToolbarItem(placement: .principal) {
-                    HStack(spacing: 6) {
-                        Image("mascot-sm")
-                            .resizable()
-                            .frame(width: 22, height: 22)
-                        Text("Motes")
-                            .font(.headline)
-                    }
+                ToolbarItem(placement: .topBarLeading) {
+                    Text("Motes")
+                        .font(.headline)
                 }
-#else
-                ToolbarItem(placement: .automatic) {
-                    HStack(spacing: 6) {
-                        Image("mascot-sm")
-                            .resizable()
-                            .frame(width: 22, height: 22)
-                        Text("Motes")
-                            .font(.headline)
-                    }
-                }
-#endif
-
-#if os(iOS)
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
+                        // Refresh button
+                        Button {
+                            Task { await vm.refreshThread() }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .foregroundStyle(.secondary)
+                        }
                         // Clear thread
                         if !vm.messages.isEmpty {
                             Button {
@@ -118,5 +124,11 @@ struct ChatView: View {
         }
         .task { await vm.loadData() }
         .refreshable { await vm.refreshThread() }
+    }
+
+    private func scrollToBottom(_ proxy: ScrollViewProxy) {
+        if let last = vm.messages.last {
+            withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+        }
     }
 }

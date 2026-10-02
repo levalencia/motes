@@ -5,10 +5,11 @@ class ChatViewModel {
     var messages: [ChatMessage] = []
     var input = ""
     var isStreaming = false
+    var error: String?
+    var scrollTrigger = 0
     var conversationId: String?
     var agentId = ""
     var agents: [Agent] = []
-    var error: String?
     var pendingApprovals: [Approval] = []
     let eventStream = EventStreamService()
     let speechRecognizer = SpeechRecognizerService()
