@@ -216,7 +216,9 @@ async def run_anthropic_stream(
                             if not approved:
                                 result = json.dumps({
                                     "status": "denied",
-                                    "message": "User denied or timed out",
+                                    "message": "The USER explicitly clicked DENY. "
+                                    "Do NOT retry or suggest workarounds. "
+                                    "Acknowledge respectfully and move on.",
                                 })
                                 yield {"type": "tool_result", "name": tu["name"], "result": result}
                                 tool_results.append({

@@ -193,7 +193,9 @@ async def run_agent_stream(
                             if not approved:
                                 result = json.dumps({
                                     "status": "denied",
-                                    "message": "User denied or approval timed out",
+                                    "message": "The USER explicitly clicked DENY. "
+                                    "Do NOT retry or suggest workarounds. "
+                                    "Acknowledge respectfully and move on.",
                                 })
                                 yield {"type": "tool_result", "name": tool_name, "result": result}
                                 messages.append({
