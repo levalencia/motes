@@ -955,13 +955,13 @@
 												{/if}
 											</div>
 											<p class="text-xs text-gray-500 mt-0.5 font-mono truncate">{server.command_or_url}</p>
-											{#if server.tools.length > 0}
+											{#if (server.tools?.length ?? 0) > 0}
 												<div class="flex flex-wrap gap-1 mt-1">
-													{#each server.tools.slice(0, 5) as tool}
+													{#each (server.tools ?? []).slice(0, 5) as tool}
 														<span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-400">{tool}</span>
 													{/each}
-													{#if server.tools.length > 5}
-														<span class="text-[10px] text-gray-500">+{server.tools.length - 5} more</span>
+													{#if (server.tools?.length ?? 0) > 5}
+														<span class="text-[10px] text-gray-500">+{(server.tools?.length ?? 0) - 5} more</span>
 													{/if}
 												</div>
 											{/if}
