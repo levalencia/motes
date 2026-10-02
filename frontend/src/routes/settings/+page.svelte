@@ -104,17 +104,23 @@
 	let tasks = $state<ScheduledTask[]>([]);
 	let showTaskForm = $state(false);
 	let taskPrompt = $state('');
+	let taskName = $state('');
 	let taskSchedule = $state('0 8 * * *');
 	let taskCustomCron = $state('');
 	let taskSaving = $state(false);
-	let taskDeleting = $state<string | null>(null);
-	let taskToggling = $state<string | null>(null);
+
 	const schedulePresets = [
-		{ label: 'Every morning 8am', cron: '0 8 * * *' },
-		{ label: 'Every hour', cron: '0 * * * *' },
-		{ label: 'Daily 7pm', cron: '0 19 * * *' },
-		{ label: 'Every 30 min', cron: '*/30 * * * *' },
-		{ label: 'Custom', cron: 'custom' },
+		{ label: '⏰ Every morning 8am', cron: '0 8 * * *' },
+		{ label: '🌅 Every morning 7am', cron: '0 7 * * *' },
+		{ label: '🌆 Daily 7pm', cron: '0 19 * * *' },
+		{ label: '🕐 Every hour', cron: '0 * * * *' },
+		{ label: '⏱ Every 30 min', cron: '*/30 * * * *' },
+		{ label: '📅 Weekdays 9am', cron: '0 9 * * 1-5' },
+		{ label: '🛋 Weekends 10am', cron: '0 10 * * 0,6' },
+		{ label: '🌙 Every night 11pm', cron: '0 23 * * *' },
+		{ label: '📆 Monday 9am', cron: '0 9 * * 1' },
+		{ label: '📆 Friday 5pm', cron: '0 17 * * 5' },
+		{ label: '🔧 Custom cron', cron: 'custom' },
 	];
 
 	// MCP Servers state
@@ -150,9 +156,11 @@
 		taskSaving = true;
 		try {
 			const cron = taskSchedule === 'custom' ? taskCustomCron : taskSchedule;
-			const task = await createTask(agentId, { prompt: taskPrompt, cron_expression: cron });
+			const name = taskName.trim() || taskPrompt.slice(0, 50);
+			const task = await createTask(agentId, { name, prompt: taskPrompt, cron_expression: cron });
 			tasks = [...tasks, task];
 			taskPrompt = '';
+			taskName = '';
 			taskSchedule = '0 8 * * *';
 			taskCustomCron = '';
 			showTaskForm = false;
@@ -189,10 +197,16 @@
 
 	function formatCron(cron: string): string {
 		const map: Record<string, string> = {
-			'0 8 * * *': 'Every day at 8:00 AM',
-			'0 * * * *': 'Every hour',
-			'0 19 * * *': 'Every day at 7:00 PM',
-			'*/30 * * * *': 'Every 30 minutes',
+			'0 7 * * *': '🌅 Every morning 7am',
+			'0 8 * * *': '⏰ Every morning 8am',
+			'0 19 * * *': '🌆 Daily 7pm',
+			'0 * * * *': '🕐 Every hour',
+			'*/30 * * * *': '⏱ Every 30 min',
+			'0 9 * * 1-5': '📅 Weekdays 9am',
+			'0 10 * * 0,6': '🛋 Weekends 10am',
+			'0 23 * * *': '🌙 Every night 11pm',
+			'0 9 * * 1': '📆 Monday 9am',
+			'0 17 * * 5': '📆 Friday 5pm',
 		};
 		return map[cron] || cron;
 	}
@@ -755,6 +769,15 @@
 					{#if showTaskForm}
 						<div class="mb-5 p-4 rounded-xl" style="background: #1E293B; border: 1px solid #334155;">
 							<div class="space-y-3">
+								<div>
+									<label for="task-name" class="block text-sm text-gray-300 mb-1">Name (optional)</label>
+									<input
+										id="task-name"
+										bind:value={taskName}
+										placeholder="e.g., Morning briefing"
+										class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-600"
+									/>
+								</div>
 								<div>
 									<label for="task-prompt" class="block text-sm text-gray-300 mb-1">Prompt</label>
 									<textarea

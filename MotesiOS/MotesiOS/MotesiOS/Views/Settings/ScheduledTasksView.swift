@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ScheduledTasksView: View {
+    let agentId: String
     @State private var tasks: [ScheduledTask] = []
     @State private var showAddSheet = false
     @State private var isLoading = true
@@ -35,8 +36,8 @@ struct ScheduledTasksView: View {
             }
         }
         .sheet(isPresented: $showAddSheet) {
-            AddTaskSheet { prompt, schedule in
-                await createTask(prompt: prompt, schedule: schedule)
+            AddTaskSheet { name, prompt, cron in
+                await createTask(name: name, prompt: prompt, cron: cron)
             }
         }
         .task { await loadTasks() }
@@ -46,12 +47,15 @@ struct ScheduledTasksView: View {
     private func taskRow(_ task: ScheduledTask) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
+                Text(task.name)
+                    .font(.subheadline.bold())
                 Text(task.prompt)
-                    .font(.subheadline)
-                    .lineLimit(2)
-                Text(task.schedule)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                Text(formatCron(task.cron_expression))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
             Spacer()
             Toggle("", isOn: Binding(
@@ -64,18 +68,35 @@ struct ScheduledTasksView: View {
         }
     }
 
+    private func formatCron(_ cron: String) -> String {
+        let map: [String: String] = [
+            "0 7 * * *": "🌅 Every morning 7am",
+            "0 8 * * *": "⏰ Every morning 8am",
+            "0 19 * * *": "🌆 Daily 7pm",
+            "0 * * * *": "🕐 Every hour",
+            "*/30 * * * *": "⏱ Every 30 min",
+            "0 9 * * 1-5": "📅 Weekdays 9am",
+            "0 10 * * 0,6": "🛋 Weekends 10am",
+            "0 23 * * *": "🌙 Every night 11pm",
+            "0 9 * * 1": "📆 Monday 9am",
+            "0 17 * * 5": "📆 Friday 5pm",
+        ]
+        return map[cron] ?? cron
+    }
+
     private func loadTasks() async {
         do {
-            tasks = try await APIClient.shared.get("/api/tasks")
+            tasks = try await APIClient.shared.get("/api/agents/\(agentId)/tasks")
         } catch { /* ignore */ }
         isLoading = false
     }
 
-    private func createTask(prompt: String, schedule: String) async {
+    private func createTask(name: String, prompt: String, cron: String) async {
+        struct Body: Codable { let name: String; let prompt: String; let cron_expression: String }
         do {
             let newTask: ScheduledTask = try await APIClient.shared.post(
-                "/api/tasks",
-                body: CreateTaskRequest(prompt: prompt, schedule: schedule)
+                "/api/agents/\(agentId)/tasks",
+                body: Body(name: name, prompt: prompt, cron_expression: cron)
             )
             tasks.append(newTask)
         } catch { /* ignore */ }
@@ -83,10 +104,11 @@ struct ScheduledTasksView: View {
 
     private func toggleTask(_ task: ScheduledTask, enabled: Bool) async {
         let action = enabled ? "resume" : "pause"
+        struct Empty: Codable {}
         do {
             let _: ScheduledTask = try await APIClient.shared.post(
-                "/api/tasks/\(task.id)/\(action)",
-                body: EmptyBody()
+                "/api/agents/\(agentId)/tasks/\(task.id)/\(action)",
+                body: Empty()
             )
             if let idx = tasks.firstIndex(where: { $0.id == task.id }) {
                 tasks[idx].enabled = enabled
@@ -98,38 +120,55 @@ struct ScheduledTasksView: View {
         let toDelete = offsets.map { tasks[$0] }
         tasks.remove(atOffsets: offsets)
         for task in toDelete {
-            Task { try? await APIClient.shared.delete("/api/tasks/\(task.id)") }
+            Task { try? await APIClient.shared.delete("/api/agents/\(agentId)/tasks/\(task.id)") }
         }
     }
 }
 
 struct AddTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
     @State private var prompt = ""
-    @State private var selectedSchedule = "Every morning 8am"
-    @State private var customSchedule = ""
+    @State private var selectedCron = "0 8 * * *"
+    @State private var customCron = ""
 
-    let scheduleOptions = ["Every morning 8am", "Every hour", "Daily 7pm", "Custom"]
+    let scheduleOptions: [(label: String, cron: String)] = [
+        ("⏰ Every morning 8am", "0 8 * * *"),
+        ("🌅 Every morning 7am", "0 7 * * *"),
+        ("🌆 Daily 7pm", "0 19 * * *"),
+        ("🕐 Every hour", "0 * * * *"),
+        ("⏱ Every 30 min", "*/30 * * * *"),
+        ("📅 Weekdays 9am", "0 9 * * 1-5"),
+        ("🛋 Weekends 10am", "0 10 * * 0,6"),
+        ("🌙 Every night 11pm", "0 23 * * *"),
+        ("📆 Monday 9am", "0 9 * * 1"),
+        ("📆 Friday 5pm", "0 17 * * 5"),
+        ("🔧 Custom cron", "custom"),
+    ]
 
-    let onCreate: (String, String) async -> Void
+    let onCreate: (String, String, String) async -> Void
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Task Prompt") {
+                Section("Task Name") {
+                    TextField("e.g., Morning briefing", text: $name)
+                }
+
+                Section("Prompt") {
                     TextField("What should Motes do?", text: $prompt, axis: .vertical)
                         .lineLimit(3...6)
                 }
 
                 Section("Schedule") {
-                    Picker("Frequency", selection: $selectedSchedule) {
-                        ForEach(scheduleOptions, id: \.self) { option in
-                            Text(option).tag(option)
+                    Picker("Frequency", selection: $selectedCron) {
+                        ForEach(scheduleOptions, id: \.cron) { option in
+                            Text(option.label).tag(option.cron)
                         }
                     }
 
-                    if selectedSchedule == "Custom" {
-                        TextField("Cron expression or description", text: $customSchedule)
+                    if selectedCron == "custom" {
+                        TextField("Cron expression (e.g., 0 9 * * 1-5)", text: $customCron)
                             .font(.caption)
                     }
                 }
@@ -141,9 +180,12 @@ struct AddTaskSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") {
-                        let schedule = selectedSchedule == "Custom" ? customSchedule : selectedSchedule
+                        let cron = selectedCron == "custom" ? customCron : selectedCron
+                        let taskName = name.trimmingCharacters(in: .whitespaces).isEmpty
+                            ? String(prompt.prefix(50))
+                            : name
                         Task {
-                            await onCreate(prompt, schedule)
+                            await onCreate(taskName, prompt, cron)
                             dismiss()
                         }
                     }
@@ -153,5 +195,3 @@ struct AddTaskSheet: View {
         }
     }
 }
-
-private struct EmptyBody: Codable {}

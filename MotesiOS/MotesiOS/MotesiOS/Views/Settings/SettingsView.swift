@@ -128,7 +128,7 @@ struct SettingsView: View {
 
                 Section("📋 Scheduled Tasks") {
                     NavigationLink {
-                        ScheduledTasksView()
+                        ScheduledTasksView(agentId: agentId)
                     } label: {
                         HStack {
                             Image(systemName: "clock.arrow.circlepath")

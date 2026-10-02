@@ -147,7 +147,7 @@ export interface ScheduledTask {
 	last_run_at: string | null;
 }
 export const listTasks = (agentId: string) => api<ScheduledTask[]>(`/agents/${agentId}/tasks`);
-export const createTask = (agentId: string, data: { prompt: string; cron_expression: string }) =>
+export const createTask = (agentId: string, data: { name: string; prompt: string; cron_expression: string }) =>
 	api<ScheduledTask>(`/agents/${agentId}/tasks`, { method: 'POST', body: JSON.stringify(data) });
 export const deleteTask = (agentId: string, id: string) =>
 	api<void>(`/agents/${agentId}/tasks/${id}`, { method: 'DELETE' });
