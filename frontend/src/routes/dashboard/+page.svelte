@@ -87,7 +87,7 @@
 			// Poll for pending approvals every 5 seconds
 			async function pollApprovals() {
 				try {
-					const all = await listApprovals();
+					const all = await listApprovals(agentId);
 					pendingApprovals = all.filter(a => a.status === 'pending');
 				} catch {}
 			}

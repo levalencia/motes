@@ -26,6 +26,8 @@ async def run_anthropic_stream(
     temperature: float = 0.7,
     max_tokens: int = 4096,
     system_prompt: str = "",
+    session: Any = None,
+    agent_id: str | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Run Anthropic Messages API with streaming. Same event format as OpenAI loop."""
     url = base_url.rstrip("/") + "/messages"
@@ -169,6 +171,60 @@ async def run_anthropic_stream(
                 if tool is None:
                     result = json.dumps({"error": f"Unknown tool: {tu['name']}"})
                 else:
+                    # Approval gate
+                    if session and agent_id:
+                        from app.approvals import (
+                            ActionRisk,
+                            classify_action,
+                            create_approval_request,
+                        )
+
+                        risk = await classify_action(session, agent_id, tu["name"])
+                        if risk == ActionRisk.FORBIDDEN:
+                            result = json.dumps({"error": f"Tool '{tu['name']}' is forbidden"})
+                            yield {"type": "tool_result", "name": tu["name"], "result": result}
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": tu["id"],
+                                "content": result,
+                            })
+                            continue
+                        elif risk == ActionRisk.NEEDS_APPROVAL:
+                            approval = await create_approval_request(
+                                session, agent_id, tu["name"], json.dumps(args),
+                            )
+                            yield {
+                                "type": "approval_needed",
+                                "approval_id": approval.id,
+                                "tool_name": tu["name"],
+                                "arguments": args,
+                            }
+                            import asyncio
+
+                            from app.approvals import ApprovalStatus
+
+                            approved = False
+                            for _ in range(60):
+                                await asyncio.sleep(5)
+                                await session.refresh(approval)
+                                if approval.status == ApprovalStatus.APPROVED:
+                                    approved = True
+                                    break
+                                elif approval.status == ApprovalStatus.DENIED:
+                                    break
+                            if not approved:
+                                result = json.dumps({
+                                    "status": "denied",
+                                    "message": "User denied or timed out",
+                                })
+                                yield {"type": "tool_result", "name": tu["name"], "result": result}
+                                tool_results.append({
+                                    "type": "tool_result",
+                                    "tool_use_id": tu["id"],
+                                    "content": result,
+                                })
+                                continue
+                    # Safe or approved — execute
                     try:
                         result = await tool.execute(args)
                     except Exception as exc:

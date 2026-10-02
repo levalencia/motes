@@ -132,7 +132,7 @@ export interface Approval {
 	created_at: string;
 	expires_at: string;
 }
-export const listApprovals = () => api<Approval[]>('/approvals');
+export const listApprovals = (agentId: string) => api<Approval[]>(`/agents/${agentId}/approvals`);
 export const approveAction = (id: string) =>
 	api<{ status: string }>(`/approvals/${id}/approve`, { method: 'POST' });
 export const denyAction = (id: string) =>

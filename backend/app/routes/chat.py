@@ -140,6 +140,8 @@ async def chat(
                     messages=messages,
                     tools=tools,
                     system_prompt=agent.system_prompt + memory_context,
+                    session=session,
+                    agent_id=agent_id,
                 )
             else:
                 stream = run_agent_stream(
