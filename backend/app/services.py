@@ -190,6 +190,38 @@ async def build_tool_registry(
         tools.register(TelegramSendTool())
         logger.debug("tools_telegram_loaded")
 
+    # MCP servers (user-configured external tool servers)
+    from app.mcp_client import MCPClient, MCPServerConfig
+    from app.mcp_connector import list_mcp_servers as list_mcp_configs
+
+    try:
+        import json as json_mod
+
+        mcp_servers = await list_mcp_configs(session, user_id)
+        for srv in mcp_servers:
+            if not srv.is_enabled:
+                continue
+            try:
+                env = json_mod.loads(srv.env_json) if srv.env_json else {}
+                config = MCPServerConfig(
+                    name=srv.name,
+                    command=srv.command or None,
+                    args=srv.command.split()[1:] if srv.command and " " in srv.command else [],
+                    env=env,
+                    url=srv.url or None,
+                    transport=srv.transport,
+                )
+                client = MCPClient()
+                mcp_tools = await client.connect(config)
+                for mt in mcp_tools:
+                    tools.register(mt)
+                if mcp_tools:
+                    logger.debug("tools_mcp_loaded", server=srv.name, count=len(mcp_tools))
+            except Exception as exc:
+                logger.warning("mcp_server_load_failed", server=srv.name, error=str(exc))
+    except Exception as exc:
+        logger.warning("mcp_servers_load_failed", error=str(exc))
+
     # Gmail (if connected, with auto-refresh)
     gmail_access = await get_valid_token(session, user_id, "gmail")
     if gmail_access:

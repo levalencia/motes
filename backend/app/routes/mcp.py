@@ -118,3 +118,54 @@ async def remove_server(
     deleted = await delete_mcp_server(session, server_id, user.id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Server not found")
+
+
+class MCPTestResult(BaseModel):
+    success: bool
+    tools_discovered: int = 0
+    tool_names: list[str] = []
+    error: str = ""
+
+
+@router.post("/servers/{server_id}/test", response_model=MCPTestResult)
+async def test_server_connection(
+    server_id: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Test connection to an MCP server and discover its tools."""
+    import json as json_mod
+
+    from sqlalchemy import select
+
+    from app.mcp_client import MCPClient, MCPServerConfig
+    from app.mcp_connector import MCPServer
+
+    result = await session.execute(
+        select(MCPServer).where(MCPServer.id == server_id, MCPServer.user_id == user.id)
+    )
+    server = result.scalar_one_or_none()
+    if server is None:
+        raise HTTPException(status_code=404, detail="Server not found")
+
+    try:
+        env = json_mod.loads(server.env_json) if server.env_json else {}
+        config = MCPServerConfig(
+            name=server.name,
+            command=server.command or None,
+            args=server.command.split()[1:] if server.command and " " in server.command else [],
+            env=env,
+            url=server.url or None,
+            transport=server.transport,
+        )
+        client = MCPClient()
+        tools = await client.connect(config)
+        await client.disconnect()
+
+        return MCPTestResult(
+            success=True,
+            tools_discovered=len(tools),
+            tool_names=[t.name for t in tools],
+        )
+    except Exception as exc:
+        return MCPTestResult(success=False, error=str(exc))

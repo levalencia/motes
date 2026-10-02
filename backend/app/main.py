@@ -159,6 +159,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from app.routes.service_keys import router as service_keys_router
     from app.routes.voice import router as voice_router
     from app.routes.voice_call import router as voice_call_router
+    from app.routes.webhooks import router as webhooks_router
 
     app.include_router(auth_router)
     app.include_router(providers_router)
@@ -176,6 +177,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(notifications_router)
     app.include_router(voice_call_router)
     app.include_router(realtime_call_router)
+    app.include_router(webhooks_router)
 
     return app
 
