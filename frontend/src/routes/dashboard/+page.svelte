@@ -279,6 +279,38 @@
 		return `${d.toLocaleDateString([], { day: 'numeric', month: 'short' })} ${time}`;
 	}
 
+	const toolDescriptions: Record<string, string> = {
+		gmail_send: '📧 Send an email via Gmail',
+		outlook_send_email: '📧 Send an email via Outlook',
+		calendar_create: '📅 Create a calendar event',
+		reminders_create: '🔔 Create a reminder in Apple Reminders',
+		file_download_url: '📁 Generate a file download link',
+		pptx_add_slide: '📊 Add a slide to a PowerPoint',
+	};
+
+	function formatToolName(toolName: string): string {
+		return toolDescriptions[toolName] || toolName.replace(/_/g, ' ');
+	}
+
+	function formatToolArgs(toolName: string, argsJson: string): string {
+		try {
+			const args = JSON.parse(argsJson);
+			switch (toolName) {
+				case 'gmail_send':
+				case 'outlook_send_email':
+					return `To: ${args.to || '?'}\nSubject: ${args.subject || '?'}\n${args.body ? args.body.slice(0, 100) + '...' : ''}`;
+				case 'calendar_create':
+					return `Event: ${args.title || args.summary || '?'}\nWhen: ${args.start || args.date || '?'}`;
+				case 'reminders_create':
+					return `Reminder: ${args.title || args.text || args.name || JSON.stringify(args)}`;
+				default:
+					return Object.entries(args).map(([k, v]) => `${k}: ${v}`).join('\n');
+			}
+		} catch {
+			return argsJson;
+		}
+	}
+
 	function getMessageStyle(msg: ThreadMessage): { prefix: string; bgClass: string; textClass: string; isSystem: boolean } {
 		switch (msg.message_type) {
 			case 'call':
@@ -420,12 +452,11 @@
 									<span class="text-[10px]" style="color: var(--text-muted);">{formatTime(approval.created_at)}</span>
 								</div>
 								<p class="text-sm font-medium mb-1" style="color: var(--text-primary);">
-									{approval.action_type}
+									Motes wants to: {formatToolName(approval.tool_name)}
 								</p>
-								<pre class="text-xs mb-3 whitespace-pre-wrap rounded-lg p-2" style="background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border);">{JSON.stringify(approval.action_data, null, 2)}</pre>
-								{#if approval.expires_at}
-									<p class="text-[10px] mb-2" style="color: var(--text-muted);">Expires: {formatTime(approval.expires_at)}</p>
-								{/if}
+								<p class="text-xs mb-3" style="color: var(--text-secondary);">
+									{formatToolArgs(approval.tool_name, approval.arguments_json)}
+								</p>
 								<div class="flex gap-2">
 									<button
 										onclick={() => handleApproval(approval.id, 'approve')}

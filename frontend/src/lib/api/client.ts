@@ -126,11 +126,10 @@ export const getMessages = (conversationId: string) =>
 // Approvals
 export interface Approval {
 	id: string;
-	action_type: string;
-	action_data: Record<string, any>;
+	tool_name: string;
+	arguments_json: string;
 	status: string;
 	created_at: string;
-	expires_at: string;
 }
 export const listApprovals = (agentId: string) => api<Approval[]>(`/agents/${agentId}/approvals`);
 export const approveAction = (id: string) =>
