@@ -117,5 +117,6 @@ struct ChatView: View {
             }
         }
         .task { await vm.loadData() }
+        .refreshable { await vm.refreshThread() }
     }
 }

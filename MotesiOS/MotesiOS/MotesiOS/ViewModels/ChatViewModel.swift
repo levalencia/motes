@@ -47,6 +47,13 @@ class ChatViewModel {
         startApprovalPolling()
     }
 
+    func refreshThread() async {
+        guard !agentId.isEmpty else { return }
+        do {
+            messages = try await ChatService.loadThread(agentId: agentId)
+        } catch { /* ignore */ }
+    }
+
     // MARK: - Approval Polling
 
     func startApprovalPolling() {

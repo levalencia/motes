@@ -13,7 +13,12 @@ enum ChatService {
 
     /// Load all messages in the single thread for an agent
     static func loadThread(agentId: String) async throws -> [ChatMessage] {
-        try await APIClient.shared.get("/api/agents/\(agentId)/thread")
+        struct ThreadResponse: Codable {
+            let thread_id: String
+            let messages: [ChatMessage]
+        }
+        let response: ThreadResponse = try await APIClient.shared.get("/api/agents/\(agentId)/thread")
+        return response.messages
     }
 
     /// Clear the entire thread
