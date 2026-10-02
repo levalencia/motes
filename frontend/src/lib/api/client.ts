@@ -140,11 +140,13 @@ export const denyAction = (id: string) =>
 // Scheduled Tasks
 export interface ScheduledTask {
 	id: string;
+	name: string;
 	prompt: string;
 	cron_expression: string;
-	enabled: boolean;
+	status: string;
 	run_count: number;
-	last_run_at: string | null;
+	max_runs: number | null;
+	enabled: boolean;
 }
 export const listTasks = (agentId: string) => api<ScheduledTask[]>(`/agents/${agentId}/tasks`);
 export const createTask = (agentId: string, data: { name: string; prompt: string; cron_expression: string }) =>

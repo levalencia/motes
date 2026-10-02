@@ -828,7 +828,7 @@
 							{#each tasks as task}
 								<div class="flex items-center justify-between p-3 rounded-xl bg-gray-800/50 border border-gray-700/50">
 									<div class="flex-1 min-w-0 mr-3">
-										<p class="text-sm font-medium text-white truncate">{task.prompt}</p>
+										<p class="text-sm font-medium text-white truncate">{task.name || task.prompt}</p>
 										<div class="flex items-center gap-3 mt-1">
 											<span class="text-xs text-gray-400">🕐 {formatCron(task.cron_expression)}</span>
 											<span class="text-xs {task.enabled ? 'text-green-400' : 'text-gray-500'}">

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -37,6 +39,21 @@ class TaskResponse(BaseModel):
     status: str
     run_count: int
     max_runs: int | None
+    enabled: bool = True
+
+    @classmethod
+    def from_task(cls, task: Any) -> TaskResponse:
+        return cls(
+            id=task.id,
+            agent_id=task.agent_id,
+            name=task.name,
+            prompt=task.prompt,
+            cron_expression=task.cron_expression,
+            status=task.status,
+            run_count=task.run_count,
+            max_runs=task.max_runs,
+            enabled=task.status == "active",
+        )
 
 
 class RunResponse(BaseModel):
