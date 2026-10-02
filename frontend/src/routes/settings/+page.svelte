@@ -108,6 +108,8 @@
 	let taskSchedule = $state('0 8 * * *');
 	let taskCustomCron = $state('');
 	let taskSaving = $state(false);
+	let taskDeleting = $state<string | null>(null);
+	let taskToggling = $state<string | null>(null);
 
 	const schedulePresets = [
 		{ label: '⏰ Every morning 8am', cron: '0 8 * * *' },
