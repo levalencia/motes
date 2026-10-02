@@ -337,9 +337,9 @@
 				agentName = personality.name;
 				systemPrompt = personality.system_prompt;
 				voicePersonality = personality.voice_personality || '';
+				// Load scheduled tasks
+				try { tasks = await listTasks(agentId); } catch {}
 			}
-			// Load scheduled tasks
-			try { tasks = await listTasks(agentId); } catch {}
 			// Load MCP servers
 			try { mcpServers = await listMcpServers(); } catch {}
 		} catch (e: any) {
