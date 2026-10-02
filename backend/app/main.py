@@ -90,9 +90,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         scanner_task = asyncio.create_task(
             run_scanner(app.state.session_factory, app.state.event_bus)
         )
+
+        # Start task scheduler
+        from app.task_runner import run_task_scheduler
+
+        task_scheduler_task = asyncio.create_task(
+            run_task_scheduler(app.state.session_factory, app.state.event_bus)
+        )
         yield
     finally:
         scanner_task.cancel()
+        task_scheduler_task.cancel()
         await engine.dispose()
         logger.info("motes_shutdown")
 

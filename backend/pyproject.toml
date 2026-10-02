@@ -32,6 +32,7 @@ dependencies = [
     "websockets>=17.1",
     "opentelemetry-instrumentation-sqlalchemy>=0.66b0",
     "opentelemetry-instrumentation-httpx>=0.66b0",
+    "croniter>=6.2.4",
 ]
 
 [project.optional-dependencies]
