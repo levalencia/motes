@@ -133,9 +133,9 @@ export interface Approval {
 }
 export const listApprovals = (agentId: string) => api<Approval[]>(`/agents/${agentId}/approvals`);
 export const approveAction = (id: string) =>
-	api<{ status: string }>(`/approvals/${id}/approve`, { method: 'POST' });
+	api<{ status: string }>(`/approvals/${id}/resolve`, { method: 'POST', body: JSON.stringify({ approved: true }) });
 export const denyAction = (id: string) =>
-	api<{ status: string }>(`/approvals/${id}/deny`, { method: 'POST' });
+	api<{ status: string }>(`/approvals/${id}/resolve`, { method: 'POST', body: JSON.stringify({ approved: false }) });
 
 // Scheduled Tasks
 export interface ScheduledTask {
