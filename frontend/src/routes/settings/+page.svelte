@@ -150,7 +150,7 @@
 		taskSaving = true;
 		try {
 			const cron = taskSchedule === 'custom' ? taskCustomCron : taskSchedule;
-			const task = await createTask({ prompt: taskPrompt, cron_expression: cron });
+			const task = await createTask(agentId, { prompt: taskPrompt, cron_expression: cron });
 			tasks = [...tasks, task];
 			taskPrompt = '';
 			taskSchedule = '0 8 * * *';
@@ -166,7 +166,7 @@
 	async function handleDeleteTask(id: string) {
 		taskDeleting = id;
 		try {
-			await deleteTask(id);
+			await deleteTask(agentId, id);
 			tasks = tasks.filter(t => t.id !== id);
 		} catch (e: any) {
 			error = e.message;
@@ -178,7 +178,7 @@
 	async function handleToggleTask(task: ScheduledTask) {
 		taskToggling = task.id;
 		try {
-			const updated = task.enabled ? await pauseTask(task.id) : await resumeTask(task.id);
+			const updated = task.enabled ? await pauseTask(agentId, task.id) : await resumeTask(agentId, task.id);
 			tasks = tasks.map(t => t.id === task.id ? updated : t);
 		} catch (e: any) {
 			error = e.message;
@@ -339,7 +339,7 @@
 				voicePersonality = personality.voice_personality || '';
 			}
 			// Load scheduled tasks
-			try { tasks = await listTasks(); } catch {}
+			try { tasks = await listTasks(agentId); } catch {}
 			// Load MCP servers
 			try { mcpServers = await listMcpServers(); } catch {}
 		} catch (e: any) {

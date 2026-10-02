@@ -146,15 +146,15 @@ export interface ScheduledTask {
 	run_count: number;
 	last_run_at: string | null;
 }
-export const listTasks = () => api<ScheduledTask[]>('/tasks');
-export const createTask = (data: { prompt: string; cron_expression: string }) =>
-	api<ScheduledTask>('/tasks', { method: 'POST', body: JSON.stringify(data) });
-export const deleteTask = (id: string) =>
-	api<void>(`/tasks/${id}`, { method: 'DELETE' });
-export const pauseTask = (id: string) =>
-	api<ScheduledTask>(`/tasks/${id}/pause`, { method: 'POST' });
-export const resumeTask = (id: string) =>
-	api<ScheduledTask>(`/tasks/${id}/resume`, { method: 'POST' });
+export const listTasks = (agentId: string) => api<ScheduledTask[]>(`/agents/${agentId}/tasks`);
+export const createTask = (agentId: string, data: { prompt: string; cron_expression: string }) =>
+	api<ScheduledTask>(`/agents/${agentId}/tasks`, { method: 'POST', body: JSON.stringify(data) });
+export const deleteTask = (agentId: string, id: string) =>
+	api<void>(`/agents/${agentId}/tasks/${id}`, { method: 'DELETE' });
+export const pauseTask = (agentId: string, id: string) =>
+	api<ScheduledTask>(`/agents/${agentId}/tasks/${id}/pause`, { method: 'POST' });
+export const resumeTask = (agentId: string, id: string) =>
+	api<ScheduledTask>(`/agents/${agentId}/tasks/${id}/resume`, { method: 'POST' });
 
 // MCP Servers
 export interface McpServer {
