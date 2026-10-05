@@ -8,19 +8,19 @@ class VoiceCallService {
     var transcripts: [(role: String, text: String)] = []
 
     private var webSocket: URLSessionWebSocketTask?
-    private var audioPlayer: AVAudioPlayer?
-
-    // Reconnect state
+    private var urlSession: URLSession?
+    private let maxReconnectAttempts = 3
+    private var reconnectAttempts = 0
     private var lastAgentId = ""
     private var lastToken = ""
     private var lastConversationId: String?
-    private var reconnectAttempts = 0
-    private let maxReconnectAttempts = 3
+    private var intentionalDisconnect = false
+    private var keepAliveTimer: Timer?
 
-    var onReady: (() -> Void)?
     var onAudioReceived: ((Data) -> Void)?
-    var onResponseDone: ((String) -> Void)?
+    var onReady: (() -> Void)?
     var onError: ((String) -> Void)?
+    var onResponseDone: ((String) -> Void)?
 
     func connect(agentId: String, token: String, conversationId: String? = nil) {
         // Save for reconnect
@@ -28,32 +28,39 @@ class VoiceCallService {
         lastToken = token
         lastConversationId = conversationId
         reconnectAttempts = 0
-
+        intentionalDisconnect = false
         doConnect(agentId: agentId, token: token, conversationId: conversationId)
     }
 
     private func doConnect(agentId: String, token: String, conversationId: String?) {
-        let baseURL = APIClient.shared.baseURL.replacingOccurrences(of: "http://", with: "ws://")
+        let baseURL = APIClient.shared.baseURL
             .replacingOccurrences(of: "https://", with: "wss://")
-        guard let url = URL(string: "\(baseURL)/api/realtime-call/\(agentId)") else {
-            onError?("Invalid server URL")
+            .replacingOccurrences(of: "http://", with: "ws://")
+        let urlStr = "\(baseURL)/api/agents/\(agentId)/realtime"
+
+        guard let url = URL(string: urlStr) else {
+            status = "Invalid URL"
             return
         }
 
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30
-        let session = URLSession(configuration: config)
-        webSocket = session.webSocketTask(with: url)
-        webSocket?.resume()
+        let session = URLSession(configuration: .default)
+        urlSession = session
+        let ws = session.webSocketTask(with: url)
+        webSocket = ws
+        ws.resume()
 
         status = "Connecting..."
 
         // Send auth
-        var auth: [String: Any] = ["type": "auth", "token": token]
-        if let cid = conversationId { auth["conversation_id"] = cid }
+        let auth: [String: Any] = [
+            "type": "auth",
+            "token": token,
+            "agent_id": agentId,
+            "conversation_id": conversationId ?? "",
+        ]
         if let data = try? JSONSerialization.data(withJSONObject: auth),
            let str = String(data: data, encoding: .utf8) {
-            webSocket?.send(.string(str)) { [weak self] error in
+            ws.send(.string(str)) { [weak self] error in
                 if let error {
                     Task { @MainActor in
                         self?.status = "Auth failed"
@@ -64,6 +71,7 @@ class VoiceCallService {
         }
 
         receiveMessages()
+        startKeepAlive()
     }
 
     private func receiveMessages() {
@@ -92,23 +100,51 @@ class VoiceCallService {
     private func handleDisconnect(error: Error) {
         let wasConnected = isConnected
         isConnected = false
+        stopKeepAlive()
 
-        // Auto-reconnect if was connected and haven't exceeded attempts
-        if wasConnected && reconnectAttempts < maxReconnectAttempts {
-            reconnectAttempts += 1
-            status = "Reconnecting (\(reconnectAttempts)/\(maxReconnectAttempts))..."
-            // Wait a moment then reconnect
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                self.doConnect(
-                    agentId: self.lastAgentId,
-                    token: self.lastToken,
-                    conversationId: self.lastConversationId
-                )
+        // Only reconnect if NOT intentional and was a screen-sleep type disconnect
+        // Don't reconnect on normal errors during active call — it causes duplicate sessions
+        if wasConnected && !intentionalDisconnect && reconnectAttempts < maxReconnectAttempts {
+            let errorMsg = error.localizedDescription.lowercased()
+            // Only reconnect on connection-abort type errors (screen sleep)
+            let isConnectionAbort = errorMsg.contains("abort")
+                || errorMsg.contains("connection reset")
+                || errorMsg.contains("network")
+            if isConnectionAbort {
+                reconnectAttempts += 1
+                status = "Reconnecting (\(reconnectAttempts)/\(maxReconnectAttempts))..."
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    self.doConnect(
+                        agentId: self.lastAgentId,
+                        token: self.lastToken,
+                        conversationId: self.lastConversationId
+                    )
+                }
+                return
             }
-        } else {
-            status = "Disconnected"
+        }
+
+        status = "Disconnected"
+        if !intentionalDisconnect {
             onError?(error.localizedDescription)
         }
+    }
+
+    private func startKeepAlive() {
+        stopKeepAlive()
+        // Send ping every 20 seconds to keep WebSocket alive
+        keepAliveTimer = Timer.scheduledTimer(withTimeInterval: 20.0, repeats: true) { [weak self] _ in
+            self?.webSocket?.sendPing { error in
+                if let error {
+                    print("[Motes] WebSocket ping failed: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    private func stopKeepAlive() {
+        keepAliveTimer?.invalidate()
+        keepAliveTimer = nil
     }
 
     @MainActor
@@ -120,30 +156,42 @@ class VoiceCallService {
             status = "Connected"
             onReady?()
         case "audio_wav":
-            if let b64 = obj["data"] as? String, let data = Data(base64Encoded: b64) {
-                status = "Speaking..."
-                playAudio(data: data)
+            if let b64 = obj["data"] as? String,
+               let data = Data(base64Encoded: b64) {
+                onAudioReceived?(data)
+            }
+        case "response_transcript":
+            if let text = obj["text"] as? String {
+                // Update last assistant transcript
+                if let last = transcripts.last, last.role == "assistant" {
+                    transcripts[transcripts.count - 1] = (role: "assistant", text: text)
+                } else {
+                    transcripts.append((role: "assistant", text: text))
+                }
             }
         case "response_done":
-            if let text = obj["text"] as? String {
-                transcripts.append((role: "assistant", text: text))
+            if let text = obj["text"] as? String, !text.isEmpty {
                 onResponseDone?(text)
             }
-            status = "Listening..."
         case "user_transcript":
-            if let text = obj["text"] as? String {
+            if let text = obj["text"] as? String, !text.isEmpty {
                 transcripts.append((role: "user", text: text))
             }
         case "error":
-            if let msg = obj["message"] as? String, !msg.lowercased().contains("buffer too small") {
-                status = "Error: \(msg)"
-            }
-        default: break
+            let msg = obj["message"] as? String ?? "Unknown error"
+            onError?(msg)
+        default:
+            break
         }
     }
 
     func sendAudio(base64: String, sampleRate: Double = 24000) {
-        let msg: [String: Any] = ["type": "audio", "data": base64, "format": "pcm16", "sample_rate": "\(Int(sampleRate))"]
+        let msg: [String: Any] = [
+            "type": "audio",
+            "data": base64,
+            "format": "pcm16",
+            "sample_rate": "\(Int(sampleRate))",
+        ]
         if let data = try? JSONSerialization.data(withJSONObject: msg),
            let str = String(data: data, encoding: .utf8) {
             webSocket?.send(.string(str)) { error in
@@ -154,19 +202,10 @@ class VoiceCallService {
         }
     }
 
-    func playAudio(data: Data) {
-        audioPlayer = try? AVAudioPlayer(data: data)
-        audioPlayer?.play()
-    }
-
     func disconnect() {
-        reconnectAttempts = maxReconnectAttempts // Prevent auto-reconnect
-        let end: [String: String] = ["type": "end"]
-        if let data = try? JSONSerialization.data(withJSONObject: end),
-           let str = String(data: data, encoding: .utf8) {
-            webSocket?.send(.string(str)) { _ in }
-        }
-        webSocket?.cancel(with: .normalClosure, reason: nil)
+        intentionalDisconnect = true
+        stopKeepAlive()
+        webSocket?.cancel(with: .goingAway, reason: nil)
         webSocket = nil
         isConnected = false
         status = "Disconnected"
