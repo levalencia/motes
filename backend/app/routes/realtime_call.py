@@ -124,7 +124,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
             prev_history = prev_msgs.scalars().all()
             context_summary = ""
             if prev_history:
-                recent = prev_history[-20:]  # Last 20 messages for full context
+                recent = prev_history[-10:]  # Last 10 messages
                 context_summary = "\n\nConversation history (chat + calls + notifications):\n"
                 for m in recent:
                     prefix = ""
@@ -135,7 +135,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                         prefix = "💡 "
                     elif mt == "system":
                         prefix = "⚙️ "
-                    context_summary += f"- {prefix}{m.role}: {m.content[:200]}\n"
+                    context_summary += f"- {prefix}{m.role}: {m.content[:100]}\n"
 
             # If no realtime key, fall back to pipeline mode
             if not realtime_key:
@@ -501,8 +501,8 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                 )
 
                                 # Truncate long tool results to prevent Azure "message too long"
-                                if len(result_text) > 2000:
-                                    result_text = result_text[:2000] + "... (truncated)"
+                                if len(result_text) > 1000:
+                                    result_text = result_text[:1000] + "... (truncated)"
 
                                 # Send result back to Azure
                                 await azure_ws.send(
