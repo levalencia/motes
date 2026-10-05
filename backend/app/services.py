@@ -68,6 +68,12 @@ async def build_tool_registry(
         tools.register(MemorySaveTool(session, agent_for_memory.id))
         tools.register(MemoryRecallTool(session, agent_for_memory.id))
 
+    # Scheduled tasks tool
+    from app.task_tools import ScheduledTasksTool
+
+    if agent_for_memory:
+        tools.register(ScheduledTasksTool(session, agent_for_memory.id))
+
     # Apple Reminders + Notes (macOS only, no API key)
     import platform
 
