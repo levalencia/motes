@@ -30,6 +30,9 @@ class CallViewModel {
                 self.startTimer()
                 self.startRecording()
             }
+            self.voiceService.onAudioReceived = { [weak self] data in
+                self?.playAudioData(data)
+            }
             self.voiceService.onResponseDone = { text in
                 self.transcripts.append((role: "assistant", text: text))
             }
@@ -54,6 +57,17 @@ class CallViewModel {
     private func startTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             self.callDuration += 1
+        }
+    }
+
+    private var audioPlayer: AVAudioPlayer?
+
+    private func playAudioData(_ data: Data) {
+        do {
+            audioPlayer = try AVAudioPlayer(data: data)
+            audioPlayer?.play()
+        } catch {
+            print("[Motes] Audio playback error: \(error.localizedDescription)")
         }
     }
 
