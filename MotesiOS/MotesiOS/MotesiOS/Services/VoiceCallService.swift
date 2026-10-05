@@ -38,13 +38,14 @@ class VoiceCallService {
             .replacingOccurrences(of: "http://", with: "ws://")
         let urlStr = "\(baseURL)/api/realtime-call/\(agentId)"
 
+        print("[Motes] WebSocket URL: \(urlStr)")
+
         guard let url = URL(string: urlStr) else {
             status = "Invalid URL"
             return
         }
 
-        let session = URLSession(configuration: .default)
-        urlSession = session
+        let session = APIClient.shared.session
         let ws = session.webSocketTask(with: url)
         webSocket = ws
         ws.resume()
