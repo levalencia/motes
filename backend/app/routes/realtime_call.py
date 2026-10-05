@@ -384,7 +384,6 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
 
                 async def azure_to_client():
                     full_response = ""
-                    audio_chunks: list[bytes] = []
                     try:
                         async for raw in azure_ws:
                             event = json.loads(raw)
@@ -402,9 +401,17 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                 )
 
                             elif etype == "response.output_audio.delta":
-                                # Collect audio on server side
+                                # Stream audio immediately in small WAV chunks
                                 pcm = base64.b64decode(event.get("delta", ""))
-                                audio_chunks.append(pcm)
+                                if len(pcm) > 0:
+                                    wav = _pcm16_to_wav(pcm, 24000)
+                                    wav_b64 = base64.b64encode(wav).decode()
+                                    await websocket.send_json(
+                                        {
+                                            "type": "audio_wav",
+                                            "data": wav_b64,
+                                        }
+                                    )
 
                             elif etype == "response.output_audio_transcript.delta":
                                 full_response += event.get("delta", "")
@@ -429,19 +436,8 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                 full_response = text
 
                             elif etype == "response.done":
-                                # Build WAV on server and send as one blob
-                                if audio_chunks:
-                                    pcm_all = b"".join(audio_chunks)
-                                    wav = _pcm16_to_wav(pcm_all, 24000)
-                                    wav_b64 = base64.b64encode(wav).decode()
-                                    logger.info("realtime_call_wav_sent", size=len(wav))
-                                    await websocket.send_json(
-                                        {
-                                            "type": "audio_wav",
-                                            "data": wav_b64,
-                                        }
-                                    )
-                                    audio_chunks = []
+                                # Audio already streamed incrementally
+                                logger.info("realtime_call_response_done")
                                 await websocket.send_json(
                                     {
                                         "type": "response_done",

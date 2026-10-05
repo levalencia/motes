@@ -2,6 +2,13 @@ import Foundation
 import AVFoundation
 import UIKit
 
+class AudioPlayerDelegate: NSObject, AVAudioPlayerDelegate {
+    var onFinish: (() -> Void)?
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        onFinish?()
+    }
+}
+
 @Observable
 class CallViewModel {
     var status = "Idle"
@@ -17,6 +24,7 @@ class CallViewModel {
     private var timer: Timer?
     private var audioEngine: AVAudioEngine?
     private var isRecording = false
+    private let audioDelegate = AudioPlayerDelegate()
 
     func startCall(agentId: String, conversationId: String? = nil) {
         guard let token = APIClient.shared.token else { return }
@@ -61,13 +69,33 @@ class CallViewModel {
     }
 
     private var audioPlayer: AVAudioPlayer?
+    private var audioQueue: [Data] = []
+    private var isPlayingQueue = false
 
     private func playAudioData(_ data: Data) {
+        audioQueue.append(data)
+        if !isPlayingQueue {
+            playNextInQueue()
+        }
+    }
+
+    private func playNextInQueue() {
+        guard !audioQueue.isEmpty else {
+            isPlayingQueue = false
+            return
+        }
+        isPlayingQueue = true
+        let data = audioQueue.removeFirst()
         do {
             audioPlayer = try AVAudioPlayer(data: data)
+            audioPlayer?.delegate = audioDelegate
+            audioDelegate.onFinish = { [weak self] in
+                self?.playNextInQueue()
+            }
             audioPlayer?.play()
         } catch {
             print("[Motes] Audio playback error: \(error.localizedDescription)")
+            playNextInQueue()
         }
     }
 
