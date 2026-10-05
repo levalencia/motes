@@ -197,6 +197,11 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                     f"IMPORTANT: Only respond when the user speaks to you. "
                                     f"Do NOT speak unprompted. Wait for the user to finish talking before responding. "
                                     f"If there is silence, stay quiet — do not fill silence with speech. "
+                                    f"APPROVAL RULE: Before sending emails, creating "
+                                    f"reminders, creating calendar events, or any action "
+                                    f"that modifies data, ALWAYS ask for confirmation. "
+                                    f"Say '¿Quieres que lo haga?' and wait for sí/no. "
+                                    f"For read-only actions (weather, news), just do them. "
                                     + (f"Voice personality: {voice_personality}. " if voice_personality else "")
                                     + agent.system_prompt
                                     + context_summary
