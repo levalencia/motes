@@ -422,13 +422,6 @@
 								{/if}
 								{#if !streaming && msg.content && msg.role === 'assistant'}
 									<div class="flex items-center gap-3 mt-1.5">
-										<button
-											onclick={() => playTTS(msg.content, msg.id)}
-											class="text-xs flex items-center gap-1 transition-opacity hover:opacity-70"
-											style="color: var(--text-muted);"
-										>
-											{playingTTS === msg.id ? '⏹ Stop' : '🔊 Listen'}
-										</button>
 										<span class="text-[10px]" style="color: var(--text-muted);">{formatTime(msg.created_at)}</span>
 									</div>
 								{/if}
