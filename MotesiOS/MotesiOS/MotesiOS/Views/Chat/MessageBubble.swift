@@ -11,8 +11,33 @@ struct MessageBubble: View {
             proactiveBubble
         case "call":
             callBubble
+        case "scheduled":
+            scheduledBubble
         default:
             chatBubble
+        }
+    }
+
+    private var timeText: String {
+        guard let iso = message.created_at, !iso.isEmpty else { return "" }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        guard let date = formatter.date(from: iso) ?? ISO8601DateFormatter().date(from: iso) else { return "" }
+        let tf = DateFormatter()
+        if Calendar.current.isDateInToday(date) {
+            tf.dateFormat = "h:mm a"
+        } else {
+            tf.dateFormat = "MMM d, h:mm a"
+        }
+        return tf.string(from: date)
+    }
+
+    @ViewBuilder
+    private var timestamp: some View {
+        if !timeText.isEmpty {
+            Text(timeText)
+                .font(.system(size: 9))
+                .foregroundStyle(.tertiary)
         }
     }
 
@@ -22,12 +47,15 @@ struct MessageBubble: View {
         HStack(alignment: .top, spacing: 8) {
             if message.role == "user" {
                 Spacer(minLength: 60)
-                Text(message.content)
-                    .font(.subheadline)
-                    .padding(12)
-                    .background(MotesTheme.accent)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(message.content)
+                        .font(.subheadline)
+                        .padding(12)
+                        .background(MotesTheme.accent)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                    timestamp
+                }
             } else if message.role == "tool" {
                 Image("mascot-sm")
                     .resizable()
@@ -51,7 +79,10 @@ struct MessageBubble: View {
                     .resizable()
                     .frame(width: 24, height: 24)
                     .padding(.top, 2)
-                MarkdownView(content: message.content)
+                VStack(alignment: .leading, spacing: 2) {
+                    MarkdownView(content: message.content)
+                    timestamp
+                }
                 Spacer(minLength: 20)
             }
         }
@@ -63,16 +94,19 @@ struct MessageBubble: View {
         HStack(alignment: .top, spacing: 8) {
             if message.role == "user" {
                 Spacer(minLength: 60)
-                HStack(spacing: 4) {
-                    Text("📞")
-                        .font(.caption)
-                    Text(message.content)
-                        .font(.subheadline)
+                VStack(alignment: .trailing, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Text("📞")
+                            .font(.caption)
+                        Text(message.content)
+                            .font(.subheadline)
+                    }
+                    .padding(12)
+                    .background(Color.green.opacity(0.15))
+                    .foregroundStyle(.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    timestamp
                 }
-                .padding(12)
-                .background(Color.green.opacity(0.15))
-                .foregroundStyle(.primary)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
             } else {
                 Image(systemName: "phone.fill")
                     .foregroundStyle(.green)
@@ -84,6 +118,7 @@ struct MessageBubble: View {
                         .font(.caption2)
                         .foregroundStyle(.green)
                     MarkdownView(content: message.content)
+                    timestamp
                 }
                 Spacer(minLength: 20)
             }
@@ -104,9 +139,33 @@ struct MessageBubble: View {
                     .font(.caption2)
                     .foregroundStyle(.orange)
                 MarkdownView(content: message.content)
+                timestamp
             }
             .padding(10)
             .background(Color.orange.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            Spacer(minLength: 20)
+        }
+    }
+
+    // MARK: - Scheduled task result
+    @ViewBuilder
+    private var scheduledBubble: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "clock.fill")
+                .foregroundStyle(.blue)
+                .font(.caption)
+                .frame(width: 24, height: 24)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Scheduled Task")
+                    .font(.caption2)
+                    .foregroundStyle(.blue)
+                MarkdownView(content: message.content)
+                timestamp
+            }
+            .padding(10)
+            .background(Color.blue.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 14))
             Spacer(minLength: 20)
         }
@@ -117,11 +176,14 @@ struct MessageBubble: View {
     private var systemBubble: some View {
         HStack {
             Spacer()
-            Text(message.content)
-                .font(.caption)
-                .foregroundStyle(.gray)
-                .multilineTextAlignment(.center)
-                .padding(.vertical, 4)
+            VStack(spacing: 2) {
+                Text(message.content)
+                    .font(.caption)
+                    .foregroundStyle(.gray)
+                    .multilineTextAlignment(.center)
+                timestamp
+            }
+            .padding(.vertical, 4)
             Spacer()
         }
     }
