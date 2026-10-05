@@ -78,17 +78,19 @@ class TodoistListTool(Tool):
                 resp.raise_for_status()
                 tasks = []
                 for task in resp.json()[:limit]:
-                    tasks.append({
-                        "id": task.get("id"),
-                        "content": task.get("content"),
-                        "description": task.get("description"),
-                        "priority": task.get("priority"),
-                        "due": task.get("due", {}).get("string") if task.get("due") else None,
-                        "due_date": task.get("due", {}).get("date") if task.get("due") else None,
-                        "labels": task.get("labels", []),
-                        "project_id": task.get("project_id"),
-                        "url": task.get("url"),
-                    })
+                    tasks.append(
+                        {
+                            "id": task.get("id"),
+                            "content": task.get("content"),
+                            "description": task.get("description"),
+                            "priority": task.get("priority"),
+                            "due": task.get("due", {}).get("string") if task.get("due") else None,
+                            "due_date": task.get("due", {}).get("date") if task.get("due") else None,
+                            "labels": task.get("labels", []),
+                            "project_id": task.get("project_id"),
+                            "url": task.get("url"),
+                        }
+                    )
                 return json.dumps({"tasks": tasks, "count": len(tasks)})
         except Exception as e:
             logger.warning("todoist_list_error", error=str(e))
@@ -163,12 +165,14 @@ class TodoistCreateTool(Tool):
                 )
                 resp.raise_for_status()
                 task = resp.json()
-                return json.dumps({
-                    "created": True,
-                    "id": task.get("id"),
-                    "content": task.get("content"),
-                    "url": task.get("url"),
-                })
+                return json.dumps(
+                    {
+                        "created": True,
+                        "id": task.get("id"),
+                        "content": task.get("content"),
+                        "url": task.get("url"),
+                    }
+                )
         except Exception as e:
             logger.warning("todoist_create_error", error=str(e))
             return json.dumps({"error": str(e)})

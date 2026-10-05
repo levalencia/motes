@@ -45,9 +45,7 @@ def _verify_slack_signature(body: bytes, timestamp: str, signature: str) -> bool
         return False
 
     sig_basestring = f"v0:{timestamp}:{body.decode()}"
-    expected = "v0=" + hmac.new(
-        secret.encode(), sig_basestring.encode(), hashlib.sha256
-    ).hexdigest()
+    expected = "v0=" + hmac.new(secret.encode(), sig_basestring.encode(), hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 
 
@@ -114,9 +112,7 @@ async def _run_agent_for_channel(
     # Build message history
     conversation = await get_or_create_thread(session, agent_id)
     msg_result = await session.execute(
-        select(Message)
-        .where(Message.conversation_id == conversation.id)
-        .order_by(Message.created_at)
+        select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at)
     )
     history = msg_result.scalars().all()
 
@@ -124,19 +120,14 @@ async def _run_agent_for_channel(
     from app.memory import Memory
 
     mem_result = await session.execute(
-        select(Memory)
-        .where(Memory.agent_id == agent_id)
-        .order_by(Memory.created_at.desc())
-        .limit(50)
+        select(Memory).where(Memory.agent_id == agent_id).order_by(Memory.created_at.desc()).limit(50)
     )
     memories = mem_result.scalars().all()
     memory_context = ""
     if memories:
         memory_lines = [f"- [{m.category}] {m.content}" for m in memories]
-        memory_context = (
-            "\n\n## Your Memories\n"
-            "You have the following memories from past interactions:\n"
-            + "\n".join(memory_lines)
+        memory_context = "\n\n## Your Memories\nYou have the following memories from past interactions:\n" + "\n".join(
+            memory_lines
         )
 
     messages = [{"role": "system", "content": agent.system_prompt + memory_context}]
@@ -211,9 +202,7 @@ async def configure_slack_channel(
 ):
     """Map a Slack channel to an agent."""
     # Verify agent belongs to user
-    result = await session.execute(
-        select(Agent).where(Agent.id == body.agent_id, Agent.user_id == user.id)
-    )
+    result = await session.execute(select(Agent).where(Agent.id == body.agent_id, Agent.user_id == user.id))
     if result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Agent not found")
 
@@ -228,9 +217,7 @@ async def configure_telegram_chat(
     user: User = Depends(get_current_user),
 ):
     """Map a Telegram chat to an agent."""
-    result = await session.execute(
-        select(Agent).where(Agent.id == body.agent_id, Agent.user_id == user.id)
-    )
+    result = await session.execute(select(Agent).where(Agent.id == body.agent_id, Agent.user_id == user.id))
     if result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Agent not found")
 
@@ -257,6 +244,7 @@ async def slack_webhook(request: Request):
         raise HTTPException(status_code=403, detail="Invalid Slack signature")
 
     import json
+
     payload = json.loads(body)
 
     # URL verification challenge

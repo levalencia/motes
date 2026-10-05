@@ -61,11 +61,13 @@ async def list_service_keys(
                 set_keys.append(var)
             else:
                 configured = False
-        result.append(ServiceKeyStatus(
-            service=service,
-            configured=configured,
-            keys=set_keys,
-        ))
+        result.append(
+            ServiceKeyStatus(
+                service=service,
+                configured=configured,
+                keys=set_keys,
+            )
+        )
     return result
 
 

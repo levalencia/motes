@@ -72,13 +72,15 @@ class GmailReadTool:
                     header_map = {}
                     for h in data.get("payload", {}).get("headers", []):
                         header_map[h["name"]] = h["value"]
-                    emails.append({
-                        "id": msg["id"],
-                        "from": header_map.get("From", ""),
-                        "subject": header_map.get("Subject", ""),
-                        "date": header_map.get("Date", ""),
-                        "snippet": data.get("snippet", ""),
-                    })
+                    emails.append(
+                        {
+                            "id": msg["id"],
+                            "from": header_map.get("From", ""),
+                            "subject": header_map.get("Subject", ""),
+                            "date": header_map.get("Date", ""),
+                            "snippet": data.get("snippet", ""),
+                        }
+                    )
 
             return json.dumps({"emails": emails, "count": len(emails)})
 
@@ -88,8 +90,7 @@ class GmailSendTool:
 
     name = "gmail_send"
     description = (
-        "Send an email via Gmail. Provide to, subject, and body. "
-        "The email is sent from the connected Gmail account."
+        "Send an email via Gmail. Provide to, subject, and body. The email is sent from the connected Gmail account."
     )
     parameters: dict[str, Any] = {
         "type": "object",
@@ -135,10 +136,7 @@ class CalendarListTool:
     """List upcoming events from Google Calendar."""
 
     name = "calendar_list"
-    description = (
-        "List upcoming events from Google Calendar. "
-        "Returns event title, start time, end time, and location."
-    )
+    description = "List upcoming events from Google Calendar. Returns event title, start time, end time, and location."
     parameters: dict[str, Any] = {
         "type": "object",
         "properties": {
@@ -186,13 +184,15 @@ class CalendarListTool:
             for item in items:
                 start = item.get("start", {})
                 end = item.get("end", {})
-                events.append({
-                    "title": item.get("summary", "(No title)"),
-                    "start": start.get("dateTime", start.get("date", "")),
-                    "end": end.get("dateTime", end.get("date", "")),
-                    "location": item.get("location", ""),
-                    "description": (item.get("description", "") or "")[:200],
-                })
+                events.append(
+                    {
+                        "title": item.get("summary", "(No title)"),
+                        "start": start.get("dateTime", start.get("date", "")),
+                        "end": end.get("dateTime", end.get("date", "")),
+                        "location": item.get("location", ""),
+                        "description": (item.get("description", "") or "")[:200],
+                    }
+                )
 
             return json.dumps({"events": events, "count": len(events)})
 
@@ -250,9 +250,11 @@ class CalendarCreateTool:
             )
             if resp.status_code == 200:
                 data = resp.json()
-                return json.dumps({
-                    "status": "created",
-                    "event_id": data.get("id", ""),
-                    "link": data.get("htmlLink", ""),
-                })
+                return json.dumps(
+                    {
+                        "status": "created",
+                        "event_id": data.get("id", ""),
+                        "link": data.get("htmlLink", ""),
+                    }
+                )
             return json.dumps({"error": f"Create failed: {resp.text[:200]}"})

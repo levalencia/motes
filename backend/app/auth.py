@@ -73,9 +73,7 @@ async def is_setup_complete(session: AsyncSession) -> bool:
     return result.scalar_one_or_none() is not None
 
 
-async def setup_first_user(
-    session: AsyncSession, username: str, password: str
-) -> User:
+async def setup_first_user(session: AsyncSession, username: str, password: str) -> User:
     """Create the first admin user. Raises if setup already done."""
     if await is_setup_complete(session):
         raise ValueError("Setup already complete")
@@ -91,9 +89,7 @@ async def setup_first_user(
     return user
 
 
-async def authenticate(
-    session: AsyncSession, username: str, password: str
-) -> User | None:
+async def authenticate(session: AsyncSession, username: str, password: str) -> User | None:
     """Authenticate by username + password. Returns User or None."""
     result = await session.execute(select(User).where(User.username == username))
     user = result.scalar_one_or_none()

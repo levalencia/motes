@@ -40,11 +40,13 @@ async def run_anthropic_stream(
     # Convert tool schemas to Anthropic format
     tool_schemas = []
     for tool in tools.list_tools():
-        tool_schemas.append({
-            "name": tool.name,
-            "description": tool.description,
-            "input_schema": tool.parameters,
-        })
+        tool_schemas.append(
+            {
+                "name": tool.name,
+                "description": tool.description,
+                "input_schema": tool.parameters,
+            }
+        )
 
     # Separate system from messages (Anthropic uses top-level system)
     anthropic_messages = []
@@ -113,17 +115,17 @@ async def run_anthropic_stream(
                             full_text += text
                             yield {"type": "token", "content": text}
                         elif delta.get("type") == "input_json_delta":
-                            current_tool_input += delta.get(
-                                "partial_json", ""
-                            )
+                            current_tool_input += delta.get("partial_json", "")
 
                     elif event_type == "content_block_stop":
                         if current_tool_name:
-                            tool_uses.append({
-                                "id": current_tool_id,
-                                "name": current_tool_name,
-                                "input": current_tool_input,
-                            })
+                            tool_uses.append(
+                                {
+                                    "id": current_tool_id,
+                                    "name": current_tool_name,
+                                    "input": current_tool_input,
+                                }
+                            )
                             current_tool_name = ""
 
                     elif event_type == "message_stop":
@@ -145,17 +147,21 @@ async def run_anthropic_stream(
                     input_obj = json.loads(tu["input"]) if tu["input"] else {}
                 except json.JSONDecodeError:
                     input_obj = {}
-                content_blocks.append({
-                    "type": "tool_use",
-                    "id": tu["id"],
-                    "name": tu["name"],
-                    "input": input_obj,
-                })
+                content_blocks.append(
+                    {
+                        "type": "tool_use",
+                        "id": tu["id"],
+                        "name": tu["name"],
+                        "input": input_obj,
+                    }
+                )
 
-            anthropic_messages.append({
-                "role": "assistant",
-                "content": content_blocks,
-            })
+            anthropic_messages.append(
+                {
+                    "role": "assistant",
+                    "content": content_blocks,
+                }
+            )
 
             # Execute tools
             tool_results = []
@@ -183,15 +189,20 @@ async def run_anthropic_stream(
                         if risk == ActionRisk.FORBIDDEN:
                             result = json.dumps({"error": f"Tool '{tu['name']}' is forbidden"})
                             yield {"type": "tool_result", "name": tu["name"], "result": result}
-                            tool_results.append({
-                                "type": "tool_result",
-                                "tool_use_id": tu["id"],
-                                "content": result,
-                            })
+                            tool_results.append(
+                                {
+                                    "type": "tool_result",
+                                    "tool_use_id": tu["id"],
+                                    "content": result,
+                                }
+                            )
                             continue
                         elif risk == ActionRisk.NEEDS_APPROVAL:
                             approval = await create_approval_request(
-                                session, agent_id, tu["name"], json.dumps(args),
+                                session,
+                                agent_id,
+                                tu["name"],
+                                json.dumps(args),
                             )
                             yield {
                                 "type": "approval_needed",
@@ -214,18 +225,22 @@ async def run_anthropic_stream(
                                 elif approval.status == ApprovalStatus.DENIED:
                                     break
                             if not approved:
-                                result = json.dumps({
-                                    "status": "denied",
-                                    "message": "The USER explicitly clicked DENY. "
-                                    "Do NOT retry or suggest workarounds. "
-                                    "Acknowledge respectfully and move on.",
-                                })
+                                result = json.dumps(
+                                    {
+                                        "status": "denied",
+                                        "message": "The USER explicitly clicked DENY. "
+                                        "Do NOT retry or suggest workarounds. "
+                                        "Acknowledge respectfully and move on.",
+                                    }
+                                )
                                 yield {"type": "tool_result", "name": tu["name"], "result": result}
-                                tool_results.append({
-                                    "type": "tool_result",
-                                    "tool_use_id": tu["id"],
-                                    "content": result,
-                                })
+                                tool_results.append(
+                                    {
+                                        "type": "tool_result",
+                                        "tool_use_id": tu["id"],
+                                        "content": result,
+                                    }
+                                )
                                 continue
                     # Safe or approved — execute
                     try:
@@ -235,21 +250,23 @@ async def run_anthropic_stream(
 
                 yield {"type": "tool_result", "name": tu["name"], "result": result}
 
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": tu["id"],
-                    "content": result,
-                })
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tu["id"],
+                        "content": result,
+                    }
+                )
 
-            anthropic_messages.append({
-                "role": "user",
-                "content": tool_results,
-            })
+            anthropic_messages.append(
+                {
+                    "role": "user",
+                    "content": tool_results,
+                }
+            )
 
             names = [tu["name"] for tu in tool_uses]
-            logger.info(
-                "agent_tool_round", round=_round + 1, tools_called=names
-            )
+            logger.info("agent_tool_round", round=_round + 1, tools_called=names)
 
         except httpx.TimeoutException:
             yield {"type": "error", "message": "LLM provider timed out"}

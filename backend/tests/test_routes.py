@@ -30,54 +30,78 @@ class TestAuthRoutes:
         assert resp.json()["is_setup_complete"] is False
 
     def test_setup_creates_user(self, client: TestClient) -> None:
-        resp = client.post("/api/auth/setup", json={
-            "username": "admin",
-            "password": "password123",
-        })
+        resp = client.post(
+            "/api/auth/setup",
+            json={
+                "username": "admin",
+                "password": "password123",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert "token" in data
         assert data["username"] == "admin"
 
     def test_setup_twice_fails(self, client: TestClient) -> None:
-        client.post("/api/auth/setup", json={
-            "username": "admin",
-            "password": "password123",
-        })
-        resp = client.post("/api/auth/setup", json={
-            "username": "admin2",
-            "password": "password456",
-        })
+        client.post(
+            "/api/auth/setup",
+            json={
+                "username": "admin",
+                "password": "password123",
+            },
+        )
+        resp = client.post(
+            "/api/auth/setup",
+            json={
+                "username": "admin2",
+                "password": "password456",
+            },
+        )
         assert resp.status_code == 409
 
     def test_login_after_setup(self, client: TestClient) -> None:
-        client.post("/api/auth/setup", json={
-            "username": "admin",
-            "password": "password123",
-        })
-        resp = client.post("/api/auth/login", json={
-            "username": "admin",
-            "password": "password123",
-        })
+        client.post(
+            "/api/auth/setup",
+            json={
+                "username": "admin",
+                "password": "password123",
+            },
+        )
+        resp = client.post(
+            "/api/auth/login",
+            json={
+                "username": "admin",
+                "password": "password123",
+            },
+        )
         assert resp.status_code == 200
         assert "token" in resp.json()
 
     def test_login_wrong_password(self, client: TestClient) -> None:
-        client.post("/api/auth/setup", json={
-            "username": "admin",
-            "password": "password123",
-        })
-        resp = client.post("/api/auth/login", json={
-            "username": "admin",
-            "password": "wrongpass",
-        })
+        client.post(
+            "/api/auth/setup",
+            json={
+                "username": "admin",
+                "password": "password123",
+            },
+        )
+        resp = client.post(
+            "/api/auth/login",
+            json={
+                "username": "admin",
+                "password": "wrongpass",
+            },
+        )
         assert resp.status_code == 401
 
     def test_setup_status_after_setup(self, client: TestClient) -> None:
-        client.post("/api/auth/setup", json={
-            "username": "admin",
-            "password": "password123",
-        })
+        client.post(
+            "/api/auth/setup",
+            json={
+                "username": "admin",
+                "password": "password123",
+            },
+        )
         resp = client.get("/api/auth/setup-status")
         assert resp.json()["is_setup_complete"] is True
 
@@ -95,14 +119,20 @@ class TestProtectedRoutes:
         assert resp.status_code in (401, 403)
 
     def _get_token(self, client: TestClient) -> str:
-        client.post("/api/auth/setup", json={
-            "username": "admin",
-            "password": "password123",
-        })
-        resp = client.post("/api/auth/login", json={
-            "username": "admin",
-            "password": "password123",
-        })
+        client.post(
+            "/api/auth/setup",
+            json={
+                "username": "admin",
+                "password": "password123",
+            },
+        )
+        resp = client.post(
+            "/api/auth/login",
+            json={
+                "username": "admin",
+                "password": "password123",
+            },
+        )
         return resp.json()["token"]
 
     def test_providers_with_auth(self, client: TestClient) -> None:

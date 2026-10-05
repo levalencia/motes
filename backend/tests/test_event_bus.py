@@ -1,6 +1,5 @@
 """Tests for the event bus — pub/sub for proactive notifications."""
 
-
 import pytest
 
 from app.event_bus import EventBus, ProactiveEvent
@@ -20,8 +19,11 @@ class TestEventBus:
         assert bus.subscriber_count == 1
 
         event = ProactiveEvent(
-            user_id="user1", agent_id="a1",
-            title="Test", body="Hello", category="info",
+            user_id="user1",
+            agent_id="a1",
+            title="Test",
+            body="Hello",
+            category="info",
         )
         count = await bus.publish(event)
         assert count == 1
@@ -35,8 +37,11 @@ class TestEventBus:
     async def test_no_subscribers(self):
         bus = EventBus()
         event = ProactiveEvent(
-            user_id="user1", agent_id="a1",
-            title="Test", body="Hello", category="info",
+            user_id="user1",
+            agent_id="a1",
+            title="Test",
+            body="Hello",
+            category="info",
         )
         count = await bus.publish(event)
         assert count == 0
@@ -49,8 +54,11 @@ class TestEventBus:
         assert bus.subscriber_count == 2
 
         event = ProactiveEvent(
-            user_id="user1", agent_id="a1",
-            title="Test", body="Hello", category="info",
+            user_id="user1",
+            agent_id="a1",
+            title="Test",
+            body="Hello",
+            category="info",
         )
         count = await bus.publish(event)
         assert count == 2
@@ -83,8 +91,11 @@ class TestEventBus:
         sub2 = bus.subscribe("user2")
 
         event = ProactiveEvent(
-            user_id="user1", agent_id="a1",
-            title="For user1", body="x", category="info",
+            user_id="user1",
+            agent_id="a1",
+            title="For user1",
+            body="x",
+            category="info",
         )
         await bus.publish(event)
 

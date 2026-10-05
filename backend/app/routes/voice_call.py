@@ -61,24 +61,22 @@ async def voice_call(websocket: WebSocket, agent_id: str):
 
         async with session_factory() as session:
             # Load agent + provider
-            result = await session.execute(
-                select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id)
-            )
+            result = await session.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id))
             agent = result.scalar_one_or_none()
             if not agent:
                 await websocket.send_json({"type": "error", "message": "Agent not found"})
                 await websocket.close()
                 return
 
-            prov_result = await session.execute(
-                select(Provider).where(Provider.id == agent.provider_id)
-            )
+            prov_result = await session.execute(select(Provider).where(Provider.id == agent.provider_id))
             provider = prov_result.scalar_one_or_none()
 
-            await websocket.send_json({
-                "type": "ready",
-                "agent_name": agent.name,
-            })
+            await websocket.send_json(
+                {
+                    "type": "ready",
+                    "agent_name": agent.name,
+                }
+            )
 
             # Conversation history for context
             messages = [{"role": "system", "content": agent.system_prompt}]
@@ -147,16 +145,20 @@ async def voice_call(websocket: WebSocket, agent_id: str):
                     user_text = await transcribe_local(audio_bytes)
 
                     if not user_text.strip():
-                        await websocket.send_json({
-                            "type": "transcript",
-                            "text": "(silence)",
-                        })
+                        await websocket.send_json(
+                            {
+                                "type": "transcript",
+                                "text": "(silence)",
+                            }
+                        )
                         continue
 
-                    await websocket.send_json({
-                        "type": "transcript",
-                        "text": user_text,
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "transcript",
+                            "text": user_text,
+                        }
+                    )
 
                     # Add to history
                     messages.append({"role": "user", "content": user_text})
@@ -198,22 +200,24 @@ async def voice_call(websocket: WebSocket, agent_id: str):
 
                     messages.append({"role": "assistant", "content": full_response})
 
-                    await websocket.send_json({
-                        "type": "response",
-                        "text": full_response,
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "response",
+                            "text": full_response,
+                        }
+                    )
 
                     # TTS: convert to speech
                     await websocket.send_json({"type": "thinking", "step": "speaking"})
                     tts_voice = msg.get("voice", "en-US-AriaNeural")
-                    audio_out = await edge_tts_synthesize(
-                        full_response[:2000], tts_voice
-                    )
+                    audio_out = await edge_tts_synthesize(full_response[:2000], tts_voice)
 
-                    await websocket.send_json({
-                        "type": "audio",
-                        "data": base64.b64encode(audio_out).decode(),
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "audio",
+                            "data": base64.b64encode(audio_out).decode(),
+                        }
+                    )
 
     except WebSocketDisconnect:
         pass

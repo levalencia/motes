@@ -27,11 +27,22 @@ def get_correlation_id() -> str:
 
 # ── Structlog Processors ─────────────────────────────────────────
 
-SENSITIVE_KEYS = frozenset({
-    "password", "secret", "token", "api_key", "apikey",
-    "authorization", "cookie", "access_token", "refresh_token",
-    "client_secret", "private_key", "credential",
-})
+SENSITIVE_KEYS = frozenset(
+    {
+        "password",
+        "secret",
+        "token",
+        "api_key",
+        "apikey",
+        "authorization",
+        "cookie",
+        "access_token",
+        "refresh_token",
+        "client_secret",
+        "private_key",
+        "credential",
+    }
+)
 
 SENSITIVE_PATTERNS = [
     re.compile(r"(sk-[a-zA-Z0-9]{20,})"),
@@ -46,9 +57,7 @@ def _is_sensitive_key(key: str) -> bool:
     return any(s in lower for s in SENSITIVE_KEYS)
 
 
-def redact_event(
-    _logger: Any, _method: str, event_dict: dict[str, Any]
-) -> dict[str, Any]:
+def redact_event(_logger: Any, _method: str, event_dict: dict[str, Any]) -> dict[str, Any]:
     """Redact sensitive values from log events."""
     for key, value in list(event_dict.items()):
         if isinstance(value, str) and _is_sensitive_key(key):
@@ -56,9 +65,7 @@ def redact_event(
     return event_dict
 
 
-def add_correlation_id(
-    _logger: Any, _method: str, event_dict: dict[str, Any]
-) -> dict[str, Any]:
+def add_correlation_id(_logger: Any, _method: str, event_dict: dict[str, Any]) -> dict[str, Any]:
     """Inject correlation ID into every log event."""
     cid = correlation_id_ctx.get()
     if cid:
@@ -89,9 +96,7 @@ def setup_logging(*, json_format: bool = False, log_level: str = "INFO") -> None
     if json_format:
         processors.append(structlog.processors.JSONRenderer())
     else:
-        processors.append(
-            structlog.dev.ConsoleRenderer(colors=True)
-        )
+        processors.append(structlog.dev.ConsoleRenderer(colors=True))
 
     level_map = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40}
     level_number = level_map.get(log_level.upper(), 20)

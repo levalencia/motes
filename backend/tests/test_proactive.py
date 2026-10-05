@@ -20,12 +20,17 @@ pytestmark = pytest.mark.unit
 @pytest.fixture
 async def user_and_agent(async_session: AsyncSession):
     from app.models import Agent, Provider, User
+
     user = User(username="test", password_hash="x")
     async_session.add(user)
     await async_session.flush()
     provider = Provider(
-        user_id=user.id, name="test", base_url="http://x",
-        api_key_encrypted="x", model="m", is_verified=True,
+        user_id=user.id,
+        name="test",
+        base_url="http://x",
+        api_key_encrypted="x",
+        model="m",
+        is_verified=True,
     )
     async_session.add(provider)
     await async_session.flush()
@@ -91,8 +96,12 @@ class TestNotifications:
     async def test_create_notification(self, async_session, user_and_agent):
         user, agent = user_and_agent
         notif = await create_notification(
-            async_session, user.id, agent.id,
-            title="Test", body="Hello", category="info",
+            async_session,
+            user.id,
+            agent.id,
+            title="Test",
+            body="Hello",
+            category="info",
         )
         assert notif.id
         assert notif.title == "Test"

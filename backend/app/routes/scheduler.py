@@ -64,12 +64,8 @@ class RunResponse(BaseModel):
     error: str | None
 
 
-async def _verify_agent(
-    session: AsyncSession, agent_id: str, user_id: str
-) -> Agent:
-    result = await session.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id)
-    )
+async def _verify_agent(session: AsyncSession, agent_id: str, user_id: str) -> Agent:
+    result = await session.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id))
     agent = result.scalar_one_or_none()
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -86,13 +82,22 @@ async def create_scheduled_task(
     """Create a new scheduled task."""
     await _verify_agent(session, agent_id, user.id)
     task = await create_task(
-        session, agent_id, body.name, body.prompt,
-        body.cron_expression, body.max_runs,
+        session,
+        agent_id,
+        body.name,
+        body.prompt,
+        body.cron_expression,
+        body.max_runs,
     )
     return TaskResponse(
-        id=task.id, agent_id=task.agent_id, name=task.name,
-        prompt=task.prompt, cron_expression=task.cron_expression,
-        status=task.status, run_count=task.run_count, max_runs=task.max_runs,
+        id=task.id,
+        agent_id=task.agent_id,
+        name=task.name,
+        prompt=task.prompt,
+        cron_expression=task.cron_expression,
+        status=task.status,
+        run_count=task.run_count,
+        max_runs=task.max_runs,
     )
 
 
@@ -107,9 +112,14 @@ async def get_tasks(
     tasks = await list_tasks(session, agent_id)
     return [
         TaskResponse(
-            id=t.id, agent_id=t.agent_id, name=t.name,
-            prompt=t.prompt, cron_expression=t.cron_expression,
-            status=t.status, run_count=t.run_count, max_runs=t.max_runs,
+            id=t.id,
+            agent_id=t.agent_id,
+            name=t.name,
+            prompt=t.prompt,
+            cron_expression=t.cron_expression,
+            status=t.status,
+            run_count=t.run_count,
+            max_runs=t.max_runs,
         )
         for t in tasks
     ]
@@ -128,9 +138,14 @@ async def pause(
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
     return TaskResponse(
-        id=task.id, agent_id=task.agent_id, name=task.name,
-        prompt=task.prompt, cron_expression=task.cron_expression,
-        status=task.status, run_count=task.run_count, max_runs=task.max_runs,
+        id=task.id,
+        agent_id=task.agent_id,
+        name=task.name,
+        prompt=task.prompt,
+        cron_expression=task.cron_expression,
+        status=task.status,
+        run_count=task.run_count,
+        max_runs=task.max_runs,
     )
 
 
@@ -147,9 +162,14 @@ async def resume(
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
     return TaskResponse(
-        id=task.id, agent_id=task.agent_id, name=task.name,
-        prompt=task.prompt, cron_expression=task.cron_expression,
-        status=task.status, run_count=task.run_count, max_runs=task.max_runs,
+        id=task.id,
+        agent_id=task.agent_id,
+        name=task.name,
+        prompt=task.prompt,
+        cron_expression=task.cron_expression,
+        status=task.status,
+        run_count=task.run_count,
+        max_runs=task.max_runs,
     )
 
 
@@ -179,8 +199,11 @@ async def get_runs(
     runs = await list_runs(session, task_id)
     return [
         RunResponse(
-            id=r.id, task_id=r.task_id, status=r.status,
-            result=r.result, error=r.error,
+            id=r.id,
+            task_id=r.task_id,
+            status=r.status,
+            result=r.result,
+            error=r.error,
         )
         for r in runs
     ]

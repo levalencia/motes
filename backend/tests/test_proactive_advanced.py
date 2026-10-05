@@ -20,9 +20,7 @@ class TestEventBus:
     async def test_subscribe_and_publish(self):
         bus = EventBus()
         sub = bus.subscribe("user1")
-        event = ProactiveEvent(
-            user_id="user1", agent_id="a1", title="Test", body="Hello", category="test"
-        )
+        event = ProactiveEvent(user_id="user1", agent_id="a1", title="Test", body="Hello", category="test")
         await bus.publish(event)
         received = await asyncio.wait_for(sub.get(), timeout=1)
         assert received.title == "Test"
@@ -33,9 +31,7 @@ class TestEventBus:
     async def test_publish_to_wrong_user(self):
         bus = EventBus()
         sub = bus.subscribe("user1")
-        event = ProactiveEvent(
-            user_id="user2", agent_id="a1", title="Test", body="Hello", category="test"
-        )
+        event = ProactiveEvent(user_id="user2", agent_id="a1", title="Test", body="Hello", category="test")
         await bus.publish(event)
         # Should not receive — wrong user. get() returns None on timeout
         result = await sub.get(timeout=0.1)
@@ -47,9 +43,7 @@ class TestEventBus:
         bus = EventBus()
         sub1 = bus.subscribe("user1")
         sub2 = bus.subscribe("user1")
-        event = ProactiveEvent(
-            user_id="user1", agent_id="a1", title="Test", body="Hi", category="test"
-        )
+        event = ProactiveEvent(user_id="user1", agent_id="a1", title="Test", body="Hi", category="test")
         await bus.publish(event)
         r1 = await asyncio.wait_for(sub1.get(), timeout=1)
         r2 = await asyncio.wait_for(sub2.get(), timeout=1)
@@ -63,9 +57,7 @@ class TestEventBus:
         sub = bus.subscribe("user1")
         sub.close()
         # Should not crash when publishing to closed sub
-        event = ProactiveEvent(
-            user_id="user1", agent_id="a1", title="Test", body="Hi", category="test"
-        )
+        event = ProactiveEvent(user_id="user1", agent_id="a1", title="Test", body="Hi", category="test")
         await bus.publish(event)  # No error
 
     def test_subscriber_count(self):
@@ -84,7 +76,8 @@ class TestProactiveEvent:
 
     def test_event_creation(self):
         event = ProactiveEvent(
-            user_id="u1", agent_id="a1",
+            user_id="u1",
+            agent_id="a1",
             title="New email from Alice",
             body="Subject: Meeting tomorrow",
             category="email",
@@ -95,8 +88,11 @@ class TestProactiveEvent:
 
     def test_event_to_dict(self):
         event = ProactiveEvent(
-            user_id="u1", agent_id="a1",
-            title="Calendar", body="Meeting at 3pm", category="calendar",
+            user_id="u1",
+            agent_id="a1",
+            title="Calendar",
+            body="Meeting at 3pm",
+            category="calendar",
         )
         d = {"title": event.title, "body": event.body, "category": event.category}
         serialized = json.dumps(d)
@@ -168,10 +164,12 @@ class TestMemoryInVoiceCalls:
         mock_session.add = MagicMock()
 
         tool = MemorySaveTool(mock_session, "agent_123")
-        result = await tool.execute({
-            "fact": "User's daughter is named Victoria",
-            "category": "family",
-        })
+        result = await tool.execute(
+            {
+                "fact": "User's daughter is named Victoria",
+                "category": "family",
+            }
+        )
         parsed = json.loads(result)
         assert parsed["status"] == "remembered"
         assert "Victoria" in parsed["fact"]

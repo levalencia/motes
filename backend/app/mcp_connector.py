@@ -23,12 +23,8 @@ class MCPServer(Base):
 
     __tablename__ = "mcp_servers"
 
-    id: Mapped[str] = mapped_column(
-        primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    user_id: Mapped[str] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
+    id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str]  # e.g. "Gmail", "Google Calendar"
     description: Mapped[str] = mapped_column(Text, default="")
     # Transport: "stdio" (local process) or "http" (remote SSE)
@@ -42,9 +38,7 @@ class MCPServer(Base):
     # Which agents can use this server (empty = all agents for this user)
     agent_ids_json: Mapped[str] = mapped_column(Text, default="[]")
     is_enabled: Mapped[bool] = mapped_column(default=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # Well-known community MCP servers that users can install
@@ -203,25 +197,15 @@ async def add_mcp_server(
     return server
 
 
-async def list_mcp_servers(
-    session: AsyncSession, user_id: str
-) -> list[MCPServer]:
+async def list_mcp_servers(session: AsyncSession, user_id: str) -> list[MCPServer]:
     """List MCP servers for a user."""
-    result = await session.execute(
-        select(MCPServer)
-        .where(MCPServer.user_id == user_id)
-        .order_by(MCPServer.created_at)
-    )
+    result = await session.execute(select(MCPServer).where(MCPServer.user_id == user_id).order_by(MCPServer.created_at))
     return list(result.scalars().all())
 
 
-async def toggle_mcp_server(
-    session: AsyncSession, server_id: str, enabled: bool
-) -> MCPServer | None:
+async def toggle_mcp_server(session: AsyncSession, server_id: str, enabled: bool) -> MCPServer | None:
     """Enable or disable an MCP server."""
-    result = await session.execute(
-        select(MCPServer).where(MCPServer.id == server_id)
-    )
+    result = await session.execute(select(MCPServer).where(MCPServer.id == server_id))
     server = result.scalar_one_or_none()
     if server is None:
         return None
@@ -231,15 +215,9 @@ async def toggle_mcp_server(
     return server
 
 
-async def delete_mcp_server(
-    session: AsyncSession, server_id: str, user_id: str
-) -> bool:
+async def delete_mcp_server(session: AsyncSession, server_id: str, user_id: str) -> bool:
     """Delete an MCP server config."""
-    result = await session.execute(
-        select(MCPServer).where(
-            MCPServer.id == server_id, MCPServer.user_id == user_id
-        )
-    )
+    result = await session.execute(select(MCPServer).where(MCPServer.id == server_id, MCPServer.user_id == user_id))
     server = result.scalar_one_or_none()
     if server is None:
         return False

@@ -65,7 +65,7 @@ class ReminderListTool(Tool):
                     end tell
                 '''
             else:
-                script = '''
+                script = """
                     tell application "Reminders"
                         set output to ""
                         repeat with l in lists
@@ -76,7 +76,7 @@ class ReminderListTool(Tool):
                         end repeat
                         return output
                     end tell
-                '''
+                """
             result = _run_applescript(script)
             return json.dumps({"reminders": result or "No reminders found"})
         except Exception as e:
@@ -174,7 +174,7 @@ class NotesListTool(Tool):
                     end tell
                 '''
             else:
-                script = f'''
+                script = f"""
                     tell application "Notes"
                         set output to ""
                         set i to 0
@@ -185,7 +185,7 @@ class NotesListTool(Tool):
                         end repeat
                         return output
                     end tell
-                '''
+                """
             result = _run_applescript(script)
             return json.dumps({"notes": result or "No notes found"})
         except Exception as e:

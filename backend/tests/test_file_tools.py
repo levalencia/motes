@@ -81,7 +81,13 @@ class TestFileSearchTool:
         tool = FileSearchTool(str(tmp_path))
         (tmp_path / "a.pdf").write_text("x")
         (tmp_path / "a.txt").write_text("y")
-        result = json.loads(await tool.execute({
-            "query": "a", "extension": ".pdf", "path": str(tmp_path),
-        }))
+        result = json.loads(
+            await tool.execute(
+                {
+                    "query": "a",
+                    "extension": ".pdf",
+                    "path": str(tmp_path),
+                }
+            )
+        )
         assert all(r["name"].endswith(".pdf") for r in result["results"])

@@ -12,9 +12,7 @@ from app.oauth import OAuthToken, get_oauth_app
 logger = structlog.get_logger()
 
 
-async def refresh_google_token(
-    session: AsyncSession, token: OAuthToken
-) -> str:
+async def refresh_google_token(session: AsyncSession, token: OAuthToken) -> str:
     """Refresh a Google OAuth token. Returns new access token."""
     app = await get_oauth_app(session, "google")
     if not app or not token.refresh_token_encrypted:
@@ -43,9 +41,7 @@ async def refresh_google_token(
         return new_access_token
 
 
-async def get_valid_token(
-    session: AsyncSession, user_id: str, service: str
-) -> str | None:
+async def get_valid_token(session: AsyncSession, user_id: str, service: str) -> str | None:
     """Get a valid access token for a service, refreshing if needed."""
     result = await session.execute(
         select(OAuthToken).where(

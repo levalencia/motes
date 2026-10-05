@@ -79,7 +79,8 @@ class TestMCPToolDiscovery:
         mock_tools = [
             _make_mock_mcp_tool("read_file", "Read a file", {"path": {"type": "string"}}),
             _make_mock_mcp_tool(
-                "write_file", "Write a file",
+                "write_file",
+                "Write a file",
                 {"path": {"type": "string"}, "content": {"type": "string"}},
             ),
         ]
@@ -255,9 +256,7 @@ class TestMCPConnectionFailure:
     async def test_mcp_server_connection_failure_http(self) -> None:
         """HTTP connection failure returns empty list."""
         client = MCPClient()
-        config = MCPServerConfig(
-            name="remote", url="http://localhost:99999/mcp", transport="http"
-        )
+        config = MCPServerConfig(name="remote", url="http://localhost:99999/mcp", transport="http")
 
         with patch.object(client, "_connect_http", side_effect=Exception("refused")):
             tools = await client.connect(config)
@@ -358,9 +357,7 @@ class TestLoadMCPServers:
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-def _make_mock_mcp_tool(
-    name: str, description: str, properties: dict[str, Any]
-) -> MagicMock:
+def _make_mock_mcp_tool(name: str, description: str, properties: dict[str, Any]) -> MagicMock:
     """Create a mock MCP tool definition (as returned by session.list_tools())."""
     tool = MagicMock()
     tool.name = name

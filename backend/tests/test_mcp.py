@@ -45,28 +45,27 @@ class TestMCPServerCRUD:
     @pytest.mark.asyncio
     async def test_add_server(self, session: AsyncSession) -> None:
         server = await add_mcp_server(
-            session, "user-1", "Gmail", "Read emails",
-            "stdio", "npx @anthropic/mcp-gmail", "",
+            session,
+            "user-1",
+            "Gmail",
+            "Read emails",
+            "stdio",
+            "npx @anthropic/mcp-gmail",
+            "",
         )
         assert server.name == "Gmail"
         assert server.is_enabled is True
 
     @pytest.mark.asyncio
     async def test_list_servers(self, session: AsyncSession) -> None:
-        await add_mcp_server(
-            session, "user-1", "Gmail", "", "stdio", "cmd1", ""
-        )
-        await add_mcp_server(
-            session, "user-1", "Slack", "", "stdio", "cmd2", ""
-        )
+        await add_mcp_server(session, "user-1", "Gmail", "", "stdio", "cmd1", "")
+        await add_mcp_server(session, "user-1", "Slack", "", "stdio", "cmd2", "")
         servers = await list_mcp_servers(session, "user-1")
         assert len(servers) == 2
 
     @pytest.mark.asyncio
     async def test_toggle_server(self, session: AsyncSession) -> None:
-        server = await add_mcp_server(
-            session, "user-1", "Gmail", "", "stdio", "cmd", ""
-        )
+        server = await add_mcp_server(session, "user-1", "Gmail", "", "stdio", "cmd", "")
         toggled = await toggle_mcp_server(session, server.id, False)
         assert toggled is not None
         assert toggled.is_enabled is False
@@ -77,15 +76,11 @@ class TestMCPServerCRUD:
 
     @pytest.mark.asyncio
     async def test_delete_server(self, session: AsyncSession) -> None:
-        server = await add_mcp_server(
-            session, "user-1", "Gmail", "", "stdio", "cmd", ""
-        )
+        server = await add_mcp_server(session, "user-1", "Gmail", "", "stdio", "cmd", "")
         assert await delete_mcp_server(session, server.id, "user-1") is True
         assert await delete_mcp_server(session, server.id, "user-1") is False
 
     @pytest.mark.asyncio
     async def test_delete_wrong_user(self, session: AsyncSession) -> None:
-        server = await add_mcp_server(
-            session, "user-1", "Gmail", "", "stdio", "cmd", ""
-        )
+        server = await add_mcp_server(session, "user-1", "Gmail", "", "stdio", "cmd", "")
         assert await delete_mcp_server(session, server.id, "user-2") is False

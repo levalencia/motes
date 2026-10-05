@@ -29,9 +29,7 @@ from app.web_search_tool import WebSearchTool
 logger = structlog.get_logger()
 
 
-async def build_tool_registry(
-    session: AsyncSession, user_id: str
-) -> ToolRegistry:
+async def build_tool_registry(session: AsyncSession, user_id: str) -> ToolRegistry:
     """Build a complete tool registry with all available tools.
 
     Includes: built-in tools, file tools, web search, and
@@ -60,9 +58,7 @@ async def build_tool_registry(
     # Memory (save/recall facts about the user)
     from app.memory_tools import MemoryRecallTool, MemorySaveTool
 
-    agent_result = await session.execute(
-        select(Agent).where(Agent.user_id == user_id)
-    )
+    agent_result = await session.execute(select(Agent).where(Agent.user_id == user_id))
     agent_for_memory = agent_result.scalars().first()
     if agent_for_memory:
         tools.register(MemorySaveTool(session, agent_for_memory.id))

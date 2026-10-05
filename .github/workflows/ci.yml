@@ -50,8 +50,9 @@ jobs:
         run: uv sync --dev
       - name: Run unit tests
         run: uv run pytest -m unit --tb=short -q
-      - name: Run tests with coverage
-        run: uv run pytest -m unit --cov=app --cov-report=term-missing --tb=short
+        env:
+          MOTES_DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          MOTES_SECRET_KEY: "ci-test-key-not-real"
 
   frontend-check:
     name: Frontend Check (svelte-check)
@@ -70,6 +71,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Svelte check
-        run: npm run check
+        run: npx svelte-check --fail-on-warnings=false --threshold error
+      - name: Vitest
+        run: npx vitest run
       - name: Build
         run: npm run build

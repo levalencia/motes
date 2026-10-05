@@ -79,10 +79,17 @@ async def test_create_scheduled_task(session: AsyncSession, agent: Agent) -> Non
 async def test_task_executes_and_records_run(session: AsyncSession, agent: Agent) -> None:
     """Task run is recorded with result."""
     task = await create_task(
-        session, agent.id, "Check weather", "What's the weather?", "0 8 * * *",
+        session,
+        agent.id,
+        "Check weather",
+        "What's the weather?",
+        "0 8 * * *",
     )
     run = await record_run(
-        session, task.id, RunStatus.COMPLETED, result_text="Sunny, 72°F",
+        session,
+        task.id,
+        RunStatus.COMPLETED,
+        result_text="Sunny, 72°F",
     )
     assert run.task_id == task.id
     assert run.status == RunStatus.COMPLETED
@@ -97,7 +104,11 @@ async def test_task_executes_and_records_run(session: AsyncSession, agent: Agent
 async def test_task_saves_result_to_thread(session: AsyncSession, agent: Agent) -> None:
     """Task result appears in run history (thread equivalent)."""
     task = await create_task(
-        session, agent.id, "News digest", "Top news today", "0 7 * * *",
+        session,
+        agent.id,
+        "News digest",
+        "Top news today",
+        "0 7 * * *",
     )
     await record_run(session, task.id, RunStatus.COMPLETED, result_text="Top stories...")
     await record_run(session, task.id, RunStatus.COMPLETED, result_text="More stories...")
@@ -152,7 +163,12 @@ async def test_pause_and_resume_task(session: AsyncSession, agent: Agent) -> Non
 async def test_task_completes_after_max_runs(session: AsyncSession, agent: Agent) -> None:
     """Task with max_runs auto-completes after reaching limit."""
     task = await create_task(
-        session, agent.id, "One-shot", "Do once", "once", max_runs=2,
+        session,
+        agent.id,
+        "One-shot",
+        "Do once",
+        "once",
+        max_runs=2,
     )
     await record_run(session, task.id, RunStatus.COMPLETED, result_text="Run 1")
     await record_run(session, task.id, RunStatus.COMPLETED, result_text="Run 2")
@@ -167,7 +183,10 @@ async def test_record_failed_run(session: AsyncSession, agent: Agent) -> None:
     """Failed task run records error."""
     task = await create_task(session, agent.id, "Failing", "Fail", "0 9 * * *")
     run = await record_run(
-        session, task.id, RunStatus.FAILED, error_text="Connection timeout",
+        session,
+        task.id,
+        RunStatus.FAILED,
+        error_text="Connection timeout",
     )
     assert run.status == RunStatus.FAILED
     assert run.error == "Connection timeout"

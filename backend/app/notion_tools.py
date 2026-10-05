@@ -96,13 +96,15 @@ class NotionSearchTool(Tool):
                         title_parts = item.get("title", [])
                         title = "".join(t.get("plain_text", "") for t in title_parts)
 
-                    results.append({
-                        "id": item.get("id"),
-                        "type": obj_type,
-                        "title": title,
-                        "url": item.get("url"),
-                        "last_edited": item.get("last_edited_time"),
-                    })
+                    results.append(
+                        {
+                            "id": item.get("id"),
+                            "type": obj_type,
+                            "title": title,
+                            "url": item.get("url"),
+                            "last_edited": item.get("last_edited_time"),
+                        }
+                    )
 
                 return json.dumps({"results": results, "count": len(results)})
         except Exception as e:
@@ -173,17 +175,21 @@ class NotionReadPageTool(Tool):
                     text = "".join(rt.get("plain_text", "") for rt in rich_text)
 
                     if text or block_type in ("divider", "table_of_contents"):
-                        content.append({
-                            "type": block_type,
-                            "text": text,
-                        })
+                        content.append(
+                            {
+                                "type": block_type,
+                                "text": text,
+                            }
+                        )
 
-                return json.dumps({
-                    "page_id": page_id,
-                    "title": title,
-                    "url": page_data.get("url"),
-                    "content": content,
-                })
+                return json.dumps(
+                    {
+                        "page_id": page_id,
+                        "title": title,
+                        "url": page_data.get("url"),
+                        "content": content,
+                    }
+                )
         except Exception as e:
             logger.warning("notion_read_page_error", error=str(e))
             return json.dumps({"error": str(e)})

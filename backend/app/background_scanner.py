@@ -61,12 +61,14 @@ async def _notify(
         if any(title in m.content for m in recent_msgs):
             return  # Already notified about this
 
-        session.add(Message(
-            conversation_id=thread.id,
-            role="assistant",
-            content=f"💡 **{title}**\n{body}",
-            message_type="proactive",
-        ))
+        session.add(
+            Message(
+                conversation_id=thread.id,
+                role="assistant",
+                content=f"💡 **{title}**\n{body}",
+                message_type="proactive",
+            )
+        )
         await session.commit()
     except Exception:
         pass  # Don't break notifications if thread fails
@@ -74,20 +76,26 @@ async def _notify(
     if event_bus is not None:
         from app.event_bus import ProactiveEvent
 
-        await event_bus.publish(ProactiveEvent(
-            user_id=user_id,
-            agent_id=agent_id,
-            title=title,
-            body=body,
-            category=category,
-        ))
+        await event_bus.publish(
+            ProactiveEvent(
+                user_id=user_id,
+                agent_id=agent_id,
+                title=title,
+                body=body,
+                category=category,
+            )
+        )
+
 
 SCAN_INTERVAL_SECONDS = 60  # 1 minute
 
 
 async def scan_gmail(
-    session: AsyncSession, user_id: str, agent_id: str,
-    access_token: str, event_bus: Any = None,
+    session: AsyncSession,
+    user_id: str,
+    agent_id: str,
+    access_token: str,
+    event_bus: Any = None,
 ) -> None:
     """Check for new unread emails and create ONE summary notification."""
     import httpx
@@ -123,10 +131,7 @@ async def scan_gmail(
                     continue
 
                 detail = detail_resp.json()
-                hdrs = {
-                    h["name"]: h["value"]
-                    for h in detail.get("payload", {}).get("headers", [])
-                }
+                hdrs = {h["name"]: h["value"] for h in detail.get("payload", {}).get("headers", [])}
                 sender = hdrs.get("From", "Unknown").split("<")[0].strip()
                 subject = hdrs.get("Subject", "No subject")
                 _notified_email_ids.add(msg_id)
@@ -139,12 +144,13 @@ async def scan_gmail(
                     body = new_emails[0]["subject"]
                 else:
                     title = f"📧 {len(new_emails)} new emails"
-                    body = "\n".join(
-                        f"• {e['sender']}: {e['subject']}" for e in new_emails
-                    )
+                    body = "\n".join(f"• {e['sender']}: {e['subject']}" for e in new_emails)
 
                 await _notify(
-                    session, event_bus, user_id, agent_id,
+                    session,
+                    event_bus,
+                    user_id,
+                    agent_id,
                     title=title,
                     body=body[:300],
                     category="email",
@@ -159,8 +165,11 @@ async def scan_gmail(
 
 
 async def scan_calendar(
-    session: AsyncSession, user_id: str, agent_id: str,
-    access_token: str, event_bus: Any = None,
+    session: AsyncSession,
+    user_id: str,
+    agent_id: str,
+    access_token: str,
+    event_bus: Any = None,
 ) -> None:
     """Check for upcoming calendar events and create notifications."""
     from datetime import datetime, timedelta
@@ -193,7 +202,10 @@ async def scan_calendar(
                 start = event.get("start", {}).get("dateTime", "")
                 if start:
                     await _notify(
-                        session, event_bus, user_id, agent_id,
+                        session,
+                        event_bus,
+                        user_id,
+                        agent_id,
                         title=f"📅 Upcoming: {summary}",
                         body=f"Starting at {start}",
                         category="calendar",
@@ -209,7 +221,9 @@ async def scan_calendar(
 
 
 async def check_patterns(
-    session: AsyncSession, user_id: str, agent_id: str,
+    session: AsyncSession,
+    user_id: str,
+    agent_id: str,
     event_bus: Any = None,
     interval_minutes: int = 60,
 ) -> None:
@@ -240,7 +254,10 @@ async def check_patterns(
                 result = await _execute_proactive_tool(topic)
                 if result:
                     await _notify(
-                        session, event_bus, user_id, agent_id,
+                        session,
+                        event_bus,
+                        user_id,
+                        agent_id,
                         title=result["title"],
                         body=result["body"],
                         category=topic,
@@ -283,10 +300,7 @@ async def _execute_proactive_tool(topic: str) -> dict | None:
             headlines = data.get("articles", data.get("results", []))
             if isinstance(headlines, list) and headlines:
                 top3 = headlines[:3]
-                body = "\n".join(
-                    f"• {h.get('title', h) if isinstance(h, dict) else h}"
-                    for h in top3
-                )
+                body = "\n".join(f"• {h.get('title', h) if isinstance(h, dict) else h}" for h in top3)
                 return {"title": "📰 Your daily news", "body": body[:300]}
 
         elif topic == "email":
@@ -327,10 +341,7 @@ async def run_scanner(
 
                     # Get user's first agent (for notification scoping)
                     agent_result = await session.execute(
-                        select(Agent)
-                        .where(Agent.user_id == user.id)
-                        .options(selectinload(Agent.provider))
-                        .limit(1)
+                        select(Agent).where(Agent.user_id == user.id).options(selectinload(Agent.provider)).limit(1)
                     )
                     agent = agent_result.scalar_one_or_none()
                     if not agent:
@@ -372,7 +383,11 @@ async def run_scanner(
 
                                 logger.info("scanner_agentic_starting")
                                 result = await run_agentic_proactive(
-                                    session, user, agent, agent.provider, event_bus,
+                                    session,
+                                    user,
+                                    agent,
+                                    agent.provider,
+                                    event_bus,
                                 )
                                 logger.info("scanner_agentic_done", result_len=len(result) if result else 0)
                                 _last_agentic_run[user.id] = time.time()

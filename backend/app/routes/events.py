@@ -26,9 +26,7 @@ async def event_stream(request: Request, token: str):
     settings = request.app.state.settings
     payload = decode_jwt(token, settings.secret_key)
     if not payload:
-        return EventSourceResponse(
-            _error_gen("Invalid token"), media_type="text/event-stream"
-        )
+        return EventSourceResponse(_error_gen("Invalid token"), media_type="text/event-stream")
 
     user_id = payload["sub"]
     event_bus = request.app.state.event_bus
@@ -43,13 +41,15 @@ async def event_stream(request: Request, token: str):
                 if event is not None:
                     yield {
                         "event": "notification",
-                        "data": json.dumps({
-                            "type": "notification",
-                            "title": event.title,
-                            "body": event.body,
-                            "category": event.category,
-                            "agent_id": event.agent_id,
-                        }),
+                        "data": json.dumps(
+                            {
+                                "type": "notification",
+                                "title": event.title,
+                                "body": event.body,
+                                "category": event.category,
+                                "agent_id": event.agent_id,
+                            }
+                        ),
                     }
                 else:
                     # Send keepalive

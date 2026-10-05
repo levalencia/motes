@@ -63,17 +63,12 @@ async def run_agentic_proactive(
 
     # Load recent thread messages for context
     msg_result = await session.execute(
-        select(Message)
-        .where(Message.conversation_id == thread.id)
-        .order_by(Message.created_at.desc())
-        .limit(20)
+        select(Message).where(Message.conversation_id == thread.id).order_by(Message.created_at.desc()).limit(20)
     )
     recent = list(reversed(msg_result.scalars().all()))
 
     # Load memories
-    mem_result = await session.execute(
-        select(Memory).where(Memory.agent_id == agent.id)
-    )
+    mem_result = await session.execute(select(Memory).where(Memory.agent_id == agent.id))
     memories = mem_result.scalars().all()
     memory_context = ""
     if memories:
@@ -100,15 +95,17 @@ async def run_agentic_proactive(
         messages.append({"role": m.role, "content": prefix + m.content})
 
     # Add the proactive trigger
-    messages.append({
-        "role": "user",
-        "content": (
-            "[SYSTEM: This is an automatic proactive check. "
-            "Review the conversation and decide if there's anything useful "
-            "to tell the user right now. Use tools if needed. "
-            "If nothing is relevant, say __NOTHING__]"
-        ),
-    })
+    messages.append(
+        {
+            "role": "user",
+            "content": (
+                "[SYSTEM: This is an automatic proactive check. "
+                "Review the conversation and decide if there's anything useful "
+                "to tell the user right now. Use tools if needed. "
+                "If nothing is relevant, say __NOTHING__]"
+            ),
+        }
+    )
 
     # Build tool registry
     tool_registry = await build_tool_registry(session, user.id)
@@ -157,25 +154,29 @@ async def run_agentic_proactive(
         return None
 
     # Save to thread as proactive message
-    session.add(Message(
-        conversation_id=thread.id,
-        role="assistant",
-        content=response,
-        message_type="proactive",
-    ))
+    session.add(
+        Message(
+            conversation_id=thread.id,
+            role="assistant",
+            content=response,
+            message_type="proactive",
+        )
+    )
     await session.commit()
 
     # Publish to event bus for real-time push
     if event_bus is not None:
         from app.event_bus import ProactiveEvent
 
-        await event_bus.publish(ProactiveEvent(
-            user_id=user.id,
-            agent_id=agent.id,
-            title="💡 Motes",
-            body=response[:300],
-            category="proactive",
-        ))
+        await event_bus.publish(
+            ProactiveEvent(
+                user_id=user.id,
+                agent_id=agent.id,
+                title="💡 Motes",
+                body=response[:300],
+                category="proactive",
+            )
+        )
 
     logger.info(
         "agentic_proactive_sent",

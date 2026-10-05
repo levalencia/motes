@@ -73,9 +73,7 @@ class EventBus:
     def _unsubscribe(self, user_id: str, queue: asyncio.Queue) -> None:
         """Remove a subscriber."""
         if user_id in self._channels:
-            self._channels[user_id] = [
-                q for q in self._channels[user_id] if q is not queue
-            ]
+            self._channels[user_id] = [q for q in self._channels[user_id] if q is not queue]
             if not self._channels[user_id]:
                 del self._channels[user_id]
         logger.debug("event_bus_unsubscribe", user_id=user_id)
@@ -89,9 +87,7 @@ class EventBus:
 class _Subscription:
     """Async iterator for receiving events from the bus."""
 
-    def __init__(
-        self, bus: EventBus, user_id: str, queue: asyncio.Queue[ProactiveEvent]
-    ) -> None:
+    def __init__(self, bus: EventBus, user_id: str, queue: asyncio.Queue[ProactiveEvent]) -> None:
         self._bus = bus
         self._user_id = user_id
         self._queue = queue

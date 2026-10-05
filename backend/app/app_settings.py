@@ -17,9 +17,7 @@ class AppSetting(Base):
 
     __tablename__ = "app_settings"
 
-    id: Mapped[str] = mapped_column(
-        primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
     key: Mapped[str] = mapped_column(unique=True, index=True)
     value: Mapped[str] = mapped_column(Text, default="")
     updated_at: Mapped[datetime] = mapped_column(
@@ -29,18 +27,14 @@ class AppSetting(Base):
 
 async def get_setting(session: AsyncSession, key: str, default: str = "") -> str:
     """Get a setting value by key."""
-    result = await session.execute(
-        select(AppSetting).where(AppSetting.key == key)
-    )
+    result = await session.execute(select(AppSetting).where(AppSetting.key == key))
     setting = result.scalar_one_or_none()
     return setting.value if setting else default
 
 
 async def set_setting(session: AsyncSession, key: str, value: str) -> None:
     """Set a setting value (upsert)."""
-    result = await session.execute(
-        select(AppSetting).where(AppSetting.key == key)
-    )
+    result = await session.execute(select(AppSetting).where(AppSetting.key == key))
     existing = result.scalar_one_or_none()
     if existing:
         existing.value = value

@@ -38,10 +38,13 @@ def _setup_user_and_agent(client: TestClient) -> tuple[str, str]:
     Creates provider/agent directly in DB since the provider
     create endpoint validates the connection.
     """
-    resp = client.post("/api/auth/setup", json={
-        "username": "admin",
-        "password": "password123",
-    })
+    resp = client.post(
+        "/api/auth/setup",
+        json={
+            "username": "admin",
+            "password": "password123",
+        },
+    )
     token = resp.json()["token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -55,21 +58,29 @@ def _setup_user_and_agent(client: TestClient) -> tuple[str, str]:
     # Actually, let's just use the add_provider function with mock.
     with patch("app.providers.test_provider_connection", new_callable=AsyncMock) as mock_test:
         mock_test.return_value = (True, "OK")
-        resp = client.post("/api/providers", json={
-            "name": "test-provider",
-            "base_url": "https://api.test.com/v1",
-            "api_key": "sk-test-key",
-            "model": "gpt-4",
-        }, headers=headers)
+        resp = client.post(
+            "/api/providers",
+            json={
+                "name": "test-provider",
+                "base_url": "https://api.test.com/v1",
+                "api_key": "sk-test-key",
+                "model": "gpt-4",
+            },
+            headers=headers,
+        )
         assert resp.status_code == 201, f"Provider creation failed: {resp.json()}"
         provider_id = resp.json()["id"]
 
     # Create agent
-    resp = client.post("/api/agents", json={
-        "name": "Test Agent",
-        "provider_id": provider_id,
-        "system_prompt": "You are helpful.",
-    }, headers=headers)
+    resp = client.post(
+        "/api/agents",
+        json={
+            "name": "Test Agent",
+            "provider_id": provider_id,
+            "system_prompt": "You are helpful.",
+        },
+        headers=headers,
+    )
     assert resp.status_code in (200, 201), f"Agent creation failed: {resp.json()}"
     agent_id = resp.json()["id"]
 
@@ -80,9 +91,7 @@ def _slack_signature(body: bytes, secret: str = "test-slack-signing-secret", ts:
     """Generate a valid Slack request signature."""
     timestamp = ts or str(int(time.time()))
     sig_basestring = f"v0:{timestamp}:{body.decode()}"
-    signature = "v0=" + hmac.new(
-        secret.encode(), sig_basestring.encode(), hashlib.sha256
-    ).hexdigest()
+    signature = "v0=" + hmac.new(secret.encode(), sig_basestring.encode(), hashlib.sha256).hexdigest()
     return timestamp, signature
 
 
@@ -120,15 +129,22 @@ class TestSlackWebhook:
         token, agent_id = _setup_user_and_agent(client)
 
         # Configure channel mapping
-        with patch.dict("os.environ", {
-            "SLACK_SIGNING_SECRET": "test-slack-signing-secret",
-            "SLACK_BOT_TOKEN": "xoxb-test-token",
-        }):
+        with patch.dict(
+            "os.environ",
+            {
+                "SLACK_SIGNING_SECRET": "test-slack-signing-secret",
+                "SLACK_BOT_TOKEN": "xoxb-test-token",
+            },
+        ):
             # Store channel-to-agent mapping
-            client.post("/api/webhooks/slack/config", json={
-                "channel_id": "C12345",
-                "agent_id": agent_id,
-            }, headers={"Authorization": f"Bearer {token}"})
+            client.post(
+                "/api/webhooks/slack/config",
+                json={
+                    "channel_id": "C12345",
+                    "agent_id": agent_id,
+                },
+                headers={"Authorization": f"Bearer {token}"},
+            )
 
             payload = {
                 "type": "event_callback",
@@ -162,14 +178,21 @@ class TestSlackWebhook:
         """Agent response is posted back to the Slack thread."""
         token, agent_id = _setup_user_and_agent(client)
 
-        with patch.dict("os.environ", {
-            "SLACK_SIGNING_SECRET": "test-slack-signing-secret",
-            "SLACK_BOT_TOKEN": "xoxb-test-token",
-        }):
-            client.post("/api/webhooks/slack/config", json={
-                "channel_id": "C12345",
-                "agent_id": agent_id,
-            }, headers={"Authorization": f"Bearer {token}"})
+        with patch.dict(
+            "os.environ",
+            {
+                "SLACK_SIGNING_SECRET": "test-slack-signing-secret",
+                "SLACK_BOT_TOKEN": "xoxb-test-token",
+            },
+        ):
+            client.post(
+                "/api/webhooks/slack/config",
+                json={
+                    "channel_id": "C12345",
+                    "agent_id": agent_id,
+                },
+                headers={"Authorization": f"Bearer {token}"},
+            )
 
             payload = {
                 "type": "event_callback",
@@ -264,10 +287,14 @@ class TestTelegramWebhook:
 
         with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "123456:ABC-test-token"}):
             # Configure chat-to-agent mapping
-            client.post("/api/webhooks/telegram/config", json={
-                "chat_id": "98765",
-                "agent_id": agent_id,
-            }, headers={"Authorization": f"Bearer {token}"})
+            client.post(
+                "/api/webhooks/telegram/config",
+                json={
+                    "chat_id": "98765",
+                    "agent_id": agent_id,
+                },
+                headers={"Authorization": f"Bearer {token}"},
+            )
 
             update = {
                 "update_id": 100,
@@ -296,10 +323,14 @@ class TestTelegramWebhook:
         token, agent_id = _setup_user_and_agent(client)
 
         with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "123456:ABC-test-token"}):
-            client.post("/api/webhooks/telegram/config", json={
-                "chat_id": "98765",
-                "agent_id": agent_id,
-            }, headers={"Authorization": f"Bearer {token}"})
+            client.post(
+                "/api/webhooks/telegram/config",
+                json={
+                    "chat_id": "98765",
+                    "agent_id": agent_id,
+                },
+                headers={"Authorization": f"Bearer {token}"},
+            )
 
             update = {
                 "update_id": 101,
@@ -389,14 +420,21 @@ class TestChannelThreadPersistence:
         token, agent_id = _setup_user_and_agent(client)
         headers = {"Authorization": f"Bearer {token}"}
 
-        with patch.dict("os.environ", {
-            "SLACK_SIGNING_SECRET": "test-slack-signing-secret",
-            "SLACK_BOT_TOKEN": "xoxb-test-token",
-        }):
-            client.post("/api/webhooks/slack/config", json={
-                "channel_id": "C12345",
-                "agent_id": agent_id,
-            }, headers=headers)
+        with patch.dict(
+            "os.environ",
+            {
+                "SLACK_SIGNING_SECRET": "test-slack-signing-secret",
+                "SLACK_BOT_TOKEN": "xoxb-test-token",
+            },
+        ):
+            client.post(
+                "/api/webhooks/slack/config",
+                json={
+                    "channel_id": "C12345",
+                    "agent_id": agent_id,
+                },
+                headers=headers,
+            )
 
             payload = {
                 "type": "event_callback",
@@ -437,10 +475,14 @@ class TestChannelThreadPersistence:
         headers = {"Authorization": f"Bearer {token}"}
 
         with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "123456:ABC-test-token"}):
-            client.post("/api/webhooks/telegram/config", json={
-                "chat_id": "98765",
-                "agent_id": agent_id,
-            }, headers=headers)
+            client.post(
+                "/api/webhooks/telegram/config",
+                json={
+                    "chat_id": "98765",
+                    "agent_id": agent_id,
+                },
+                headers=headers,
+            )
 
             update = {
                 "update_id": 200,

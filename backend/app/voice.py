@@ -24,18 +24,18 @@ logger = structlog.get_logger()
 class VoiceProviderType(StrEnum):
     """Supported voice provider types."""
 
-    OPENAI = "openai"          # OpenAI Whisper (STT) + TTS
+    OPENAI = "openai"  # OpenAI Whisper (STT) + TTS
     ELEVENLABS = "elevenlabs"  # ElevenLabs TTS
-    AZURE = "azure"            # Azure Speech Services
-    EDGE = "edge"              # Edge TTS (free, no API key)
-    CUSTOM = "custom"          # Any OpenAI-compatible endpoint
+    AZURE = "azure"  # Azure Speech Services
+    EDGE = "edge"  # Edge TTS (free, no API key)
+    CUSTOM = "custom"  # Any OpenAI-compatible endpoint
 
 
 class VoiceCapability(StrEnum):
     """What a voice provider can do."""
 
-    STT = "stt"   # Speech-to-text
-    TTS = "tts"   # Text-to-speech
+    STT = "stt"  # Speech-to-text
+    TTS = "tts"  # Text-to-speech
     BOTH = "both"
 
 
@@ -44,12 +44,8 @@ class VoiceProvider(Base):
 
     __tablename__ = "voice_providers"
 
-    id: Mapped[str] = mapped_column(
-        primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    user_id: Mapped[str] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
+    id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str]
     provider_type: Mapped[str] = mapped_column(default=VoiceProviderType.OPENAI)
     capability: Mapped[str] = mapped_column(default=VoiceCapability.BOTH)
@@ -59,9 +55,7 @@ class VoiceProvider(Base):
     tts_model: Mapped[str] = mapped_column(default="tts-1")
     tts_voice: Mapped[str] = mapped_column(default="alloy")
     is_verified: Mapped[bool] = mapped_column(default=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 async def test_tts_connection(
@@ -219,21 +213,15 @@ async def add_voice_provider(
     return provider
 
 
-async def list_voice_providers(
-    session: AsyncSession, user_id: str
-) -> list[VoiceProvider]:
+async def list_voice_providers(session: AsyncSession, user_id: str) -> list[VoiceProvider]:
     """List voice providers for a user."""
     result = await session.execute(
-        select(VoiceProvider)
-        .where(VoiceProvider.user_id == user_id)
-        .order_by(VoiceProvider.created_at)
+        select(VoiceProvider).where(VoiceProvider.user_id == user_id).order_by(VoiceProvider.created_at)
     )
     return list(result.scalars().all())
 
 
-async def get_voice_provider(
-    session: AsyncSession, provider_id: str, user_id: str
-) -> VoiceProvider | None:
+async def get_voice_provider(session: AsyncSession, provider_id: str, user_id: str) -> VoiceProvider | None:
     """Get a specific voice provider."""
     result = await session.execute(
         select(VoiceProvider).where(

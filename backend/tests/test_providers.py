@@ -17,9 +17,7 @@ class TestProviderConnection:
         """Mock a successful OpenAI-compatible response."""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": "ok"}}]
-        }
+        mock_response.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
 
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_response)
@@ -28,9 +26,7 @@ class TestProviderConnection:
             mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            success, message = await test_provider_connection(
-                "http://fake-api.local/v1", "fake-key", "fake-model"
-            )
+            success, message = await test_provider_connection("http://fake-api.local/v1", "fake-key", "fake-model")
             assert success is True
             assert "successful" in message.lower()
 
@@ -44,9 +40,7 @@ class TestProviderConnection:
             mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            success, message = await test_provider_connection(
-                "http://unreachable.local/v1", "key", "model"
-            )
+            success, message = await test_provider_connection("http://unreachable.local/v1", "key", "model")
             assert success is False
             assert "Cannot connect" in message
 
@@ -54,17 +48,13 @@ class TestProviderConnection:
     async def test_timeout(self) -> None:
         """Test connection timeout."""
         mock_client = AsyncMock()
-        mock_client.post = AsyncMock(
-            side_effect=httpx.TimeoutException("timeout")
-        )
+        mock_client.post = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
 
         with patch("app.providers.httpx.AsyncClient") as mock_cls:
             mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            success, message = await test_provider_connection(
-                "http://slow.local/v1", "key", "model"
-            )
+            success, message = await test_provider_connection("http://slow.local/v1", "key", "model")
             assert success is False
             assert "timed out" in message
 
@@ -82,8 +72,6 @@ class TestProviderConnection:
             mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            success, message = await test_provider_connection(
-                "http://fake-api.local/v1", "bad-key", "model"
-            )
+            success, message = await test_provider_connection("http://fake-api.local/v1", "bad-key", "model")
             assert success is False
             assert "401" in message

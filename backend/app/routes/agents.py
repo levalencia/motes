@@ -36,9 +36,7 @@ async def create_agent(
 ):
     """Create a new agent."""
     # Verify provider belongs to user
-    result = await session.execute(
-        select(Provider).where(Provider.id == body.provider_id, Provider.user_id == user.id)
-    )
+    result = await session.execute(select(Provider).where(Provider.id == body.provider_id, Provider.user_id == user.id))
     provider = result.scalar_one_or_none()
     if provider is None:
         raise HTTPException(status_code=404, detail="Provider not found")
@@ -68,9 +66,7 @@ async def list_agents(
     user: User = Depends(get_current_user),
 ):
     """List all agents for the current user."""
-    result = await session.execute(
-        select(Agent).where(Agent.user_id == user.id).order_by(Agent.created_at)
-    )
+    result = await session.execute(select(Agent).where(Agent.user_id == user.id).order_by(Agent.created_at))
     agents = result.scalars().all()
     response = []
     for agent in agents:
@@ -78,14 +74,16 @@ async def list_agents(
         stmt = select(Provider).where(Provider.id == agent.provider_id)
         prov_result = await session.execute(stmt)
         prov = prov_result.scalar_one_or_none()
-        response.append(AgentResponse(
-            id=agent.id,
-            name=agent.name,
-            provider_id=agent.provider_id,
-            system_prompt=agent.system_prompt,
-            provider_name=prov.name if prov else None,
-            model=prov.model if prov else None,
-        ))
+        response.append(
+            AgentResponse(
+                id=agent.id,
+                name=agent.name,
+                provider_id=agent.provider_id,
+                system_prompt=agent.system_prompt,
+                provider_name=prov.name if prov else None,
+                model=prov.model if prov else None,
+            )
+        )
     return response
 
 
@@ -96,9 +94,7 @@ async def delete_agent(
     user: User = Depends(get_current_user),
 ):
     """Delete an agent."""
-    result = await session.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id)
-    )
+    result = await session.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
     agent = result.scalar_one_or_none()
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")

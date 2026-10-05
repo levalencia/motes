@@ -113,32 +113,40 @@ class FlightSearchTool(Tool):
                         for itin in offer.get("itineraries", []):
                             segments = []
                             for seg in itin.get("segments", []):
-                                segments.append({
-                                    "carrier": seg.get("carrierCode"),
-                                    "flight": f"{seg.get('carrierCode')}{seg.get('number')}",
-                                    "departure": seg.get("departure", {}).get("at"),
-                                    "arrival": seg.get("arrival", {}).get("at"),
-                                    "from": seg.get("departure", {}).get("iataCode"),
-                                    "to": seg.get("arrival", {}).get("iataCode"),
-                                })
-                            itineraries.append({
-                                "duration": itin.get("duration"),
-                                "segments": segments,
-                            })
-                        offers.append({
-                            "price": offer.get("price", {}).get("total"),
-                            "currency": offer.get("price", {}).get("currency"),
-                            "itineraries": itineraries,
-                        })
+                                segments.append(
+                                    {
+                                        "carrier": seg.get("carrierCode"),
+                                        "flight": f"{seg.get('carrierCode')}{seg.get('number')}",
+                                        "departure": seg.get("departure", {}).get("at"),
+                                        "arrival": seg.get("arrival", {}).get("at"),
+                                        "from": seg.get("departure", {}).get("iataCode"),
+                                        "to": seg.get("arrival", {}).get("iataCode"),
+                                    }
+                                )
+                            itineraries.append(
+                                {
+                                    "duration": itin.get("duration"),
+                                    "segments": segments,
+                                }
+                            )
+                        offers.append(
+                            {
+                                "price": offer.get("price", {}).get("total"),
+                                "currency": offer.get("price", {}).get("currency"),
+                                "itineraries": itineraries,
+                            }
+                        )
                     return json.dumps({"flights": offers, "source": "amadeus"})
 
                 # Fallback: search suggestion
                 query = f"flights from {origin} to {destination} on {departure_date}"
-                return json.dumps({
-                    "message": f"No Amadeus API key configured. Search '{query}' on a travel site for results.",
-                    "suggestion": f"Try Skyscanner or Kayak for {origin}→{destination} on {departure_date}",
-                    "source": "fallback",
-                })
+                return json.dumps(
+                    {
+                        "message": f"No Amadeus API key configured. Search '{query}' on a travel site for results.",
+                        "suggestion": f"Try Skyscanner or Kayak for {origin}→{destination} on {departure_date}",
+                        "source": "fallback",
+                    }
+                )
         except Exception as e:
             logger.warning("flight_search_error", error=str(e))
             return json.dumps({"error": str(e)})
@@ -193,20 +201,24 @@ class HotelSearchTool(Tool):
                     data = resp.json()
                     hotels = []
                     for hotel in data.get("data", [])[:10]:
-                        hotels.append({
-                            "name": hotel.get("name"),
-                            "hotel_id": hotel.get("hotelId"),
-                            "latitude": hotel.get("geoCode", {}).get("latitude"),
-                            "longitude": hotel.get("geoCode", {}).get("longitude"),
-                        })
+                        hotels.append(
+                            {
+                                "name": hotel.get("name"),
+                                "hotel_id": hotel.get("hotelId"),
+                                "latitude": hotel.get("geoCode", {}).get("latitude"),
+                                "longitude": hotel.get("geoCode", {}).get("longitude"),
+                            }
+                        )
                     return json.dumps({"hotels": hotels, "city": city_code, "source": "amadeus"})
 
                 # Fallback
-                return json.dumps({
-                    "message": "No Amadeus API key configured.",
-                    "suggestion": f"Search for hotels in {city_code} on Booking.com, Hotels.com, or Expedia.",
-                    "source": "fallback",
-                })
+                return json.dumps(
+                    {
+                        "message": "No Amadeus API key configured.",
+                        "suggestion": f"Search for hotels in {city_code} on Booking.com, Hotels.com, or Expedia.",
+                        "source": "fallback",
+                    }
+                )
         except Exception as e:
             logger.warning("hotel_search_error", error=str(e))
             return json.dumps({"error": str(e)})

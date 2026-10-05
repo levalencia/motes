@@ -28,9 +28,7 @@ class OAuthApp(Base):
 
     __tablename__ = "oauth_apps"
 
-    id: Mapped[str] = mapped_column(
-        primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
     provider: Mapped[str] = mapped_column(unique=True, index=True)
     # e.g. "google", "github", "slack"
     client_id: Mapped[str]
@@ -38,9 +36,7 @@ class OAuthApp(Base):
     scopes: Mapped[str] = mapped_column(Text, default="")
     # extra config (JSON) — e.g. {"tenant": "common"} for Azure
     extra_json: Mapped[str] = mapped_column(Text, default="{}")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class OAuthToken(Base):
@@ -48,12 +44,8 @@ class OAuthToken(Base):
 
     __tablename__ = "oauth_tokens"
 
-    id: Mapped[str] = mapped_column(
-        primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    user_id: Mapped[str] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
+    id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     provider: Mapped[str] = mapped_column(index=True)
     # e.g. "google", "github", "slack"
     service: Mapped[str]
@@ -61,14 +53,10 @@ class OAuthToken(Base):
     access_token_encrypted: Mapped[str]
     refresh_token_encrypted: Mapped[str] = mapped_column(default="")
     token_type: Mapped[str] = mapped_column(default="Bearer")
-    expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     scopes: Mapped[str] = mapped_column(Text, default="")
     account_email: Mapped[str] = mapped_column(default="")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # ── Provider configurations ──────────────────────────────────────────
@@ -192,17 +180,13 @@ async def exchange_code(
     headers: dict[str, str] = {"Accept": "application/json"}
 
     async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.post(
-            config["token_url"], data=payload, headers=headers
-        )
+        resp = await client.post(config["token_url"], data=payload, headers=headers)
         if resp.status_code != 200:
             raise RuntimeError(f"Token exchange failed: {resp.text[:300]}")
         return resp.json()
 
 
-async def get_user_email(
-    provider: str, access_token: str
-) -> str:
+async def get_user_email(provider: str, access_token: str) -> str:
     """Fetch the user's email from the provider."""
     config = OAUTH_PROVIDERS.get(provider)
     if not config or not config.get("userinfo_url"):
@@ -225,9 +209,7 @@ async def save_oauth_app(
     scopes: str = "",
 ) -> OAuthApp:
     """Save or update OAuth app credentials (admin action)."""
-    result = await session.execute(
-        select(OAuthApp).where(OAuthApp.provider == provider)
-    )
+    result = await session.execute(select(OAuthApp).where(OAuthApp.provider == provider))
     app = result.scalar_one_or_none()
     if app:
         app.client_id = client_id
@@ -247,13 +229,9 @@ async def save_oauth_app(
     return app
 
 
-async def get_oauth_app(
-    session: AsyncSession, provider: str
-) -> OAuthApp | None:
+async def get_oauth_app(session: AsyncSession, provider: str) -> OAuthApp | None:
     """Get OAuth app credentials for a provider."""
-    result = await session.execute(
-        select(OAuthApp).where(OAuthApp.provider == provider)
-    )
+    result = await session.execute(select(OAuthApp).where(OAuthApp.provider == provider))
     return result.scalar_one_or_none()
 
 
@@ -261,9 +239,7 @@ async def list_oauth_apps(
     session: AsyncSession,
 ) -> list[OAuthApp]:
     """List all configured OAuth apps."""
-    result = await session.execute(
-        select(OAuthApp).order_by(OAuthApp.provider)
-    )
+    result = await session.execute(select(OAuthApp).order_by(OAuthApp.provider))
     return list(result.scalars().all())
 
 
@@ -307,21 +283,15 @@ async def save_token(
     return token
 
 
-async def list_connected_services(
-    session: AsyncSession, user_id: str
-) -> list[OAuthToken]:
+async def list_connected_services(session: AsyncSession, user_id: str) -> list[OAuthToken]:
     """List user's connected OAuth services."""
     result = await session.execute(
-        select(OAuthToken)
-        .where(OAuthToken.user_id == user_id)
-        .order_by(OAuthToken.created_at)
+        select(OAuthToken).where(OAuthToken.user_id == user_id).order_by(OAuthToken.created_at)
     )
     return list(result.scalars().all())
 
 
-async def disconnect_service(
-    session: AsyncSession, user_id: str, service: str
-) -> bool:
+async def disconnect_service(session: AsyncSession, user_id: str, service: str) -> bool:
     """Remove a connected service."""
     result = await session.execute(
         select(OAuthToken).where(

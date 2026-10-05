@@ -25,15 +25,9 @@ class UserPattern(Base):
 
     __tablename__ = "user_patterns"
 
-    id: Mapped[str] = mapped_column(
-        primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    user_id: Mapped[str] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
-    agent_id: Mapped[str] = mapped_column(
-        ForeignKey("agents.id", ondelete="CASCADE"), index=True
-    )
+    id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    agent_id: Mapped[str] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), index=True)
     pattern_type: Mapped[str] = mapped_column(index=True)
     # Types: "time_action", "topic_interest", "person_importance", "routine"
     pattern_key: Mapped[str]
@@ -41,12 +35,8 @@ class UserPattern(Base):
     pattern_data: Mapped[str] = mapped_column(Text, default="{}")
     # JSON with: frequency, times, last_seen, confidence
     frequency: Mapped[int] = mapped_column(default=1)
-    last_seen: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Notification(Base):
@@ -54,15 +44,9 @@ class Notification(Base):
 
     __tablename__ = "notifications"
 
-    id: Mapped[str] = mapped_column(
-        primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    user_id: Mapped[str] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
-    agent_id: Mapped[str] = mapped_column(
-        ForeignKey("agents.id", ondelete="CASCADE"), index=True
-    )
+    id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    agent_id: Mapped[str] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), index=True)
     title: Mapped[str]
     body: Mapped[str] = mapped_column(Text)
     category: Mapped[str] = mapped_column(default="info", index=True)
@@ -70,58 +54,137 @@ class Notification(Base):
     is_read: Mapped[bool] = mapped_column(default=False)
     action_url: Mapped[str] = mapped_column(default="")
     # Optional: deep link to chat, email, calendar event
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # ── Pattern extraction from messages ─────────────────────────────
 
 TOPIC_KEYWORDS: dict[str, list[str]] = {
     "weather": [
-        "weather", "temperature", "forecast", "rain", "sunny", "cold", "hot",
-        "clima", "temperatura", "pronóstico", "lluvia", "soleado", "frío", "calor",
-        "météo", "température", "prévisions", "pluie",
+        "weather",
+        "temperature",
+        "forecast",
+        "rain",
+        "sunny",
+        "cold",
+        "hot",
+        "clima",
+        "temperatura",
+        "pronóstico",
+        "lluvia",
+        "soleado",
+        "frío",
+        "calor",
+        "météo",
+        "température",
+        "prévisions",
+        "pluie",
     ],
     "email": [
-        "email", "inbox", "unread", "gmail", "send email", "mail", "outlook",
-        "correo", "correos", "bandeja", "enviar correo",
-        "courriel", "boîte de réception",
+        "email",
+        "inbox",
+        "unread",
+        "gmail",
+        "send email",
+        "mail",
+        "outlook",
+        "correo",
+        "correos",
+        "bandeja",
+        "enviar correo",
+        "courriel",
+        "boîte de réception",
     ],
     "calendar": [
-        "calendar", "meeting", "schedule", "appointment", "event", "agenda",
-        "calendario", "reunión", "cita", "evento", "horario",
-        "calendrier", "réunion", "rendez-vous",
+        "calendar",
+        "meeting",
+        "schedule",
+        "appointment",
+        "event",
+        "agenda",
+        "calendario",
+        "reunión",
+        "cita",
+        "evento",
+        "horario",
+        "calendrier",
+        "réunion",
+        "rendez-vous",
     ],
     "news": [
-        "news", "latest", "headlines", "what happened", "today's news",
-        "noticias", "últimas noticias", "qué pasó", "novedades",
-        "actualités", "nouvelles",
+        "news",
+        "latest",
+        "headlines",
+        "what happened",
+        "today's news",
+        "noticias",
+        "últimas noticias",
+        "qué pasó",
+        "novedades",
+        "actualités",
+        "nouvelles",
     ],
     "files": [
-        "file", "document", "pptx", "powerpoint", "pdf", "folder",
-        "archivo", "documento", "carpeta",
-        "fichier", "dossier",
+        "file",
+        "document",
+        "pptx",
+        "powerpoint",
+        "pdf",
+        "folder",
+        "archivo",
+        "documento",
+        "carpeta",
+        "fichier",
+        "dossier",
     ],
     "search": [
-        "search", "google", "look up", "find out", "web search",
-        "buscar", "busca", "busqueda",
-        "chercher", "recherche",
+        "search",
+        "google",
+        "look up",
+        "find out",
+        "web search",
+        "buscar",
+        "busca",
+        "busqueda",
+        "chercher",
+        "recherche",
     ],
     "time": [
-        "time", "what time", "date", "clock",
-        "hora", "qué hora", "fecha",
-        "heure", "quelle heure",
+        "time",
+        "what time",
+        "date",
+        "clock",
+        "hora",
+        "qué hora",
+        "fecha",
+        "heure",
+        "quelle heure",
     ],
     "reminders": [
-        "reminder", "remind", "remember", "todo", "task",
-        "recuerda", "recordar", "recordatorio", "tarea",
-        "rappel", "rappeler",
+        "reminder",
+        "remind",
+        "remember",
+        "todo",
+        "task",
+        "recuerda",
+        "recordar",
+        "recordatorio",
+        "tarea",
+        "rappel",
+        "rappeler",
     ],
     "maps": [
-        "directions", "navigate", "how to get", "route", "distance",
-        "cómo llego", "direcciones", "ruta", "distancia",
-        "itinéraire", "comment aller",
+        "directions",
+        "navigate",
+        "how to get",
+        "route",
+        "distance",
+        "cómo llego",
+        "direcciones",
+        "ruta",
+        "distancia",
+        "itinéraire",
+        "comment aller",
     ],
 }
 
@@ -129,10 +192,7 @@ TOPIC_KEYWORDS: dict[str, list[str]] = {
 def extract_topics(message: str) -> list[str]:
     """Extract topic categories from a user message."""
     lower = message.lower()
-    return [
-        topic for topic, keywords in TOPIC_KEYWORDS.items()
-        if any(kw in lower for kw in keywords)
-    ]
+    return [topic for topic, keywords in TOPIC_KEYWORDS.items() if any(kw in lower for kw in keywords)]
 
 
 def extract_people(message: str) -> list[str]:
@@ -165,13 +225,19 @@ async def learn_from_message(
     for topic in topics:
         key = f"{topic}_h{hour}"
         await _upsert_pattern(
-            session, user_id, agent_id,
-            "time_action", key,
+            session,
+            user_id,
+            agent_id,
+            "time_action",
+            key,
             {"topic": topic, "hour": hour},
         )
         await _upsert_pattern(
-            session, user_id, agent_id,
-            "topic_interest", topic,
+            session,
+            user_id,
+            agent_id,
+            "topic_interest",
+            topic,
             {"topic": topic},
         )
 
@@ -179,8 +245,11 @@ async def learn_from_message(
     people = extract_people(message)
     for person in people:
         await _upsert_pattern(
-            session, user_id, agent_id,
-            "person_importance", person.lower().strip(),
+            session,
+            user_id,
+            agent_id,
+            "person_importance",
+            person.lower().strip(),
             {"name": person},
         )
 
@@ -220,20 +289,16 @@ async def _upsert_pattern(
         session.add(pattern)
 
 
-async def get_top_patterns(
-    session: AsyncSession, user_id: str, limit: int = 20
-) -> list[UserPattern]:
+async def get_top_patterns(session: AsyncSession, user_id: str, limit: int = 20) -> list[UserPattern]:
     """Get the most frequent patterns for a user."""
     result = await session.execute(
-        select(UserPattern)
-        .where(UserPattern.user_id == user_id)
-        .order_by(UserPattern.frequency.desc())
-        .limit(limit)
+        select(UserPattern).where(UserPattern.user_id == user_id).order_by(UserPattern.frequency.desc()).limit(limit)
     )
     return list(result.scalars().all())
 
 
 # ── Notifications ─────────────────────────────────────────────────
+
 
 async def create_notification(
     session: AsyncSession,
@@ -276,9 +341,7 @@ async def get_notifications(
 
 async def mark_read(session: AsyncSession, notification_id: str) -> None:
     """Mark a notification as read."""
-    result = await session.execute(
-        select(Notification).where(Notification.id == notification_id)
-    )
+    result = await session.execute(select(Notification).where(Notification.id == notification_id))
     notif = result.scalar_one_or_none()
     if notif:
         notif.is_read = True

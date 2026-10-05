@@ -21,14 +21,20 @@ def client() -> TestClient:
 
 def _setup_and_get_token(client: TestClient) -> str:
     """Create user and return JWT token."""
-    client.post("/api/auth/setup", json={
-        "username": "admin",
-        "password": "password123",
-    })
-    resp = client.post("/api/auth/login", json={
-        "username": "admin",
-        "password": "password123",
-    })
+    client.post(
+        "/api/auth/setup",
+        json={
+            "username": "admin",
+            "password": "password123",
+        },
+    )
+    resp = client.post(
+        "/api/auth/login",
+        json={
+            "username": "admin",
+            "password": "password123",
+        },
+    )
     return resp.json()["token"]
 
 
@@ -59,6 +65,7 @@ class TestMemoryRoutes:
         # But it requires a real connection... let's create via the model
         # Instead, let's patch the provider test
         from unittest.mock import AsyncMock, MagicMock, patch
+
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"choices": [{"message": {"content": "ok"}}]}

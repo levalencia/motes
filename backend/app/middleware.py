@@ -14,9 +14,7 @@ from app.logging import correlation_id_ctx
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
     """Assign a unique correlation ID to every request."""
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         cid = request.headers.get("x-correlation-id", str(uuid.uuid4()))
         correlation_id_ctx.set(cid)
         response = await call_next(request)

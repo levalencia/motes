@@ -73,12 +73,14 @@ class HAListDevicesTool(Tool):
                     entity_id = entity.get("entity_id", "")
                     if domain and not entity_id.startswith(f"{domain}."):
                         continue
-                    results.append({
-                        "entity_id": entity_id,
-                        "state": entity.get("state"),
-                        "friendly_name": entity.get("attributes", {}).get("friendly_name"),
-                        "last_changed": entity.get("last_changed"),
-                    })
+                    results.append(
+                        {
+                            "entity_id": entity_id,
+                            "state": entity.get("state"),
+                            "friendly_name": entity.get("attributes", {}).get("friendly_name"),
+                            "last_changed": entity.get("last_changed"),
+                        }
+                    )
                     if len(results) >= limit:
                         break
 
@@ -160,11 +162,13 @@ class HAControlDeviceTool(Tool):
                 )
                 resp.raise_for_status()
 
-                return json.dumps({
-                    "success": True,
-                    "entity_id": entity_id,
-                    "action": action,
-                })
+                return json.dumps(
+                    {
+                        "success": True,
+                        "entity_id": entity_id,
+                        "action": action,
+                    }
+                )
         except Exception as e:
             logger.warning("ha_control_device_error", error=str(e))
             return json.dumps({"error": str(e)})

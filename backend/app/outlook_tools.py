@@ -90,16 +90,18 @@ class OutlookReadEmailTool(Tool):
                 emails = []
                 for msg in data.get("value", [])[:limit]:
                     from_addr = msg.get("from", {}).get("emailAddress", {})
-                    emails.append({
-                        "subject": msg.get("subject"),
-                        "from_name": from_addr.get("name"),
-                        "from_email": from_addr.get("address"),
-                        "date": msg.get("receivedDateTime"),
-                        "preview": msg.get("bodyPreview", "")[:200],
-                        "is_read": msg.get("isRead"),
-                        "importance": msg.get("importance"),
-                        "id": msg.get("id"),
-                    })
+                    emails.append(
+                        {
+                            "subject": msg.get("subject"),
+                            "from_name": from_addr.get("name"),
+                            "from_email": from_addr.get("address"),
+                            "date": msg.get("receivedDateTime"),
+                            "preview": msg.get("bodyPreview", "")[:200],
+                            "is_read": msg.get("isRead"),
+                            "importance": msg.get("importance"),
+                            "id": msg.get("id"),
+                        }
+                    )
                 return json.dumps({"emails": emails, "count": len(emails)})
         except Exception as e:
             logger.warning("outlook_read_email_error", error=str(e))
@@ -162,15 +164,11 @@ class OutlookSendEmailTool(Tool):
                         "contentType": "HTML" if is_html else "Text",
                         "content": body,
                     },
-                    "toRecipients": [
-                        {"emailAddress": {"address": to}}
-                    ],
+                    "toRecipients": [{"emailAddress": {"address": to}}],
                 }
             }
             if cc:
-                payload["message"]["ccRecipients"] = [
-                    {"emailAddress": {"address": cc}}
-                ]
+                payload["message"]["ccRecipients"] = [{"emailAddress": {"address": cc}}]
 
             async with httpx.AsyncClient(timeout=15.0) as client:
                 resp = await client.post(
@@ -253,14 +251,16 @@ class OutlookCalendarTool(Tool):
 
                     events = []
                     for event in data.get("value", [])[:limit]:
-                        events.append({
-                            "subject": event.get("subject"),
-                            "start": event.get("start", {}).get("dateTime"),
-                            "end": event.get("end", {}).get("dateTime"),
-                            "location": event.get("location", {}).get("displayName"),
-                            "is_all_day": event.get("isAllDay"),
-                            "organizer": event.get("organizer", {}).get("emailAddress", {}).get("name"),
-                        })
+                        events.append(
+                            {
+                                "subject": event.get("subject"),
+                                "start": event.get("start", {}).get("dateTime"),
+                                "end": event.get("end", {}).get("dateTime"),
+                                "location": event.get("location", {}).get("displayName"),
+                                "is_all_day": event.get("isAllDay"),
+                                "organizer": event.get("organizer", {}).get("emailAddress", {}).get("name"),
+                            }
+                        )
                     return json.dumps({"events": events, "count": len(events)})
 
                 elif action == "create":
@@ -287,13 +287,15 @@ class OutlookCalendarTool(Tool):
                     )
                     resp.raise_for_status()
                     event = resp.json()
-                    return json.dumps({
-                        "created": True,
-                        "subject": event.get("subject"),
-                        "start": event.get("start", {}).get("dateTime"),
-                        "end": event.get("end", {}).get("dateTime"),
-                        "id": event.get("id"),
-                    })
+                    return json.dumps(
+                        {
+                            "created": True,
+                            "subject": event.get("subject"),
+                            "start": event.get("start", {}).get("dateTime"),
+                            "end": event.get("end", {}).get("dateTime"),
+                            "id": event.get("id"),
+                        }
+                    )
                 else:
                     return json.dumps({"error": f"Unknown action: {action}"})
         except Exception as e:

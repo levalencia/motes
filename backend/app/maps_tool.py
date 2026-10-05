@@ -95,13 +95,15 @@ class MapsTool(Tool):
                     results = resp.json()
                     places = []
                     for r in results:
-                        places.append({
-                            "name": r.get("display_name"),
-                            "latitude": float(r.get("lat", 0)),
-                            "longitude": float(r.get("lon", 0)),
-                            "type": r.get("type"),
-                            "category": r.get("class"),
-                        })
+                        places.append(
+                            {
+                                "name": r.get("display_name"),
+                                "latitude": float(r.get("lat", 0)),
+                                "longitude": float(r.get("lon", 0)),
+                                "type": r.get("type"),
+                                "category": r.get("class"),
+                            }
+                        )
                     return json.dumps({"places": places, "count": len(places)})
 
                 elif action == "directions":
@@ -149,19 +151,23 @@ class MapsTool(Tool):
                     for leg in route.get("legs", []):
                         for step in leg.get("steps", []):
                             maneuver = step.get("maneuver", {})
-                            steps.append({
-                                "instruction": step.get("name", ""),
-                                "distance_m": step.get("distance"),
-                                "duration_s": step.get("duration"),
-                                "maneuver": maneuver.get("type"),
-                                "modifier": maneuver.get("modifier"),
-                            })
+                            steps.append(
+                                {
+                                    "instruction": step.get("name", ""),
+                                    "distance_m": step.get("distance"),
+                                    "duration_s": step.get("duration"),
+                                    "maneuver": maneuver.get("type"),
+                                    "modifier": maneuver.get("modifier"),
+                                }
+                            )
 
-                    return json.dumps({
-                        "distance_km": round(route["distance"] / 1000, 1),
-                        "duration_min": round(route["duration"] / 60, 1),
-                        "steps": steps,
-                    })
+                    return json.dumps(
+                        {
+                            "distance_km": round(route["distance"] / 1000, 1),
+                            "duration_min": round(route["duration"] / 60, 1),
+                            "steps": steps,
+                        }
+                    )
 
                 elif action == "reverse_geocode":
                     lat = arguments.get("latitude")
@@ -174,15 +180,15 @@ class MapsTool(Tool):
                         headers={"User-Agent": USER_AGENT},
                     )
                     data = resp.json()
-                    return json.dumps({
-                        "address": data.get("display_name"),
-                        "details": data.get("address", {}),
-                    })
+                    return json.dumps(
+                        {
+                            "address": data.get("display_name"),
+                            "details": data.get("address", {}),
+                        }
+                    )
 
                 else:
-                    return json.dumps(
-                        {"error": f"Unknown action: {action}"}
-                    )
+                    return json.dumps({"error": f"Unknown action: {action}"})
 
         except Exception as e:
             logger.warning("maps_tool_error", error=str(e))

@@ -167,9 +167,7 @@ class MCPClient:
             from mcp import ClientSession, StdioServerParameters
             from mcp.client.stdio import stdio_client
         except ImportError as e:
-            raise ImportError(
-                "MCP SDK not installed. Install with: uv add mcp"
-            ) from e
+            raise ImportError("MCP SDK not installed. Install with: uv add mcp") from e
 
         server_params = StdioServerParameters(
             command=config.command or "",
@@ -189,9 +187,7 @@ class MCPClient:
             from mcp import ClientSession
             from mcp.client.sse import sse_client
         except ImportError as e:
-            raise ImportError(
-                "MCP SDK not installed. Install with: uv add mcp"
-            ) from e
+            raise ImportError("MCP SDK not installed. Install with: uv add mcp") from e
 
         transport = await sse_client(config.url or "").__aenter__()
         read_stream, write_stream = transport

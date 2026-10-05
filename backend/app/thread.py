@@ -25,10 +25,7 @@ async def get_or_create_thread(
     All messages (chat, call transcripts, proactive) go here.
     """
     result = await session.execute(
-        select(Conversation)
-        .where(Conversation.agent_id == agent_id)
-        .order_by(Conversation.created_at.asc())
-        .limit(1)
+        select(Conversation).where(Conversation.agent_id == agent_id).order_by(Conversation.created_at.asc()).limit(1)
     )
     thread = result.scalars().first()
 

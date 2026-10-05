@@ -37,16 +37,13 @@ class TestAudioFormatHandling:
         sample_rate = 24000
         duration_ms = 100
         num_samples = sample_rate * duration_ms // 1000
-        samples = [
-            int(32767 * math.sin(2 * math.pi * 440 * i / sample_rate))
-            for i in range(num_samples)
-        ]
+        samples = [int(32767 * math.sin(2 * math.pi * 440 * i / sample_rate)) for i in range(num_samples)]
         pcm_bytes = struct.pack(f"<{len(samples)}h", *samples)
         b64 = base64.b64encode(pcm_bytes).decode()
 
         # Verify decode produces valid PCM16
         decoded = base64.b64decode(b64)
-        recovered = struct.unpack(f"<{len(decoded)//2}h", decoded)
+        recovered = struct.unpack(f"<{len(decoded) // 2}h", decoded)
         assert len(recovered) == num_samples
         assert recovered[0] == 0  # sin(0) = 0
         # Verify non-zero audio exists
@@ -228,10 +225,7 @@ class TestAudioGeneration:
         import math
 
         num_samples = sample_rate * duration_ms // 1000
-        samples = [
-            int(32767 * 0.8 * math.sin(2 * math.pi * freq_hz * i / sample_rate))
-            for i in range(num_samples)
-        ]
+        samples = [int(32767 * 0.8 * math.sin(2 * math.pi * freq_hz * i / sample_rate)) for i in range(num_samples)]
         return struct.pack(f"<{num_samples}h", *samples)
 
     def test_generate_440hz_tone(self):
@@ -239,24 +233,26 @@ class TestAudioGeneration:
         tone = self.generate_tone(440, 1000)  # 1 second
         assert len(tone) == 48000  # 24000 samples * 2 bytes
         # Verify it's not silence
-        samples = struct.unpack(f"<{len(tone)//2}h", tone)
+        samples = struct.unpack(f"<{len(tone) // 2}h", tone)
         max_val = max(abs(s) for s in samples)
         assert max_val > 25000  # Should have significant amplitude
 
     def test_generate_silence(self):
         """Silence generates zero samples."""
         silence = self.generate_tone(0, 100)
-        samples = struct.unpack(f"<{len(silence)//2}h", silence)
+        samples = struct.unpack(f"<{len(silence) // 2}h", silence)
         assert all(s == 0 for s in samples)
 
     def test_tone_as_azure_payload(self):
         """Generated tone can be packaged as Azure payload."""
         tone = self.generate_tone(440, 100)  # 100ms
         b64 = base64.b64encode(tone).decode()
-        payload = json.dumps({
-            "type": "input_audio_buffer.append",
-            "audio": b64,
-        })
+        payload = json.dumps(
+            {
+                "type": "input_audio_buffer.append",
+                "audio": b64,
+            }
+        )
         parsed = json.loads(payload)
         decoded = base64.b64decode(parsed["audio"])
         assert decoded == tone
@@ -365,11 +361,7 @@ class TestVoiceCallInstructions:
 
     def test_instructions_without_personality(self):
         """Instructions work without voice personality."""
-        instructions = (
-            "You are Motes. "
-            + ("" if not "" else "Voice: . ")
-            + "Base prompt."
-        )
+        instructions = "You are Motes. " + ("" if not "" else "Voice: . ") + "Base prompt."
         assert "Voice:" not in instructions
 
 

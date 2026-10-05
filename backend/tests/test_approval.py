@@ -77,7 +77,9 @@ async def test_create_approval_request(session: AsyncSession, agent: Agent) -> N
 async def test_approve_request(session: AsyncSession, agent: Agent) -> None:
     """User approves a pending request."""
     req = await create_approval_request(
-        session, agent_id=agent.id, tool_name="delete_file",
+        session,
+        agent_id=agent.id,
+        tool_name="delete_file",
         arguments_json='{"path": "/tmp/test.txt"}',
     )
     resolved = await resolve_approval(session, req.id, approved=True, reason="Looks good")
@@ -89,7 +91,9 @@ async def test_approve_request(session: AsyncSession, agent: Agent) -> None:
 async def test_deny_request(session: AsyncSession, agent: Agent) -> None:
     """User denies a pending request."""
     req = await create_approval_request(
-        session, agent_id=agent.id, tool_name="create_reminder",
+        session,
+        agent_id=agent.id,
+        tool_name="create_reminder",
         arguments_json='{"text": "Buy milk"}',
     )
     resolved = await resolve_approval(session, req.id, approved=False, reason="Not needed")
@@ -122,9 +126,7 @@ async def test_approval_timeout_expired(session: AsyncSession, agent: Agent) -> 
 
     from app.approvals import ApprovalRequest
 
-    result = await session.execute(
-        select(ApprovalRequest).where(ApprovalRequest.id == req.id)
-    )
+    result = await session.execute(select(ApprovalRequest).where(ApprovalRequest.id == req.id))
     ar = result.scalar_one()
     ar.status = ApprovalStatus.EXPIRED
     await session.commit()

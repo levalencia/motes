@@ -65,16 +65,29 @@ async def create_voice_provider(
     """Add a voice provider. Tests connection first."""
     try:
         provider = await add_voice_provider(
-            session, user.id, body.name, body.provider_type, body.capability,
-            body.base_url, body.api_key, body.stt_model, body.tts_model, body.tts_voice,
+            session,
+            user.id,
+            body.name,
+            body.provider_type,
+            body.capability,
+            body.base_url,
+            body.api_key,
+            body.stt_model,
+            body.tts_model,
+            body.tts_voice,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
     return VoiceProviderResponse(
-        id=provider.id, name=provider.name, provider_type=provider.provider_type,
-        capability=provider.capability, base_url=provider.base_url,
-        stt_model=provider.stt_model, tts_model=provider.tts_model,
-        tts_voice=provider.tts_voice, is_verified=provider.is_verified,
+        id=provider.id,
+        name=provider.name,
+        provider_type=provider.provider_type,
+        capability=provider.capability,
+        base_url=provider.base_url,
+        stt_model=provider.stt_model,
+        tts_model=provider.tts_model,
+        tts_voice=provider.tts_voice,
+        is_verified=provider.is_verified,
     )
 
 
@@ -87,10 +100,15 @@ async def get_voice_providers(
     providers = await list_voice_providers(session, user.id)
     return [
         VoiceProviderResponse(
-            id=p.id, name=p.name, provider_type=p.provider_type,
-            capability=p.capability, base_url=p.base_url,
-            stt_model=p.stt_model, tts_model=p.tts_model,
-            tts_voice=p.tts_voice, is_verified=p.is_verified,
+            id=p.id,
+            name=p.name,
+            provider_type=p.provider_type,
+            capability=p.capability,
+            base_url=p.base_url,
+            stt_model=p.stt_model,
+            tts_model=p.tts_model,
+            tts_voice=p.tts_voice,
+            is_verified=p.is_verified,
         )
         for p in providers
     ]
@@ -124,8 +142,12 @@ async def text_to_speech(
     voice = body.voice or provider.tts_voice
     try:
         audio = await synthesize_speech(
-            provider.base_url, provider.api_key_encrypted,
-            provider.tts_model, voice, body.text, body.response_format,
+            provider.base_url,
+            provider.api_key_encrypted,
+            provider.tts_model,
+            voice,
+            body.text,
+            body.response_format,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from None
@@ -162,9 +184,7 @@ async def speech_to_text(
         try:
             text = await transcribe_local(audio_data, language)
         except Exception as exc:
-            raise HTTPException(
-                status_code=502, detail=f"Local STT error: {exc}"
-            ) from None
+            raise HTTPException(status_code=502, detail=f"Local STT error: {exc}") from None
         return STTResponse(text=text)
 
     # Server-side provider
@@ -176,8 +196,10 @@ async def speech_to_text(
 
     try:
         text = await transcribe_audio(
-            provider.base_url, provider.api_key_encrypted,
-            provider.stt_model, audio_data,
+            provider.base_url,
+            provider.api_key_encrypted,
+            provider.stt_model,
+            audio_data,
             filename=file.filename or "audio.webm",
             language=language,
         )

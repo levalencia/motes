@@ -37,10 +37,7 @@ async def run_task_scheduler(
         try:
             async with session_factory() as session:
                 # Get all active tasks with their agent + provider
-                result = await session.execute(
-                    select(ScheduledTask)
-                    .where(ScheduledTask.status == TaskStatus.ACTIVE)
-                )
+                result = await session.execute(select(ScheduledTask).where(ScheduledTask.status == TaskStatus.ACTIVE))
                 tasks = result.scalars().all()
 
                 now = datetime.now(UTC)
@@ -60,9 +57,7 @@ async def run_task_scheduler(
 
                         # Get agent with provider
                         agent_result = await session.execute(
-                            select(Agent)
-                            .where(Agent.id == task.agent_id)
-                            .options(selectinload(Agent.provider))
+                            select(Agent).where(Agent.id == task.agent_id).options(selectinload(Agent.provider))
                         )
                         agent = agent_result.scalar_one_or_none()
                         if not agent or not agent.provider:
@@ -71,22 +66,28 @@ async def run_task_scheduler(
 
                         # Run the task prompt through the agent
                         response = await _run_task_prompt(
-                            session, agent, task.prompt,
+                            session,
+                            agent,
+                            task.prompt,
                         )
 
                         # Save result to thread
                         thread = await get_or_create_thread(session, task.agent_id)
-                        session.add(Message(
-                            conversation_id=thread.id,
-                            role="assistant",
-                            content=f"⏰ **{task.name}**\n\n{response}",
-                            message_type="scheduled",
-                        ))
+                        session.add(
+                            Message(
+                                conversation_id=thread.id,
+                                role="assistant",
+                                content=f"⏰ **{task.name}**\n\n{response}",
+                                message_type="scheduled",
+                            )
+                        )
                         await session.commit()
 
                         # Record run
                         await record_run(
-                            session, task.id, RunStatus.COMPLETED,
+                            session,
+                            task.id,
+                            RunStatus.COMPLETED,
                             result_text=response[:500],
                         )
 
@@ -94,12 +95,14 @@ async def run_task_scheduler(
                         if event_bus is not None:
                             from app.event_bus import ProactiveEvent
 
-                            await event_bus.publish(ProactiveEvent(
-                                user_id=agent.user_id,
-                                agent_id=agent.id,
-                                title=f"⏰ {task.name}",
-                                body=response[:300],
-                            ))
+                            await event_bus.publish(
+                                ProactiveEvent(
+                                    user_id=agent.user_id,
+                                    agent_id=agent.id,
+                                    title=f"⏰ {task.name}",
+                                    body=response[:300],
+                                )
+                            )
 
                         logger.info("task_completed", task_id=task.id, name=task.name)
 
@@ -107,7 +110,9 @@ async def run_task_scheduler(
                         logger.warning("task_run_error", task_id=task.id, exc_info=True)
                         with contextlib.suppress(Exception):
                             await record_run(
-                                session, task.id, RunStatus.FAILED,
+                                session,
+                                task.id,
+                                RunStatus.FAILED,
                                 error_text="Execution failed",
                             )
 

@@ -66,11 +66,13 @@ class WebSearchTool:
                 data = resp.json()
                 results = []
                 for item in data.get("web", {}).get("results", [])[:max_results]:
-                    results.append({
-                        "title": item.get("title", ""),
-                        "url": item.get("url", ""),
-                        "description": item.get("description", ""),
-                    })
+                    results.append(
+                        {
+                            "title": item.get("title", ""),
+                            "url": item.get("url", ""),
+                            "description": item.get("description", ""),
+                        }
+                    )
                 return json.dumps({"query": query, "results": results})
         except Exception as exc:
             return json.dumps({"error": f"Search error: {exc}"})
@@ -78,9 +80,7 @@ class WebSearchTool:
     async def _ddg_search(self, query: str, max_results: int) -> str:
         """Search using DuckDuckGo HTML (free, no API key)."""
         url = "https://html.duckduckgo.com/html/"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Motes Agent)"
-        }
+        headers = {"User-Agent": "Mozilla/5.0 (Motes Agent)"}
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -93,7 +93,7 @@ class WebSearchTool:
                 results = []
                 # Find result blocks
                 parts = text.split('class="result__a"')
-                for part in parts[1:max_results + 1]:
+                for part in parts[1 : max_results + 1]:
                     title = ""
                     link = ""
                     snippet = ""
@@ -110,6 +110,7 @@ class WebSearchTool:
                             title = part[tag_end:close]
                             # Strip HTML tags
                             import re
+
                             title = re.sub(r"<[^>]+>", "", title).strip()
                     # Extract snippet
                     snippet_marker = 'class="result__snippet"'
@@ -121,11 +122,13 @@ class WebSearchTool:
                             snippet = re.sub(r"<[^>]+>", "", part[s_tag:s_end]).strip()
 
                     if title or link:
-                        results.append({
-                            "title": title,
-                            "url": link,
-                            "description": snippet,
-                        })
+                        results.append(
+                            {
+                                "title": title,
+                                "url": link,
+                                "description": snippet,
+                            }
+                        )
 
                 return json.dumps({"query": query, "results": results})
         except Exception as exc:

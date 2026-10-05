@@ -97,9 +97,7 @@ async def run_agent_stream(
                         for tc in delta["tool_calls"]:
                             idx = tc.get("index", 0)
                             while len(tool_calls) <= idx:
-                                tool_calls.append(
-                                    {"id": "", "name": "", "arguments": ""}
-                                )
+                                tool_calls.append({"id": "", "name": "", "arguments": ""})
                             if tc.get("id"):
                                 tool_calls[idx]["id"] = tc["id"]
                             fn = tc.get("function", {})
@@ -158,16 +156,21 @@ async def run_agent_stream(
                         if risk == ActionRisk.FORBIDDEN:
                             result = json.dumps({"error": f"Tool '{tool_name}' is forbidden by policy"})
                             yield {"type": "tool_result", "name": tool_name, "result": result}
-                            messages.append({
-                                "role": "tool",
-                                "tool_call_id": tc["id"],
-                                "content": result,
-                            })
+                            messages.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tc["id"],
+                                    "content": result,
+                                }
+                            )
                             continue
                         elif risk == ActionRisk.NEEDS_APPROVAL:
                             # Create approval request and wait
                             approval = await create_approval_request(
-                                session, agent_id, tool_name, json.dumps(args),
+                                session,
+                                agent_id,
+                                tool_name,
+                                json.dumps(args),
                             )
                             yield {
                                 "type": "approval_needed",
@@ -191,18 +194,22 @@ async def run_agent_stream(
                                 elif approval.status == ApprovalStatus.DENIED:
                                     break
                             if not approved:
-                                result = json.dumps({
-                                    "status": "denied",
-                                    "message": "The USER explicitly clicked DENY. "
-                                    "Do NOT retry or suggest workarounds. "
-                                    "Acknowledge respectfully and move on.",
-                                })
+                                result = json.dumps(
+                                    {
+                                        "status": "denied",
+                                        "message": "The USER explicitly clicked DENY. "
+                                        "Do NOT retry or suggest workarounds. "
+                                        "Acknowledge respectfully and move on.",
+                                    }
+                                )
                                 yield {"type": "tool_result", "name": tool_name, "result": result}
-                                messages.append({
-                                    "role": "tool",
-                                    "tool_call_id": tc["id"],
-                                    "content": result,
-                                })
+                                messages.append(
+                                    {
+                                        "role": "tool",
+                                        "tool_call_id": tc["id"],
+                                        "content": result,
+                                    }
+                                )
                                 continue
                     # Safe or approved — execute
                     try:
@@ -212,16 +219,16 @@ async def run_agent_stream(
 
                 yield {"type": "tool_result", "name": tool_name, "result": result}
 
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc["id"],
-                    "content": result,
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc["id"],
+                        "content": result,
+                    }
+                )
 
             names = [tc["name"] for tc in tool_calls]
-            logger.info(
-                "agent_tool_round", round=_round + 1, tools_called=names
-            )
+            logger.info("agent_tool_round", round=_round + 1, tools_called=names)
 
         except httpx.TimeoutException:
             yield {"type": "error", "message": "LLM provider timed out"}
@@ -249,8 +256,13 @@ async def run_agent_sync(
     """Non-streaming: runs the full loop, returns the final text."""
     final_content = ""
     async for event in run_agent_stream(
-        base_url, api_key, model, messages, tools,
-        temperature=temperature, max_tokens=max_tokens,
+        base_url,
+        api_key,
+        model,
+        messages,
+        tools,
+        temperature=temperature,
+        max_tokens=max_tokens,
     ):
         if event["type"] == "done":
             final_content = event["content"]

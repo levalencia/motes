@@ -53,16 +53,12 @@ async def chat(
 ):
     """Send a message and get a streaming response via SSE."""
     # Load agent + provider
-    result = await session.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id)
-    )
+    result = await session.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
     agent = result.scalar_one_or_none()
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    prov_result = await session.execute(
-        select(Provider).where(Provider.id == agent.provider_id)
-    )
+    prov_result = await session.execute(select(Provider).where(Provider.id == agent.provider_id))
     provider = prov_result.scalar_one_or_none()
     if provider is None:
         raise HTTPException(status_code=404, detail="Provider not found")
@@ -92,25 +88,18 @@ async def chat(
     from app.memory import Memory
 
     mem_result = await session.execute(
-        select(Memory)
-        .where(Memory.agent_id == agent_id)
-        .order_by(Memory.created_at.desc())
-        .limit(50)
+        select(Memory).where(Memory.agent_id == agent_id).order_by(Memory.created_at.desc()).limit(50)
     )
     memories = mem_result.scalars().all()
     memory_context = ""
     if memories:
         memory_lines = [f"- [{m.category}] {m.content}" for m in memories]
-        memory_context = (
-            "\n\n## Your Memories\n"
-            "You have the following memories from past interactions:\n"
-            + "\n".join(memory_lines)
+        memory_context = "\n\n## Your Memories\nYou have the following memories from past interactions:\n" + "\n".join(
+            memory_lines
         )
 
     msg_result = await session.execute(
-        select(Message)
-        .where(Message.conversation_id == conversation.id)
-        .order_by(Message.created_at)
+        select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at)
     )
     history = msg_result.scalars().all()
 
@@ -164,11 +153,16 @@ async def chat(
                     yield {"event": "approval_needed", "data": json.dumps(event)}
                 elif event["type"] == "done":
                     full_content = event["content"]
-                    yield {"event": "done", "data": json.dumps({
-                        "type": "done",
-                        "content": full_content,
-                        "conversation_id": conversation.id,
-                    })}
+                    yield {
+                        "event": "done",
+                        "data": json.dumps(
+                            {
+                                "type": "done",
+                                "content": full_content,
+                                "conversation_id": conversation.id,
+                            }
+                        ),
+                    }
                 elif event["type"] == "error":
                     yield {"event": "error", "data": json.dumps(event)}
 
@@ -196,23 +190,21 @@ async def list_conversations(
 ):
     """List conversations for an agent."""
     # Verify agent belongs to user
-    agent_result = await session.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id)
-    )
+    agent_result = await session.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
     if agent_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Agent not found")
 
     result = await session.execute(
-        select(Conversation)
-        .where(Conversation.agent_id == agent_id)
-        .order_by(Conversation.created_at.desc())
+        select(Conversation).where(Conversation.agent_id == agent_id).order_by(Conversation.created_at.desc())
     )
     convos = result.scalars().all()
     return [
         ConversationResponse(
-            id=c.id, agent_id=c.agent_id, title=c.title,
-            conversation_type=getattr(c, 'conversation_type', 'chat'),
-            updated_at=c.updated_at.isoformat() if getattr(c, 'updated_at', None) else None,
+            id=c.id,
+            agent_id=c.agent_id,
+            title=c.title,
+            conversation_type=getattr(c, "conversation_type", "chat"),
+            updated_at=c.updated_at.isoformat() if getattr(c, "updated_at", None) else None,
         )
         for c in convos
     ]
@@ -226,9 +218,7 @@ async def rename_conversation(
     user: User = Depends(get_current_user),
 ):
     """Rename a conversation."""
-    result = await session.execute(
-        select(Conversation).where(Conversation.id == conversation_id)
-    )
+    result = await session.execute(select(Conversation).where(Conversation.id == conversation_id))
     conv = result.scalar_one_or_none()
     if conv is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -248,9 +238,7 @@ async def get_messages(
 ):
     """Get messages for a conversation."""
     # Verify conversation belongs to user's agent
-    conv_result = await session.execute(
-        select(Conversation).where(Conversation.id == conversation_id)
-    )
+    conv_result = await session.execute(select(Conversation).where(Conversation.id == conversation_id))
     conversation = conv_result.scalar_one_or_none()
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -262,15 +250,10 @@ async def get_messages(
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     result = await session.execute(
-        select(Message)
-        .where(Message.conversation_id == conversation_id)
-        .order_by(Message.created_at)
+        select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at)
     )
     msgs = result.scalars().all()
-    return [
-        MessageResponse(id=m.id, role=m.role, content=m.content, tool_name=m.tool_name)
-        for m in msgs
-    ]
+    return [MessageResponse(id=m.id, role=m.role, content=m.content, tool_name=m.tool_name) for m in msgs]
 
 
 @router.delete("/conversations/{conversation_id}")
@@ -280,24 +263,18 @@ async def delete_conversation(
     user: User = Depends(get_current_user),
 ):
     """Delete a conversation and its messages."""
-    result = await session.execute(
-        select(Conversation).where(Conversation.id == conversation_id)
-    )
+    result = await session.execute(select(Conversation).where(Conversation.id == conversation_id))
     conv = result.scalar_one_or_none()
     if conv is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     # Verify agent belongs to user
-    agent_result = await session.execute(
-        select(Agent).where(Agent.id == conv.agent_id, Agent.user_id == user.id)
-    )
+    agent_result = await session.execute(select(Agent).where(Agent.id == conv.agent_id, Agent.user_id == user.id))
     if agent_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     # Delete messages first, then conversation
-    await session.execute(
-        delete(Message).where(Message.conversation_id == conversation_id)
-    )
+    await session.execute(delete(Message).where(Message.conversation_id == conversation_id))
     await session.delete(conv)
     await session.commit()
     return {"status": "ok"}
@@ -311,9 +288,7 @@ class AgentPersonalityRequest(BaseModel):
 
     name: str = Field(default="", description="Display name")
     system_prompt: str = Field(default="", description="System prompt")
-    language: str = Field(
-        default="", description="Default language (e.g. Spanish, French)"
-    )
+    language: str = Field(default="", description="Default language (e.g. Spanish, French)")
 
 
 @router.get("/agents/{agent_id}/personality")
@@ -323,9 +298,7 @@ async def get_agent_personality(
     user: User = Depends(get_current_user),
 ):
     """Get the agent's personality settings."""
-    result = await session.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id)
-    )
+    result = await session.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
     agent = result.scalars().first()
     if not agent:
         raise HTTPException(404, "Agent not found")
@@ -345,9 +318,7 @@ async def set_agent_personality(
     user: User = Depends(get_current_user),
 ):
     """Customize the agent's personality, name, and language."""
-    result = await session.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id)
-    )
+    result = await session.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
     agent = result.scalars().first()
     if not agent:
         raise HTTPException(404, "Agent not found")
@@ -374,9 +345,7 @@ async def get_thread(
 
     thread = await get_or_create_thread(session, agent_id)
     result = await session.execute(
-        select(Message)
-        .where(Message.conversation_id == thread.id)
-        .order_by(Message.created_at.asc())
+        select(Message).where(Message.conversation_id == thread.id).order_by(Message.created_at.asc())
     )
     messages = result.scalars().all()
     return {
@@ -404,9 +373,7 @@ async def clear_thread(
     from app.thread import get_or_create_thread
 
     thread = await get_or_create_thread(session, agent_id)
-    await session.execute(
-        delete(Message).where(Message.conversation_id == thread.id)
-    )
+    await session.execute(delete(Message).where(Message.conversation_id == thread.id))
     await session.commit()
     return {"status": "ok", "cleared": True}
 
@@ -422,36 +389,22 @@ async def reset_everything(
     from app.proactive import Notification, UserPattern
 
     # Delete all messages in all conversations for this agent
-    agent_result = await session.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id)
-    )
+    agent_result = await session.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user.id))
     agent = agent_result.scalars().first()
     if not agent:
         raise HTTPException(404, "Agent not found")
 
     # Delete messages
-    convs = await session.execute(
-        select(Conversation).where(Conversation.agent_id == agent_id)
-    )
+    convs = await session.execute(select(Conversation).where(Conversation.agent_id == agent_id))
     for conv in convs.scalars().all():
-        await session.execute(
-            delete(Message).where(Message.conversation_id == conv.id)
-        )
+        await session.execute(delete(Message).where(Message.conversation_id == conv.id))
     # Delete conversations
-    await session.execute(
-        delete(Conversation).where(Conversation.agent_id == agent_id)
-    )
+    await session.execute(delete(Conversation).where(Conversation.agent_id == agent_id))
     # Delete memories
-    await session.execute(
-        delete(Memory).where(Memory.agent_id == agent_id)
-    )
+    await session.execute(delete(Memory).where(Memory.agent_id == agent_id))
     # Delete patterns and notifications
-    await session.execute(
-        delete(UserPattern).where(UserPattern.user_id == user.id)
-    )
-    await session.execute(
-        delete(Notification).where(Notification.user_id == user.id)
-    )
+    await session.execute(delete(UserPattern).where(UserPattern.user_id == user.id))
+    await session.execute(delete(Notification).where(Notification.user_id == user.id))
     await session.commit()
     logger.info("reset_everything", agent_id=agent_id, user_id=user.id)
     return {"status": "ok", "reset": True}

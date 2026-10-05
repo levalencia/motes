@@ -59,7 +59,12 @@ async def create_provider(
     """Add a new provider. Tests connection first, rejects if invalid."""
     try:
         provider = await add_provider(
-            session, user.id, body.name, body.base_url, body.api_key, body.model,
+            session,
+            user.id,
+            body.name,
+            body.base_url,
+            body.api_key,
+            body.model,
             body.api_format,
         )
     except ValueError as exc:
@@ -81,9 +86,7 @@ async def get_providers(
     """List all providers for the current user."""
     providers = await list_providers(session, user.id)
     return [
-        ProviderResponse(
-            id=p.id, name=p.name, base_url=p.base_url, model=p.model, is_verified=p.is_verified
-        )
+        ProviderResponse(id=p.id, name=p.name, base_url=p.base_url, model=p.model, is_verified=p.is_verified)
         for p in providers
     ]
 

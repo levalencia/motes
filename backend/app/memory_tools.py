@@ -92,16 +92,11 @@ class MemoryRecallTool(Tool):
 
     async def execute(self, arguments: dict) -> str:
         query = arguments.get("query", "").lower()
-        result = await self._session.execute(
-            select(Memory).where(Memory.agent_id == self._agent_id)
-        )
+        result = await self._session.execute(select(Memory).where(Memory.agent_id == self._agent_id))
         memories = result.scalars().all()
 
         # Simple keyword matching
-        matches = [
-            m for m in memories
-            if query in m.content.lower() or query in m.category.lower()
-        ]
+        matches = [m for m in memories if query in m.content.lower() or query in m.category.lower()]
         if not matches:
             # Return all if no specific match
             matches = memories[-10:]  # Last 10

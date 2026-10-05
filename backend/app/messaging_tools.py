@@ -84,12 +84,14 @@ class TelegramSendTool(Tool):
                     return json.dumps({"error": data.get("description", "Telegram API error")})
 
                 result = data.get("result", {})
-                return json.dumps({
-                    "sent": True,
-                    "message_id": result.get("message_id"),
-                    "chat_id": str(chat_id),
-                    "date": result.get("date"),
-                })
+                return json.dumps(
+                    {
+                        "sent": True,
+                        "message_id": result.get("message_id"),
+                        "chat_id": str(chat_id),
+                        "date": result.get("date"),
+                    }
+                )
         except Exception as e:
             logger.warning("telegram_send_error", error=str(e))
             return json.dumps({"error": str(e)})

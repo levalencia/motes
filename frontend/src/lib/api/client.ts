@@ -146,6 +146,7 @@ export interface ScheduledTask {
 	status: string;
 	run_count: number;
 	max_runs: number | null;
+	last_run_at: string | null;
 	enabled: boolean;
 }
 export const listTasks = (agentId: string) => api<ScheduledTask[]>(`/agents/${agentId}/tasks`);

@@ -72,14 +72,16 @@ class SlackListChannelsTool(Tool):
 
                 channels = []
                 for ch in data.get("channels", [])[:limit]:
-                    channels.append({
-                        "id": ch.get("id"),
-                        "name": ch.get("name"),
-                        "topic": ch.get("topic", {}).get("value", ""),
-                        "purpose": ch.get("purpose", {}).get("value", ""),
-                        "num_members": ch.get("num_members"),
-                        "is_private": ch.get("is_private"),
-                    })
+                    channels.append(
+                        {
+                            "id": ch.get("id"),
+                            "name": ch.get("name"),
+                            "topic": ch.get("topic", {}).get("value", ""),
+                            "purpose": ch.get("purpose", {}).get("value", ""),
+                            "num_members": ch.get("num_members"),
+                            "is_private": ch.get("is_private"),
+                        }
+                    )
                 return json.dumps({"channels": channels, "count": len(channels)})
         except Exception as e:
             logger.warning("slack_list_channels_error", error=str(e))
@@ -141,12 +143,14 @@ class SlackSendMessageTool(Tool):
                 if not data.get("ok"):
                     return json.dumps({"error": data.get("error", "Unknown Slack error")})
 
-                return json.dumps({
-                    "sent": True,
-                    "channel": data.get("channel"),
-                    "ts": data.get("ts"),
-                    "message": data.get("message", {}).get("text"),
-                })
+                return json.dumps(
+                    {
+                        "sent": True,
+                        "channel": data.get("channel"),
+                        "ts": data.get("ts"),
+                        "message": data.get("message", {}).get("text"),
+                    }
+                )
         except Exception as e:
             logger.warning("slack_send_message_error", error=str(e))
             return json.dumps({"error": str(e)})
@@ -200,13 +204,15 @@ class SlackReadMessagesTool(Tool):
 
                 messages = []
                 for msg in data.get("messages", [])[:limit]:
-                    messages.append({
-                        "user": msg.get("user"),
-                        "text": msg.get("text"),
-                        "ts": msg.get("ts"),
-                        "type": msg.get("type"),
-                        "thread_ts": msg.get("thread_ts"),
-                    })
+                    messages.append(
+                        {
+                            "user": msg.get("user"),
+                            "text": msg.get("text"),
+                            "ts": msg.get("ts"),
+                            "type": msg.get("type"),
+                            "thread_ts": msg.get("thread_ts"),
+                        }
+                    )
                 return json.dumps({"messages": messages, "count": len(messages), "channel": channel})
         except Exception as e:
             logger.warning("slack_read_messages_error", error=str(e))

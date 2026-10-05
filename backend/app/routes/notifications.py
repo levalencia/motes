@@ -45,8 +45,12 @@ async def list_notifications(
     notifs = await get_notifications(session, user.id, unread_only)
     return [
         NotificationResponse(
-            id=n.id, title=n.title, body=n.body,
-            category=n.category, is_read=n.is_read, action_url=n.action_url,
+            id=n.id,
+            title=n.title,
+            body=n.body,
+            category=n.category,
+            is_read=n.is_read,
+            action_url=n.action_url,
         )
         for n in notifs
     ]

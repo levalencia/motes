@@ -16,7 +16,7 @@ from app.models import Base
 class ActionRisk(StrEnum):
     """Risk classification for agent actions."""
 
-    SAFE = "safe"            # Execute immediately, no approval needed
+    SAFE = "safe"  # Execute immediately, no approval needed
     NEEDS_APPROVAL = "needs_approval"  # Pause and ask the user
     FORBIDDEN = "forbidden"  # Never execute
 
@@ -35,17 +35,11 @@ class ApprovalPolicy(Base):
 
     __tablename__ = "approval_policies"
 
-    id: Mapped[str] = mapped_column(
-        primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    agent_id: Mapped[str] = mapped_column(
-        ForeignKey("agents.id", ondelete="CASCADE"), index=True
-    )
+    id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
+    agent_id: Mapped[str] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), index=True)
     tool_name: Mapped[str] = mapped_column(index=True)
     risk_level: Mapped[str] = mapped_column(default=ActionRisk.NEEDS_APPROVAL)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ApprovalRequest(Base):
@@ -53,22 +47,14 @@ class ApprovalRequest(Base):
 
     __tablename__ = "approval_requests"
 
-    id: Mapped[str] = mapped_column(
-        primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    agent_id: Mapped[str] = mapped_column(
-        ForeignKey("agents.id", ondelete="CASCADE"), index=True
-    )
+    id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
+    agent_id: Mapped[str] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), index=True)
     tool_name: Mapped[str]
     arguments_json: Mapped[str] = mapped_column(Text, default="{}")
     status: Mapped[str] = mapped_column(default=ApprovalStatus.PENDING, index=True)
     reason: Mapped[str | None] = mapped_column(default=None)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    resolved_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
 
 # Default risk classification for built-in tools
@@ -174,10 +160,12 @@ async def list_pending_approvals(
 ) -> list[ApprovalRequest]:
     """List all pending approval requests for an agent."""
     result = await session.execute(
-        select(ApprovalRequest).where(
+        select(ApprovalRequest)
+        .where(
             ApprovalRequest.agent_id == agent_id,
             ApprovalRequest.status == ApprovalStatus.PENDING,
-        ).order_by(ApprovalRequest.created_at)
+        )
+        .order_by(ApprovalRequest.created_at)
     )
     return list(result.scalars().all())
 

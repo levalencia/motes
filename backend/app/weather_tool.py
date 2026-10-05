@@ -19,13 +19,29 @@ GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
 WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
 
 WMO_CODES = {
-    0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
-    45: "Foggy", 48: "Rime fog", 51: "Light drizzle", 53: "Moderate drizzle",
-    55: "Dense drizzle", 61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
-    71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow", 77: "Snow grains",
-    80: "Slight showers", 81: "Moderate showers", 82: "Violent showers",
-    85: "Slight snow showers", 86: "Heavy snow showers",
-    95: "Thunderstorm", 96: "Thunderstorm with slight hail",
+    0: "Clear sky",
+    1: "Mainly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Foggy",
+    48: "Rime fog",
+    51: "Light drizzle",
+    53: "Moderate drizzle",
+    55: "Dense drizzle",
+    61: "Slight rain",
+    63: "Moderate rain",
+    65: "Heavy rain",
+    71: "Slight snow",
+    73: "Moderate snow",
+    75: "Heavy snow",
+    77: "Snow grains",
+    80: "Slight showers",
+    81: "Moderate showers",
+    82: "Violent showers",
+    85: "Slight snow showers",
+    86: "Heavy snow showers",
+    95: "Thunderstorm",
+    96: "Thunderstorm with slight hail",
     99: "Thunderstorm with heavy hail",
 }
 
@@ -87,9 +103,7 @@ class WeatherTool(Tool):
                         "latitude": lat,
                         "longitude": lon,
                         "current": (
-                            "temperature_2m,relative_humidity_2m,"
-                            "apparent_temperature,weather_code,"
-                            "wind_speed_10m"
+                            "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m"
                         ),
                         "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum",
                         "timezone": "auto",
@@ -118,13 +132,15 @@ class WeatherTool(Tool):
                 times = daily.get("time", [])
                 for i, date in enumerate(times):
                     code = daily.get("weather_code", [0] * 7)[i]
-                    result["forecast"].append({
-                        "date": date,
-                        "high": f"{daily.get('temperature_2m_max', [0]*7)[i]}°C",
-                        "low": f"{daily.get('temperature_2m_min', [0]*7)[i]}°C",
-                        "precipitation": f"{daily.get('precipitation_sum', [0]*7)[i]}mm",
-                        "conditions": WMO_CODES.get(code, "Unknown"),
-                    })
+                    result["forecast"].append(
+                        {
+                            "date": date,
+                            "high": f"{daily.get('temperature_2m_max', [0] * 7)[i]}°C",
+                            "low": f"{daily.get('temperature_2m_min', [0] * 7)[i]}°C",
+                            "precipitation": f"{daily.get('precipitation_sum', [0] * 7)[i]}mm",
+                            "conditions": WMO_CODES.get(code, "Unknown"),
+                        }
+                    )
 
                 return json.dumps(result)
         except Exception as e:

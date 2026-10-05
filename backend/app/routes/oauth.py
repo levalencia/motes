@@ -71,12 +71,8 @@ async def configure_oauth_app(
             status_code=400,
             detail=f"Unknown provider. Available: {', '.join(OAUTH_PROVIDERS)}",
         )
-    app = await save_oauth_app(
-        session, body.provider, body.client_id, body.client_secret
-    )
-    return OAuthAppResponse(
-        provider=app.provider, client_id=app.client_id, is_configured=True
-    )
+    app = await save_oauth_app(session, body.provider, body.client_id, body.client_secret)
+    return OAuthAppResponse(provider=app.provider, client_id=app.client_id, is_configured=True)
 
 
 @router.get("/apps", response_model=list[OAuthAppResponse])
@@ -86,12 +82,7 @@ async def get_oauth_apps(
 ):
     """List configured OAuth apps (client_id only, never secrets)."""
     apps = await list_oauth_apps(session)
-    return [
-        OAuthAppResponse(
-            provider=a.provider, client_id=a.client_id, is_configured=True
-        )
-        for a in apps
-    ]
+    return [OAuthAppResponse(provider=a.provider, client_id=a.client_id, is_configured=True) for a in apps]
 
 
 @router.get("/services", response_model=list[AvailableServiceResponse])
@@ -151,8 +142,7 @@ async def start_oauth(
     if app is None:
         raise HTTPException(
             status_code=400,
-            detail=f"OAuth not configured for {provider}. "
-            "Admin must add credentials in Settings first.",
+            detail=f"OAuth not configured for {provider}. Admin must add credentials in Settings first.",
         )
 
     state = generate_state()
@@ -166,9 +156,7 @@ async def start_oauth(
         "redirect_uri": redirect_uri,
     }
 
-    auth_url = build_auth_url(
-        provider, service, app.client_id, redirect_uri, state
-    )
+    auth_url = build_auth_url(provider, service, app.client_id, redirect_uri, state)
     return {"auth_url": auth_url}
 
 
@@ -216,9 +204,7 @@ async def oauth_callback(
         account_email=email,
     )
 
-    return RedirectResponse(
-        url="http://localhost:5173/services?connected=" + pending["service"]
-    )
+    return RedirectResponse(url="http://localhost:5173/services?connected=" + pending["service"])
 
 
 @router.delete("/connected/{service}", status_code=204)

@@ -29,9 +29,18 @@ def _decode_audio_ffmpeg(input_path: str) -> np.ndarray:
     """Decode any audio file to 16kHz mono float32 numpy array using ffmpeg."""
     result = subprocess.run(
         [
-            "ffmpeg", "-y", "-i", input_path,
-            "-ar", "16000", "-ac", "1",
-            "-f", "f32le", "-acodec", "pcm_f32le",
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_path,
+            "-ar",
+            "16000",
+            "-ac",
+            "1",
+            "-f",
+            "f32le",
+            "-acodec",
+            "pcm_f32le",
             "pipe:1",
         ],
         capture_output=True,

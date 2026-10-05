@@ -57,9 +57,7 @@ class TestCalculatorTool:
     async def test_no_dangerous_builtins(self) -> None:
         """Verify that dangerous builtins like __import__ are blocked."""
         tool = CalculatorTool()
-        result = json.loads(
-            await tool.execute({"expression": "__import__('os').system('echo hacked')"})
-        )
+        result = json.loads(await tool.execute({"expression": "__import__('os').system('echo hacked')"}))
         assert "error" in result
 
 

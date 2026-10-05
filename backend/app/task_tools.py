@@ -90,19 +90,21 @@ class ScheduledTasksTool(Tool):
             tasks = await list_tasks(self._session, self._agent_id)
             if not tasks:
                 return json.dumps({"tasks": [], "message": "No scheduled tasks"})
-            return json.dumps({
-                "tasks": [
-                    {
-                        "id": t.id,
-                        "name": t.name,
-                        "prompt": t.prompt,
-                        "cron_expression": t.cron_expression,
-                        "status": t.status,
-                        "run_count": t.run_count,
-                    }
-                    for t in tasks
-                ]
-            })
+            return json.dumps(
+                {
+                    "tasks": [
+                        {
+                            "id": t.id,
+                            "name": t.name,
+                            "prompt": t.prompt,
+                            "cron_expression": t.cron_expression,
+                            "status": t.status,
+                            "run_count": t.run_count,
+                        }
+                        for t in tasks
+                    ]
+                }
+            )
 
         elif action == "create":
             name = arguments.get("name", "")
@@ -113,14 +115,20 @@ class ScheduledTasksTool(Tool):
             if not name:
                 name = prompt[:50]
             task = await create_task(
-                self._session, self._agent_id, name, prompt, cron,
+                self._session,
+                self._agent_id,
+                name,
+                prompt,
+                cron,
             )
-            return json.dumps({
-                "created": True,
-                "id": task.id,
-                "name": task.name,
-                "cron_expression": task.cron_expression,
-            })
+            return json.dumps(
+                {
+                    "created": True,
+                    "id": task.id,
+                    "name": task.name,
+                    "cron_expression": task.cron_expression,
+                }
+            )
 
         elif action == "pause":
             task_id = arguments.get("task_id", "")

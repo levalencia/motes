@@ -87,16 +87,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # Start background scanner
         from app.background_scanner import run_scanner
 
-        scanner_task = asyncio.create_task(
-            run_scanner(app.state.session_factory, app.state.event_bus)
-        )
+        scanner_task = asyncio.create_task(run_scanner(app.state.session_factory, app.state.event_bus))
 
         # Start task scheduler
         from app.task_runner import run_task_scheduler
 
-        task_scheduler_task = asyncio.create_task(
-            run_task_scheduler(app.state.session_factory, app.state.event_bus)
-        )
+        task_scheduler_task = asyncio.create_task(run_task_scheduler(app.state.session_factory, app.state.event_bus))
         yield
     finally:
         scanner_task.cancel()

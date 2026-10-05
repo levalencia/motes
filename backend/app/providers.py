@@ -12,9 +12,7 @@ from app.models import Provider
 logger = structlog.get_logger()
 
 
-async def test_provider_connection(
-    base_url: str, api_key: str, model: str, timeout: float = 10.0
-) -> tuple[bool, str]:
+async def test_provider_connection(base_url: str, api_key: str, model: str, timeout: float = 10.0) -> tuple[bool, str]:
     """Test an OpenAI-compatible endpoint with a tiny completion.
 
     Returns
@@ -49,9 +47,7 @@ async def test_provider_connection(
         return False, f"Connection error: {exc}"
 
 
-async def test_anthropic_connection(
-    base_url: str, api_key: str, model: str, timeout: float = 10.0
-) -> tuple[bool, str]:
+async def test_anthropic_connection(base_url: str, api_key: str, model: str, timeout: float = 10.0) -> tuple[bool, str]:
     """Test an Anthropic Messages API endpoint."""
     url = base_url.rstrip("/") + "/messages"
     headers = {
@@ -115,17 +111,13 @@ async def add_provider(
 
 async def list_providers(session: AsyncSession, user_id: str) -> list[Provider]:
     """List all providers for a user."""
-    result = await session.execute(
-        select(Provider).where(Provider.user_id == user_id).order_by(Provider.created_at)
-    )
+    result = await session.execute(select(Provider).where(Provider.user_id == user_id).order_by(Provider.created_at))
     return list(result.scalars().all())
 
 
 async def get_provider(session: AsyncSession, provider_id: str, user_id: str) -> Provider | None:
     """Get a specific provider by ID, scoped to user."""
-    result = await session.execute(
-        select(Provider).where(Provider.id == provider_id, Provider.user_id == user_id)
-    )
+    result = await session.execute(select(Provider).where(Provider.id == provider_id, Provider.user_id == user_id))
     return result.scalar_one_or_none()
 
 

@@ -33,13 +33,9 @@ class MemoryResponse(BaseModel):
     content: str
 
 
-async def _verify_agent_ownership(
-    session: AsyncSession, agent_id: str, user_id: str
-) -> Agent:
+async def _verify_agent_ownership(session: AsyncSession, agent_id: str, user_id: str) -> Agent:
     """Verify the agent belongs to the user."""
-    result = await session.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id)
-    )
+    result = await session.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id))
     agent = result.scalar_one_or_none()
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -87,12 +83,7 @@ async def list_memories(
     stmt = stmt.order_by(Memory.created_at.desc())
     result = await session.execute(stmt)
     memories = result.scalars().all()
-    return [
-        MemoryResponse(
-            id=m.id, agent_id=m.agent_id, category=m.category, content=m.content
-        )
-        for m in memories
-    ]
+    return [MemoryResponse(id=m.id, agent_id=m.agent_id, category=m.category, content=m.content) for m in memories]
 
 
 @router.put("/{memory_id}", response_model=MemoryResponse)
@@ -105,9 +96,7 @@ async def update_memory(
 ):
     """Update a memory entry."""
     await _verify_agent_ownership(session, agent_id, user.id)
-    result = await session.execute(
-        select(Memory).where(Memory.id == memory_id, Memory.agent_id == agent_id)
-    )
+    result = await session.execute(select(Memory).where(Memory.id == memory_id, Memory.agent_id == agent_id))
     memory = result.scalar_one_or_none()
     if memory is None:
         raise HTTPException(status_code=404, detail="Memory not found")
@@ -134,9 +123,7 @@ async def delete_memory(
 ):
     """Delete a memory entry."""
     await _verify_agent_ownership(session, agent_id, user.id)
-    result = await session.execute(
-        select(Memory).where(Memory.id == memory_id, Memory.agent_id == agent_id)
-    )
+    result = await session.execute(select(Memory).where(Memory.id == memory_id, Memory.agent_id == agent_id))
     memory = result.scalar_one_or_none()
     if memory is None:
         raise HTTPException(status_code=404, detail="Memory not found")
@@ -160,9 +147,4 @@ async def search_memories(
     )
     result = await session.execute(stmt)
     memories = result.scalars().all()
-    return [
-        MemoryResponse(
-            id=m.id, agent_id=m.agent_id, category=m.category, content=m.content
-        )
-        for m in memories
-    ]
+    return [MemoryResponse(id=m.id, agent_id=m.agent_id, category=m.category, content=m.content) for m in memories]

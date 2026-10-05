@@ -65,10 +65,12 @@ class NewsTool(Tool):
                 # Try related topics from DDG
                 for topic in data.get("RelatedTopics", [])[:limit]:
                     if "Text" in topic:
-                        articles.append({
-                            "title": topic.get("Text", "")[:200],
-                            "url": topic.get("FirstURL", ""),
-                        })
+                        articles.append(
+                            {
+                                "title": topic.get("Text", "")[:200],
+                                "url": topic.get("FirstURL", ""),
+                            }
+                        )
 
                 # If DDG instant answer didn't provide enough, try HTML scraping
                 if len(articles) < limit:
@@ -87,24 +89,30 @@ class NewsTool(Tool):
                     for match in result_pattern.finditer(text):
                         url, title = match.group(1), match.group(2)
                         if title.strip():
-                            articles.append({
-                                "title": title.strip(),
-                                "url": url,
-                            })
+                            articles.append(
+                                {
+                                    "title": title.strip(),
+                                    "url": url,
+                                }
+                            )
                             if len(articles) >= limit:
                                 break
 
                 if not articles:
-                    return json.dumps({
-                        "message": f"No news found for '{query}'. Try a different search term.",
-                        "query": query,
-                    })
+                    return json.dumps(
+                        {
+                            "message": f"No news found for '{query}'. Try a different search term.",
+                            "query": query,
+                        }
+                    )
 
-                return json.dumps({
-                    "query": query,
-                    "articles": articles[:limit],
-                    "count": len(articles[:limit]),
-                })
+                return json.dumps(
+                    {
+                        "query": query,
+                        "articles": articles[:limit],
+                        "count": len(articles[:limit]),
+                    }
+                )
         except Exception as e:
             logger.warning("news_tool_error", error=str(e))
             return json.dumps({"error": str(e)})

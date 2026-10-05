@@ -25,9 +25,7 @@ class User(Base):
     scan_interval_seconds: Mapped[int] = mapped_column(default=60)  # background scan frequency
     is_admin: Mapped[bool] = mapped_column(default=False)
     is_setup_complete: Mapped[bool] = mapped_column(default=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     providers: Mapped[list[Provider]] = relationship(back_populates="owner", cascade="all, delete")
     agents: Mapped[list[Agent]] = relationship(back_populates="owner", cascade="all, delete")
@@ -44,9 +42,7 @@ class Provider(Base):
     model: Mapped[str]
     api_format: Mapped[str] = mapped_column(default="openai")  # openai | anthropic
     is_verified: Mapped[bool] = mapped_column(default=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     owner: Mapped[User] = relationship(back_populates="providers")
 
@@ -56,20 +52,14 @@ class Agent(Base):
 
     id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    provider_id: Mapped[str] = mapped_column(
-        ForeignKey("providers.id", ondelete="CASCADE"), index=True
-    )
+    provider_id: Mapped[str] = mapped_column(ForeignKey("providers.id", ondelete="CASCADE"), index=True)
     name: Mapped[str]
     system_prompt: Mapped[str] = mapped_column(Text, default="You are a helpful assistant.")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     owner: Mapped[User] = relationship(back_populates="agents")
     provider: Mapped[Provider] = relationship()
-    conversations: Mapped[list[Conversation]] = relationship(
-        back_populates="agent", cascade="all, delete"
-    )
+    conversations: Mapped[list[Conversation]] = relationship(back_populates="agent", cascade="all, delete")
 
 
 class Conversation(Base):
@@ -79,9 +69,7 @@ class Conversation(Base):
     agent_id: Mapped[str] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), index=True)
     title: Mapped[str] = mapped_column(default="New conversation")
     conversation_type: Mapped[str] = mapped_column(default="chat")  # "chat" or "call"
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -96,16 +84,12 @@ class Message(Base):
     __tablename__ = "messages"
 
     id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
-    conversation_id: Mapped[str] = mapped_column(
-        ForeignKey("conversations.id", ondelete="CASCADE"), index=True
-    )
+    conversation_id: Mapped[str] = mapped_column(ForeignKey("conversations.id", ondelete="CASCADE"), index=True)
     role: Mapped[str]  # user | assistant | system | tool
     content: Mapped[str] = mapped_column(Text)
     message_type: Mapped[str] = mapped_column(default="chat")  # chat | call | proactive | system
     tool_call_id: Mapped[str | None] = mapped_column(default=None)
     tool_name: Mapped[str | None] = mapped_column(default=None)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     conversation: Mapped[Conversation] = relationship(back_populates="messages")

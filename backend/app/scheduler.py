@@ -36,27 +36,17 @@ class ScheduledTask(Base):
 
     __tablename__ = "scheduled_tasks"
 
-    id: Mapped[str] = mapped_column(
-        primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    agent_id: Mapped[str] = mapped_column(
-        ForeignKey("agents.id", ondelete="CASCADE"), index=True
-    )
+    id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
+    agent_id: Mapped[str] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), index=True)
     name: Mapped[str]
     prompt: Mapped[str] = mapped_column(Text)
     cron_expression: Mapped[str]  # e.g. "0 9 * * *" or "once"
     status: Mapped[str] = mapped_column(default=TaskStatus.ACTIVE, index=True)
     max_runs: Mapped[int | None] = mapped_column(default=None)  # None = unlimited
     run_count: Mapped[int] = mapped_column(default=0)
-    last_run_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
-    next_run_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class TaskRun(Base):
@@ -64,21 +54,13 @@ class TaskRun(Base):
 
     __tablename__ = "task_runs"
 
-    id: Mapped[str] = mapped_column(
-        primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    task_id: Mapped[str] = mapped_column(
-        ForeignKey("scheduled_tasks.id", ondelete="CASCADE"), index=True
-    )
+    id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid.uuid4()))
+    task_id: Mapped[str] = mapped_column(ForeignKey("scheduled_tasks.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(default=RunStatus.PENDING)
     result: Mapped[str | None] = mapped_column(Text, default=None)
     error: Mapped[str | None] = mapped_column(Text, default=None)
-    started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
 
 async def create_task(
@@ -103,25 +85,17 @@ async def create_task(
     return task
 
 
-async def list_tasks(
-    session: AsyncSession, agent_id: str
-) -> list[ScheduledTask]:
+async def list_tasks(session: AsyncSession, agent_id: str) -> list[ScheduledTask]:
     """List all tasks for an agent."""
     result = await session.execute(
-        select(ScheduledTask)
-        .where(ScheduledTask.agent_id == agent_id)
-        .order_by(ScheduledTask.created_at.desc())
+        select(ScheduledTask).where(ScheduledTask.agent_id == agent_id).order_by(ScheduledTask.created_at.desc())
     )
     return list(result.scalars().all())
 
 
-async def pause_task(
-    session: AsyncSession, task_id: str
-) -> ScheduledTask | None:
+async def pause_task(session: AsyncSession, task_id: str) -> ScheduledTask | None:
     """Pause a task."""
-    result = await session.execute(
-        select(ScheduledTask).where(ScheduledTask.id == task_id)
-    )
+    result = await session.execute(select(ScheduledTask).where(ScheduledTask.id == task_id))
     task = result.scalar_one_or_none()
     if task is None:
         return None
@@ -131,13 +105,9 @@ async def pause_task(
     return task
 
 
-async def resume_task(
-    session: AsyncSession, task_id: str
-) -> ScheduledTask | None:
+async def resume_task(session: AsyncSession, task_id: str) -> ScheduledTask | None:
     """Resume a paused task."""
-    result = await session.execute(
-        select(ScheduledTask).where(ScheduledTask.id == task_id)
-    )
+    result = await session.execute(select(ScheduledTask).where(ScheduledTask.id == task_id))
     task = result.scalar_one_or_none()
     if task is None:
         return None
@@ -147,13 +117,9 @@ async def resume_task(
     return task
 
 
-async def delete_task(
-    session: AsyncSession, task_id: str
-) -> bool:
+async def delete_task(session: AsyncSession, task_id: str) -> bool:
     """Delete a task. Returns True if found."""
-    result = await session.execute(
-        select(ScheduledTask).where(ScheduledTask.id == task_id)
-    )
+    result = await session.execute(select(ScheduledTask).where(ScheduledTask.id == task_id))
     task = result.scalar_one_or_none()
     if task is None:
         return False
@@ -179,9 +145,7 @@ async def record_run(
     session.add(run)
 
     # Update the parent task
-    task_result = await session.execute(
-        select(ScheduledTask).where(ScheduledTask.id == task_id)
-    )
+    task_result = await session.execute(select(ScheduledTask).where(ScheduledTask.id == task_id))
     task = task_result.scalar_one_or_none()
     if task:
         task.run_count += 1
@@ -194,14 +158,9 @@ async def record_run(
     return run
 
 
-async def list_runs(
-    session: AsyncSession, task_id: str, limit: int = 20
-) -> list[TaskRun]:
+async def list_runs(session: AsyncSession, task_id: str, limit: int = 20) -> list[TaskRun]:
     """List recent runs for a task."""
     result = await session.execute(
-        select(TaskRun)
-        .where(TaskRun.task_id == task_id)
-        .order_by(TaskRun.started_at.desc())
-        .limit(limit)
+        select(TaskRun).where(TaskRun.task_id == task_id).order_by(TaskRun.started_at.desc()).limit(limit)
     )
     return list(result.scalars().all())

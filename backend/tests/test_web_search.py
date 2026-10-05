@@ -45,9 +45,7 @@ class TestWebSearchTool:
         tool = WebSearchTool(brave_api_key="test-key")
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "web": {"results": [{"title": "T", "url": "http://x", "description": "D"}]}
-        }
+        mock_response.json.return_value = {"web": {"results": [{"title": "T", "url": "http://x", "description": "D"}]}}
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()

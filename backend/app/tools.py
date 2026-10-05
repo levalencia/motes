@@ -32,10 +32,12 @@ class CurrentTimeTool:
 
     async def execute(self, arguments: dict[str, Any]) -> str:
         now = datetime.now(UTC)
-        return json.dumps({
-            "utc": now.isoformat(),
-            "unix": int(now.timestamp()),
-        })
+        return json.dumps(
+            {
+                "utc": now.isoformat(),
+                "unix": int(now.timestamp()),
+            }
+        )
 
 
 class CalculatorTool:

@@ -38,15 +38,15 @@ def setup_otel(settings: Settings) -> None:
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-        resource = Resource.create({
-            "service.name": settings.otel_service_name,
-            "service.version": settings.app_version,
-        })
+        resource = Resource.create(
+            {
+                "service.name": settings.otel_service_name,
+                "service.version": settings.app_version,
+            }
+        )
 
         provider = TracerProvider(resource=resource)
-        exporter = OTLPSpanExporter(
-            endpoint=settings.otel_exporter_endpoint
-        )
+        exporter = OTLPSpanExporter(endpoint=settings.otel_exporter_endpoint)
         provider.add_span_processor(BatchSpanProcessor(exporter))
         trace.set_tracer_provider(provider)
         _tracer = trace.get_tracer("motes")
@@ -92,9 +92,7 @@ def get_tracer():
     return _tracer
 
 
-def trace_llm_call(
-    provider: str, model: str, input_tokens: int = 0, output_tokens: int = 0
-):
+def trace_llm_call(provider: str, model: str, input_tokens: int = 0, output_tokens: int = 0):
     """Create a span for an LLM call."""
     if _tracer is None:
         return _NullSpan()

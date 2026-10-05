@@ -42,12 +42,8 @@ class ResolveRequest(BaseModel):
     reason: str | None = None
 
 
-async def _verify_agent(
-    session: AsyncSession, agent_id: str, user_id: str
-) -> Agent:
-    result = await session.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id)
-    )
+async def _verify_agent(session: AsyncSession, agent_id: str, user_id: str) -> Agent:
+    result = await session.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id))
     agent = result.scalar_one_or_none()
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -68,9 +64,7 @@ async def create_policy(
     """Set an approval policy for a tool on an agent."""
     await _verify_agent(session, agent_id, user.id)
     policy = await set_policy(session, agent_id, body.tool_name, body.risk_level)
-    return PolicyResponse(
-        tool_name=policy.tool_name, risk_level=policy.risk_level
-    )
+    return PolicyResponse(tool_name=policy.tool_name, risk_level=policy.risk_level)
 
 
 @router.get(
@@ -108,9 +102,7 @@ async def resolve(
     user: User = Depends(get_current_user),
 ):
     """Approve or deny a pending approval request."""
-    result = await resolve_approval(
-        session, request_id, body.approved, body.reason
-    )
+    result = await resolve_approval(session, request_id, body.approved, body.reason)
     if result is None:
         raise HTTPException(status_code=404, detail="Pending request not found")
     return ApprovalResponse(

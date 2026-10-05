@@ -63,13 +63,23 @@ async def create_server(
 ):
     """Add an MCP server configuration."""
     server = await add_mcp_server(
-        session, user.id, body.name, body.description,
-        body.transport, body.command, body.url, body.env_json,
+        session,
+        user.id,
+        body.name,
+        body.description,
+        body.transport,
+        body.command,
+        body.url,
+        body.env_json,
     )
     return MCPServerResponse(
-        id=server.id, name=server.name, description=server.description,
-        transport=server.transport, command=server.command,
-        url=server.url, is_enabled=server.is_enabled,
+        id=server.id,
+        name=server.name,
+        description=server.description,
+        transport=server.transport,
+        command=server.command,
+        url=server.url,
+        is_enabled=server.is_enabled,
     )
 
 
@@ -82,9 +92,13 @@ async def get_servers(
     servers = await list_mcp_servers(session, user.id)
     return [
         MCPServerResponse(
-            id=s.id, name=s.name, description=s.description,
-            transport=s.transport, command=s.command,
-            url=s.url, is_enabled=s.is_enabled,
+            id=s.id,
+            name=s.name,
+            description=s.description,
+            transport=s.transport,
+            command=s.command,
+            url=s.url,
+            is_enabled=s.is_enabled,
         )
         for s in servers
     ]
@@ -102,9 +116,13 @@ async def toggle(
     if server is None:
         raise HTTPException(status_code=404, detail="Server not found")
     return MCPServerResponse(
-        id=server.id, name=server.name, description=server.description,
-        transport=server.transport, command=server.command,
-        url=server.url, is_enabled=server.is_enabled,
+        id=server.id,
+        name=server.name,
+        description=server.description,
+        transport=server.transport,
+        command=server.command,
+        url=server.url,
+        is_enabled=server.is_enabled,
     )
 
 
@@ -141,9 +159,7 @@ async def test_server_connection(
     from app.mcp_client import MCPClient, MCPServerConfig
     from app.mcp_connector import MCPServer
 
-    result = await session.execute(
-        select(MCPServer).where(MCPServer.id == server_id, MCPServer.user_id == user.id)
-    )
+    result = await session.execute(select(MCPServer).where(MCPServer.id == server_id, MCPServer.user_id == user.id))
     server = result.scalar_one_or_none()
     if server is None:
         raise HTTPException(status_code=404, detail="Server not found")

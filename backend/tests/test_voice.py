@@ -31,9 +31,7 @@ class TestTTSConnection:
             mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            success, msg = await test_tts_connection(
-                "http://fake.local/v1", "key", "tts-1", "alloy"
-            )
+            success, msg = await test_tts_connection("http://fake.local/v1", "key", "tts-1", "alloy")
             assert success is True
 
     @pytest.mark.asyncio
@@ -45,9 +43,7 @@ class TestTTSConnection:
             mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            success, msg = await test_tts_connection(
-                "http://fake.local/v1", "key", "tts-1", "alloy"
-            )
+            success, msg = await test_tts_connection("http://fake.local/v1", "key", "tts-1", "alloy")
             assert success is False
             assert "Cannot connect" in msg
 
@@ -69,9 +65,7 @@ class TestSTTConnection:
             mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            success, msg = await test_stt_connection(
-                "http://fake.local/v1", "key", "whisper-1"
-            )
+            success, msg = await test_stt_connection("http://fake.local/v1", "key", "whisper-1")
             assert success is True
 
     @pytest.mark.asyncio
@@ -83,9 +77,7 @@ class TestSTTConnection:
             mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            success, msg = await test_stt_connection(
-                "http://fake.local/v1", "key", "whisper-1"
-            )
+            success, msg = await test_stt_connection("http://fake.local/v1", "key", "whisper-1")
             assert success is False
 
 

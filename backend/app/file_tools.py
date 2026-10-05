@@ -77,16 +77,16 @@ class FileListTool:
                 continue  # skip hidden files
             try:
                 stat = item.stat()
-                entries.append({
-                    "name": item.name,
-                    "path": str(item),
-                    "type": "folder" if item.is_dir() else "file",
-                    "size_bytes": stat.st_size if item.is_file() else 0,
-                    "size_human": _human_size(stat.st_size) if item.is_file() else "",
-                    "modified": datetime.fromtimestamp(
-                        stat.st_mtime, tz=UTC
-                    ).isoformat(),
-                })
+                entries.append(
+                    {
+                        "name": item.name,
+                        "path": str(item),
+                        "type": "folder" if item.is_dir() else "file",
+                        "size_bytes": stat.st_size if item.is_file() else 0,
+                        "size_human": _human_size(stat.st_size) if item.is_file() else "",
+                        "modified": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
+                    }
+                )
             except (PermissionError, OSError):
                 continue
 
@@ -97,11 +97,13 @@ class FileListTool:
         else:
             entries.sort(key=lambda e: e["name"].lower())
 
-        return json.dumps({
-            "directory": str(target),
-            "entries": entries[:50],
-            "total": len(entries),
-        })
+        return json.dumps(
+            {
+                "directory": str(target),
+                "entries": entries[:50],
+                "total": len(entries),
+            }
+        )
 
 
 class FileReadTool:
@@ -145,12 +147,14 @@ class FileReadTool:
         try:
             content = target.read_text(encoding="utf-8", errors="replace")
             lines = content.splitlines()
-            return json.dumps({
-                "path": str(target),
-                "content": "\n".join(lines[:max_lines]),
-                "total_lines": len(lines),
-                "truncated": len(lines) > max_lines,
-            })
+            return json.dumps(
+                {
+                    "path": str(target),
+                    "content": "\n".join(lines[:max_lines]),
+                    "total_lines": len(lines),
+                    "truncated": len(lines) > max_lines,
+                }
+            )
         except Exception as e:
             return json.dumps({"error": f"Read error: {e}"})
 
@@ -206,14 +210,14 @@ class FileSearchTool:
                         continue
                     try:
                         stat = item.stat()
-                        results.append({
-                            "name": item.name,
-                            "path": str(item),
-                            "size_human": _human_size(stat.st_size),
-                            "modified": datetime.fromtimestamp(
-                                stat.st_mtime, tz=UTC
-                            ).isoformat(),
-                        })
+                        results.append(
+                            {
+                                "name": item.name,
+                                "path": str(item),
+                                "size_human": _human_size(stat.st_size),
+                                "modified": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
+                            }
+                        )
                     except (PermissionError, OSError):
                         continue
                 if len(results) >= 200:
@@ -222,11 +226,13 @@ class FileSearchTool:
             pass
 
         results.sort(key=lambda r: r["modified"], reverse=True)
-        return json.dumps({
-            "query": query,
-            "results": results[:20],
-            "total_found": len(results),
-        })
+        return json.dumps(
+            {
+                "query": query,
+                "results": results[:20],
+                "total_found": len(results),
+            }
+        )
 
 
 class PptxInspectTool:
@@ -284,17 +290,21 @@ class PptxInspectTool:
                         title = shape.text_frame.text.strip() if shape.has_text_frame else ""
                 if not title and texts:
                     title = texts[0][:80]
-                slides.append({
-                    "slide_number": i,
-                    "title": title,
-                    "text_content": "\n".join(texts),
-                })
+                slides.append(
+                    {
+                        "slide_number": i,
+                        "title": title,
+                        "text_content": "\n".join(texts),
+                    }
+                )
 
-            return json.dumps({
-                "path": str(target),
-                "total_slides": len(prs.slides),
-                "slides": slides,
-            })
+            return json.dumps(
+                {
+                    "path": str(target),
+                    "total_slides": len(prs.slides),
+                    "slides": slides,
+                }
+            )
         except Exception as e:
             return json.dumps({"error": f"PPTX read error: {e}"})
 
@@ -304,8 +314,7 @@ class PptxAddSlideTool:
 
     name = "pptx_add_slide"
     description = (
-        "Add a new slide to an existing PowerPoint (.pptx) file. "
-        "Provide the title and body text for the new slide."
+        "Add a new slide to an existing PowerPoint (.pptx) file. Provide the title and body text for the new slide."
     )
     parameters: dict[str, Any] = {
         "type": "object",
@@ -350,13 +359,15 @@ class PptxAddSlideTool:
                     slide.placeholders[1].text = body
 
             prs.save(str(target))
-            return json.dumps({
-                "status": "slide_added",
-                "path": str(target),
-                "slide_number": len(prs.slides),
-                "title": title,
-                "total_slides": len(prs.slides),
-            })
+            return json.dumps(
+                {
+                    "status": "slide_added",
+                    "path": str(target),
+                    "slide_number": len(prs.slides),
+                    "title": title,
+                    "total_slides": len(prs.slides),
+                }
+            )
         except Exception as e:
             return json.dumps({"error": f"PPTX write error: {e}"})
 
@@ -395,13 +406,15 @@ class FileDownloadUrlTool:
         stat = target.stat()
         mime = mimetypes.guess_type(str(target))[0] or "application/octet-stream"
 
-        return json.dumps({
-            "path": str(target),
-            "filename": target.name,
-            "size_human": _human_size(stat.st_size),
-            "mime_type": mime,
-            "download_url": f"/api/files/download?path={target}",
-        })
+        return json.dumps(
+            {
+                "path": str(target),
+                "filename": target.name,
+                "size_human": _human_size(stat.st_size),
+                "mime_type": mime,
+                "download_url": f"/api/files/download?path={target}",
+            }
+        )
 
 
 def _human_size(size: int) -> str:

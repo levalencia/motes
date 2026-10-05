@@ -65,9 +65,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
         async with session_factory() as user_session:
             from app.models import User
 
-            user_result = await user_session.execute(
-                select(User).where(User.id == user_id)
-            )
+            user_result = await user_session.execute(select(User).where(User.id == user_id))
             user = user_result.scalar_one_or_none()
             voice_personality = ""
             if user and getattr(user, "voice_personality", ""):
@@ -88,9 +86,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
 
         async with session_factory() as session:
             # Load agent
-            result = await session.execute(
-                select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id)
-            )
+            result = await session.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id))
             agent = result.scalar_one_or_none()
             if not agent:
                 await websocket.send_json({"type": "error", "message": "Agent not found"})
@@ -103,25 +99,27 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
             conversation = await get_or_create_thread(session, agent_id)
 
             # Add a system message marking call start
-            session.add(Message(
-                conversation_id=conversation.id,
-                role="system",
-                content="📞 Voice call started",
-                message_type="system",
-            ))
+            session.add(
+                Message(
+                    conversation_id=conversation.id,
+                    role="system",
+                    content="📞 Voice call started",
+                    message_type="system",
+                )
+            )
             await session.commit()
 
-            await websocket.send_json({
-                "type": "ready",
-                "agent_name": agent.name,
-                "conversation_id": conversation.id,
-            })
+            await websocket.send_json(
+                {
+                    "type": "ready",
+                    "agent_name": agent.name,
+                    "conversation_id": conversation.id,
+                }
+            )
 
             # Build context from the unified thread (includes chat, calls, proactive)
             prev_msgs = await session.execute(
-                select(Message)
-                .where(Message.conversation_id == conversation.id)
-                .order_by(Message.created_at)
+                select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at)
             )
             prev_history = prev_msgs.scalars().all()
             context_summary = ""
@@ -142,9 +140,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
             # If no realtime key, fall back to pipeline mode
             if not realtime_key:
                 logger.info("realtime_call_pipeline_fallback")
-                await _pipeline_call(
-                    websocket, session, agent, conversation, user_id
-                )
+                await _pipeline_call(websocket, session, agent, conversation, user_id)
                 return
 
             # Connect to Azure OpenAI Realtime API
@@ -171,61 +167,67 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                 rt_tools = []
                 tool_instances = {}
                 for _name, tool in registry._tools.items():
-                    rt_tools.append({
-                        "type": "function",
-                        "name": tool.name,
-                        "description": tool.description,
-                        "parameters": tool.parameters,
-                    })
+                    rt_tools.append(
+                        {
+                            "type": "function",
+                            "name": tool.name,
+                            "description": tool.description,
+                            "parameters": tool.parameters,
+                        }
+                    )
                     tool_instances[tool.name] = tool
 
-                logger.info("realtime_call_tools", tools=[t['name'] for t in rt_tools])
+                logger.info("realtime_call_tools", tools=[t["name"] for t in rt_tools])
 
                 # Configure the session (GA API format)
-                await azure_ws.send(json.dumps({
-                    "type": "session.update",
-                    "session": {
-                        "type": "realtime",
-                        "instructions": (
-                            f"You are Motes, a friendly AI assistant on a voice call with {user_name}. "
-                            f"Keep responses conversational and concise. "
-                            f"CRITICAL LANGUAGE RULE: Detect the user's language from their "
-                            f"first words and respond ONLY in that language for the rest of the call. "
-                            f"If the user speaks Spanish, ALL your responses must be in Spanish. "
-                            f"If the user speaks French, ALL your responses must be in French. "
-                            f"Never switch to English unless the user speaks English. "
-                            f"IMPORTANT: Only respond when the user speaks to you. "
-                            f"Do NOT speak unprompted. Wait for the user to finish talking before responding. "
-                            f"If there is silence, stay quiet — do not fill silence with speech. "
-                            + (f"Voice personality: {voice_personality}. " if voice_personality else "")
-                            + agent.system_prompt
-                            + context_summary
-                        ),
-                        "audio": {
-                            "input": {
-                                "format": {
-                                    "type": "audio/pcm",
-                                    "rate": 24000,
+                await azure_ws.send(
+                    json.dumps(
+                        {
+                            "type": "session.update",
+                            "session": {
+                                "type": "realtime",
+                                "instructions": (
+                                    f"You are Motes, a friendly AI assistant on a voice call with {user_name}. "
+                                    f"Keep responses conversational and concise. "
+                                    f"CRITICAL LANGUAGE RULE: Detect the user's language from their "
+                                    f"first words and respond ONLY in that language for the rest of the call. "
+                                    f"If the user speaks Spanish, ALL your responses must be in Spanish. "
+                                    f"If the user speaks French, ALL your responses must be in French. "
+                                    f"Never switch to English unless the user speaks English. "
+                                    f"IMPORTANT: Only respond when the user speaks to you. "
+                                    f"Do NOT speak unprompted. Wait for the user to finish talking before responding. "
+                                    f"If there is silence, stay quiet — do not fill silence with speech. "
+                                    + (f"Voice personality: {voice_personality}. " if voice_personality else "")
+                                    + agent.system_prompt
+                                    + context_summary
+                                ),
+                                "audio": {
+                                    "input": {
+                                        "format": {
+                                            "type": "audio/pcm",
+                                            "rate": 24000,
+                                        },
+                                        "turn_detection": {
+                                            "type": "semantic_vad",
+                                            "eagerness": "low",
+                                            "create_response": True,
+                                            "interrupt_response": True,
+                                        },
+                                    },
+                                    "output": {
+                                        "format": {
+                                            "type": "audio/pcm",
+                                            "rate": 24000,
+                                        },
+                                    },
                                 },
-                                "turn_detection": {
-                                    "type": "semantic_vad",
-                                    "eagerness": "low",
-                                    "create_response": True,
-                                    "interrupt_response": True,
-                                },
+                                "output_modalities": ["audio"],
+                                "tools": rt_tools,
+                                "max_output_tokens": "inf",
                             },
-                            "output": {
-                                "format": {
-                                    "type": "audio/pcm",
-                                    "rate": 24000,
-                                },
-                            },
-                        },
-                        "output_modalities": ["audio"],
-                        "tools": rt_tools,
-                        "max_output_tokens": "inf",
-                    },
-                }))
+                        }
+                    )
+                )
 
                 logger.info("realtime_call_session_configured")
 
@@ -234,7 +236,7 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                 first_event = json.loads(first_msg)
                 logger.info(
                     "realtime_call_first_event",
-                    event_type=first_event.get('type', 'unknown'),
+                    event_type=first_event.get("type", "unknown"),
                 )
 
                 # Determine greeting language from voice personality
@@ -247,12 +249,16 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                         greeting_lang = "Greet in French."
 
                 # Trigger a single greeting
-                await azure_ws.send(json.dumps({
-                    "type": "response.create",
-                    "response": {
-                        "instructions": f"Greet {user_name} briefly. One short sentence only. {greeting_lang}",
-                    },
-                }))
+                await azure_ws.send(
+                    json.dumps(
+                        {
+                            "type": "response.create",
+                            "response": {
+                                "instructions": f"Greet {user_name} briefly. One short sentence only. {greeting_lang}",
+                            },
+                        }
+                    )
+                )
 
                 # Three tasks: client→azure, azure→client, proactive→client
                 async def proactive_to_client():
@@ -276,14 +282,18 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                             )
                             audio = await edge_tts_synthesize(text[:500])
                             wav = _pcm16_to_wav(audio, 24000)
-                            await websocket.send_json({
-                                "type": "audio_wav",
-                                "data": base64.b64encode(wav).decode(),
-                            })
-                            await websocket.send_json({
-                                "type": "response_done",
-                                "text": f"💡 {event.title}: {event.body}",
-                            })
+                            await websocket.send_json(
+                                {
+                                    "type": "audio_wav",
+                                    "data": base64.b64encode(wav).decode(),
+                                }
+                            )
+                            await websocket.send_json(
+                                {
+                                    "type": "response_done",
+                                    "text": f"💡 {event.title}: {event.body}",
+                                }
+                            )
                     except Exception:
                         pass
                     finally:
@@ -301,10 +311,14 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                 audio_format = msg.get("format", "webm")
                                 if audio_format == "pcm16":
                                     # iOS sends 24kHz PCM16 — forward directly to Azure
-                                    await azure_ws.send(json.dumps({
-                                        "type": "input_audio_buffer.append",
-                                        "audio": msg["data"],
-                                    }))
+                                    await azure_ws.send(
+                                        json.dumps(
+                                            {
+                                                "type": "input_audio_buffer.append",
+                                                "audio": msg["data"],
+                                            }
+                                        )
+                                    )
                                     logger.info("realtime_call_audio_forwarded", b64_len=len(msg["data"]))
                                 else:
                                     # Web browser sends webm — convert to PCM16
@@ -312,17 +326,24 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                     import tempfile
 
                                     audio_bytes = base64.b64decode(msg["data"])
-                                    with tempfile.NamedTemporaryFile(
-                                        suffix=".webm", delete=False
-                                    ) as f:
+                                    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as f:
                                         f.write(audio_bytes)
                                         tmp_in = f.name
                                     try:
                                         result = subprocess.run(
                                             [
-                                                "ffmpeg", "-y", "-i", tmp_in,
-                                                "-ar", "24000", "-ac", "1",
-                                                "-f", "s16le", "-acodec", "pcm_s16le",
+                                                "ffmpeg",
+                                                "-y",
+                                                "-i",
+                                                tmp_in,
+                                                "-ar",
+                                                "24000",
+                                                "-ac",
+                                                "1",
+                                                "-f",
+                                                "s16le",
+                                                "-acodec",
+                                                "pcm_s16le",
                                                 "pipe:1",
                                             ],
                                             capture_output=True,
@@ -330,16 +351,22 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                         )
                                         if result.returncode == 0 and result.stdout:
                                             if len(result.stdout) > 2400:
-                                                pcm_b64 = base64.b64encode(
-                                                    result.stdout
-                                                ).decode()
-                                                await azure_ws.send(json.dumps({
-                                                    "type": "input_audio_buffer.append",
-                                                    "audio": pcm_b64,
-                                                }))
-                                                await azure_ws.send(json.dumps({
-                                                    "type": "input_audio_buffer.commit",
-                                                }))
+                                                pcm_b64 = base64.b64encode(result.stdout).decode()
+                                                await azure_ws.send(
+                                                    json.dumps(
+                                                        {
+                                                            "type": "input_audio_buffer.append",
+                                                            "audio": pcm_b64,
+                                                        }
+                                                    )
+                                                )
+                                                await azure_ws.send(
+                                                    json.dumps(
+                                                        {
+                                                            "type": "input_audio_buffer.commit",
+                                                        }
+                                                    )
+                                                )
                                         else:
                                             logger.warning(
                                                 "realtime_call_ffmpeg_error",
@@ -361,9 +388,13 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
 
                             if etype == "response.created":
                                 # Clear input buffer to prevent stale audio
-                                await azure_ws.send(json.dumps({
-                                    "type": "input_audio_buffer.clear",
-                                }))
+                                await azure_ws.send(
+                                    json.dumps(
+                                        {
+                                            "type": "input_audio_buffer.clear",
+                                        }
+                                    )
+                                )
 
                             elif etype == "response.output_audio.delta":
                                 # Collect audio on server side
@@ -372,19 +403,23 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
 
                             elif etype == "response.output_audio_transcript.delta":
                                 full_response += event.get("delta", "")
-                                await websocket.send_json({
-                                    "type": "response_transcript",
-                                    "text": full_response,
-                                })
+                                await websocket.send_json(
+                                    {
+                                        "type": "response_transcript",
+                                        "text": full_response,
+                                    }
+                                )
 
                             elif etype == "response.output_audio_transcript.done":
                                 text = event.get("transcript", full_response)
-                                session.add(Message(
-                                    conversation_id=conversation.id,
-                                    role="assistant",
-                                    content=text,
-                                    message_type="call",
-                                ))
+                                session.add(
+                                    Message(
+                                        conversation_id=conversation.id,
+                                        role="assistant",
+                                        content=text,
+                                        message_type="call",
+                                    )
+                                )
                                 await session.commit()
                                 full_response = text
 
@@ -395,35 +430,44 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                     wav = _pcm16_to_wav(pcm_all, 24000)
                                     wav_b64 = base64.b64encode(wav).decode()
                                     logger.info("realtime_call_wav_sent", size=len(wav))
-                                    await websocket.send_json({
-                                        "type": "audio_wav",
-                                        "data": wav_b64,
-                                    })
+                                    await websocket.send_json(
+                                        {
+                                            "type": "audio_wav",
+                                            "data": wav_b64,
+                                        }
+                                    )
                                     audio_chunks = []
-                                await websocket.send_json({
-                                    "type": "response_done",
-                                    "text": full_response,
-                                })
+                                await websocket.send_json(
+                                    {
+                                        "type": "response_done",
+                                        "text": full_response,
+                                    }
+                                )
                                 full_response = ""
 
                             elif etype == "conversation.item.input_audio_transcription.completed":
                                 text = event.get("transcript", "")
                                 logger.info("realtime_call_user_transcript", text_len=len(text))
-                                await websocket.send_json({
-                                    "type": "user_transcript",
-                                    "text": text,
-                                })
-                                session.add(Message(
-                                    conversation_id=conversation.id,
-                                    role="user",
-                                    content=text,
-                                    message_type="call",
-                                ))
+                                await websocket.send_json(
+                                    {
+                                        "type": "user_transcript",
+                                        "text": text,
+                                    }
+                                )
+                                session.add(
+                                    Message(
+                                        conversation_id=conversation.id,
+                                        role="user",
+                                        content=text,
+                                        message_type="call",
+                                    )
+                                )
                                 await session.commit()
 
                                 # Learn patterns from voice (same as chat)
                                 try:
                                     from app.proactive import learn_from_message
+
                                     await learn_from_message(session, user_id, agent_id, text)
                                 except Exception:
                                     pass
@@ -456,18 +500,26 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                     result_text = result_text[:2000] + "... (truncated)"
 
                                 # Send result back to Azure
-                                await azure_ws.send(json.dumps({
-                                    "type": "conversation.item.create",
-                                    "item": {
-                                        "type": "function_call_output",
-                                        "call_id": call_id,
-                                        "output": result_text,
-                                    },
-                                }))
+                                await azure_ws.send(
+                                    json.dumps(
+                                        {
+                                            "type": "conversation.item.create",
+                                            "item": {
+                                                "type": "function_call_output",
+                                                "call_id": call_id,
+                                                "output": result_text,
+                                            },
+                                        }
+                                    )
+                                )
                                 # Trigger a new response
-                                await azure_ws.send(json.dumps({
-                                    "type": "response.create",
-                                }))
+                                await azure_ws.send(
+                                    json.dumps(
+                                        {
+                                            "type": "response.create",
+                                        }
+                                    )
+                                )
 
                             elif etype == "error":
                                 err = event.get("error", {})
@@ -482,10 +534,12 @@ async def realtime_call(websocket: WebSocket, agent_id: str):
                                         "realtime_call_azure_error",
                                         error=err_msg,
                                     )
-                                    await websocket.send_json({
-                                        "type": "error",
-                                        "message": err_msg,
-                                    })
+                                    await websocket.send_json(
+                                        {
+                                            "type": "error",
+                                            "message": err_msg,
+                                        }
+                                    )
 
                     except Exception:
                         pass
@@ -544,12 +598,14 @@ async def _pipeline_call(
             messages.append({"role": "user", "content": user_text})
 
             # Save user message
-            session.add(Message(
-                conversation_id=conversation.id,
-                role="user",
-                content=user_text,
-                message_type="call",
-            ))
+            session.add(
+                Message(
+                    conversation_id=conversation.id,
+                    role="user",
+                    content=user_text,
+                    message_type="call",
+                )
+            )
             await session.commit()
 
             await websocket.send_json({"type": "status", "text": "Thinking..."})
@@ -560,9 +616,7 @@ async def _pipeline_call(
             from app.agent_loop_anthropic import run_anthropic_stream
             from app.models import Provider
 
-            prov_result = await session.execute(
-                sel(Provider).where(Provider.id == agent.provider_id)
-            )
+            prov_result = await session.execute(sel(Provider).where(Provider.id == agent.provider_id))
             provider = prov_result.scalar_one_or_none()
 
             full_response = ""
@@ -584,21 +638,25 @@ async def _pipeline_call(
             messages.append({"role": "assistant", "content": full_response})
             await websocket.send_json({"type": "response_done", "text": full_response})
 
-            session.add(Message(
-                conversation_id=conversation.id,
-                role="assistant",
-                content=full_response,
-                message_type="call",
-            ))
+            session.add(
+                Message(
+                    conversation_id=conversation.id,
+                    role="assistant",
+                    content=full_response,
+                    message_type="call",
+                )
+            )
             await session.commit()
 
             # TTS
             await websocket.send_json({"type": "status", "text": "Speaking..."})
             audio_out = await edge_tts_synthesize(full_response[:2000])
-            await websocket.send_json({
-                "type": "audio_mp3",
-                "data": base64.b64encode(audio_out).decode(),
-            })
+            await websocket.send_json(
+                {
+                    "type": "audio_mp3",
+                    "data": base64.b64encode(audio_out).decode(),
+                }
+            )
 
 
 def _pcm16_to_wav(pcm_data: bytes, sample_rate: int) -> bytes:
