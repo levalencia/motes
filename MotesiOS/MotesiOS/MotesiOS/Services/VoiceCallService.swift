@@ -36,7 +36,7 @@ class VoiceCallService {
         let baseURL = APIClient.shared.baseURL
             .replacingOccurrences(of: "https://", with: "wss://")
             .replacingOccurrences(of: "http://", with: "ws://")
-        let urlStr = "\(baseURL)/api/agents/\(agentId)/realtime"
+        let urlStr = "\(baseURL)/api/realtime-call/\(agentId)"
 
         guard let url = URL(string: urlStr) else {
             status = "Invalid URL"
