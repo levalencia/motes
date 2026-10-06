@@ -110,7 +110,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
                 async with app.state.session_factory() as session:
                     result = await session.execute(
-                        select(MCPServer).where(MCPServer.transport == "http", MCPServer.is_enabled.is_(True))
+                        select(MCPServer).where(MCPServer.is_enabled.is_(True))
                     )
                     servers = result.scalars().all()
                     for srv in servers:
