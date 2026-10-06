@@ -135,7 +135,7 @@ struct MessageBubble: View {
                 .frame(width: 24, height: 24)
                 .padding(.top, 2)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Proactive Insight")
+                Text("Proactive")
                     .font(.caption2)
                     .foregroundStyle(.orange)
                 MarkdownView(content: message.content)

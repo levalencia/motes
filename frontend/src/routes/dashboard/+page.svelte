@@ -311,16 +311,25 @@
 		}
 	}
 
-	function getMessageStyle(msg: ThreadMessage): { prefix: string; bgClass: string; textClass: string; isSystem: boolean } {
+	function getMessageStyle(msg: ThreadMessage): { prefix: string; label: string; bgClass: string; textClass: string; isSystem: boolean } {
 		switch (msg.message_type) {
 			case 'call':
-				return { prefix: '📞 ', bgClass: 'bg-emerald-900/20 border-emerald-800/30', textClass: '', isSystem: false };
-			case 'proactive':
-				return { prefix: '💡 ', bgClass: 'bg-amber-900/20 border-amber-800/30', textClass: '', isSystem: false };
+				return { prefix: '📞 ', label: 'Voice Call', bgClass: 'bg-emerald-900/20 border-emerald-800/30', textClass: '', isSystem: false };
+			case 'scheduled':
+				return { prefix: '⏰ ', label: 'Scheduled Task', bgClass: 'bg-blue-900/20 border-blue-800/30', textClass: '', isSystem: false };
+			case 'proactive': {
+				// Detect email scan notifications vs general proactive insights
+				const content = (msg.content || '').toLowerCase();
+				const isEmailScan = content.includes('unread email') || content.includes('new email') || content.includes('email scan') || content.includes('inbox');
+				if (isEmailScan) {
+					return { prefix: '📧 ', label: 'Email Scan', bgClass: 'bg-violet-900/20 border-violet-800/30', textClass: '', isSystem: false };
+				}
+				return { prefix: '💡 ', label: 'Proactive', bgClass: 'bg-amber-900/20 border-amber-800/30', textClass: '', isSystem: false };
+			}
 			case 'system':
-				return { prefix: '', bgClass: '', textClass: '', isSystem: true };
+				return { prefix: '', label: '', bgClass: '', textClass: '', isSystem: true };
 			default:
-				return { prefix: '', bgClass: '', textClass: '', isSystem: false };
+				return { prefix: '', label: '', bgClass: '', textClass: '', isSystem: false };
 		}
 	}
 </script>
@@ -408,6 +417,9 @@
 								{#if msg.message_type !== 'chat'}
 									<div class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-[15px] leading-relaxed {style.bgClass}" style="border: 1px solid; color: var(--text-primary);">
 										<span>{style.prefix}</span>
+										{#if style.label}
+											<span class="text-[11px] font-semibold uppercase tracking-wide opacity-70 mr-1">{style.label}</span>
+										{/if}
 										<div class="chat-prose">
 											{@html renderMarkdown(msg.content)}
 										</div>
