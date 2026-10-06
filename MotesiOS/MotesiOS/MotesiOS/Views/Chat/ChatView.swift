@@ -124,6 +124,13 @@ struct ChatView: View {
         }
         .task { await vm.loadData() }
         .refreshable { await vm.refreshThread() }
+        .task {
+            // Auto-refresh every 30s
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                await vm.refreshThread()
+            }
+        }
     }
 
     private func scrollToBottom(_ proxy: ScrollViewProxy) {

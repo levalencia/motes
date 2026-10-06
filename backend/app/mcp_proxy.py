@@ -77,16 +77,22 @@ class MCPProxyService:
         return result
 
     async def connect(
-        self, server_name: str, url: str = "", command: str = "",
-        transport_type: str = "http", timeout: float = 15.0,
+        self,
+        server_name: str,
+        url: str = "",
+        command: str = "",
+        transport_type: str = "http",
+        timeout: float = 15.0,
     ) -> list[str]:
         """Connect to an MCP server. Returns list of tool names."""
         if self.is_connected(server_name):
             return list(self._connections[server_name].tools.keys())
 
         conn = MCPConnection(
-            server_name=server_name, url=url,
-            command=command, transport_type=transport_type,
+            server_name=server_name,
+            url=url,
+            command=command,
+            transport_type=transport_type,
         )
         conn._task = asyncio.create_task(
             self._run_connection(conn),

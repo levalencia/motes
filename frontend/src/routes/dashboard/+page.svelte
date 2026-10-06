@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';
 	import { listAgents, api, getThread, clearThread, listApprovals, approveAction, denyAction, type Agent, type ThreadMessage, type Approval } from '$lib/api/client';
@@ -37,6 +37,13 @@
 	$effect(() => {
 		messages;
 		setTimeout(scrollToBottom, 50);
+	});
+
+	let _approvalInterval: ReturnType<typeof setInterval> | null = null;
+	let _refreshInterval: ReturnType<typeof setInterval> | null = null;
+	onDestroy(() => {
+		if (_approvalInterval) clearInterval(_approvalInterval);
+		if (_refreshInterval) clearInterval(_refreshInterval);
 	});
 
 	onMount(async () => {
@@ -92,8 +99,20 @@
 				} catch {}
 			}
 			pollApprovals();
-			const approvalInterval = setInterval(pollApprovals, 5000);
-			return () => clearInterval(approvalInterval);
+			_approvalInterval = setInterval(pollApprovals, 5000);
+
+			// Auto-refresh thread every 30s to sync across devices
+			async function refreshThread() {
+				if (streaming) return;
+				try {
+					const thread = await getThread(agentId);
+					const newMsgs = thread.messages || [];
+					if (newMsgs.length !== messages.length) {
+						messages = newMsgs;
+					}
+				} catch {}
+			}
+			_refreshInterval = setInterval(refreshThread, 30000);
 		} catch (err: any) {
 			if (err?.message?.includes('401') || err?.message?.includes('auth')) {
 				goto('/login');

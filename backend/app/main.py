@@ -109,16 +109,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 from app.mcp_connector import MCPServer
 
                 async with app.state.session_factory() as session:
-                    result = await session.execute(
-                        select(MCPServer).where(MCPServer.is_enabled.is_(True))
-                    )
+                    result = await session.execute(select(MCPServer).where(MCPServer.is_enabled.is_(True)))
                     servers = result.scalars().all()
                     for srv in servers:
                         if srv.transport == "http" and srv.url:
                             await mcp_proxy.connect(srv.name.strip(), url=srv.url.strip(), transport_type="http")
                         elif srv.transport == "stdio" and srv.command:
                             await mcp_proxy.connect(
-                                srv.name.strip(), command=srv.command.strip(),
+                                srv.name.strip(),
+                                command=srv.command.strip(),
                                 transport_type="stdio",
                             )
             except BaseException as exc:
