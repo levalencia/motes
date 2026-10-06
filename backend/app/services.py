@@ -224,11 +224,14 @@ async def build_tool_registry(session: AsyncSession, user_id: str, app_state: An
                 if srv.transport == "http" and srv.url and mcp_proxy and proxy_connected:
                     schemas = mcp_proxy.get_tool_schemas(srv.name.strip())
                     for tool_name, schema in schemas.items():
+                        params = schema.get("inputSchema", {})
+                        if not params or "type" not in params:
+                            params = {"type": "object", "properties": {}}
                         tool = MCPProxyTool(
                             tool_name=tool_name,
                             server_name=srv.name.strip(),
                             tool_description=schema.get("description", ""),
-                            tool_parameters=schema.get("inputSchema", {}),
+                            tool_parameters=params,
                             proxy=mcp_proxy,
                         )
                         tools.register(tool)
