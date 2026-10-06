@@ -245,7 +245,7 @@
 			const result = await testMcpServer(id);
 			mcpTestResults = { ...mcpTestResults, [id]: result };
 		} catch (e: any) {
-			mcpTestResults = { ...mcpTestResults, [id]: { connected: false, tools_count: 0, tools: [] } };
+			mcpTestResults = { ...mcpTestResults, [id]: { success: false, tools_discovered: 0, tool_names: [], error: String(e) } };
 		} finally {
 			mcpTesting = null;
 		}
@@ -1003,8 +1003,8 @@
 										<div class="flex-1 min-w-0 mr-3">
 											<div class="flex items-center gap-2">
 												<p class="text-sm font-medium text-white">{server.name}</p>
-												<span class="text-[10px] px-1.5 py-0.5 rounded" style="background: {server.server_type === 'stdio' ? '#6366F120' : '#8B5CF620'}; color: {server.server_type === 'stdio' ? '#818CF8' : '#A78BFA'};">
-													{server.server_type}
+												<span class="text-[10px] px-1.5 py-0.5 rounded" style="background: {server.transport === 'stdio' ? '#6366F120' : '#8B5CF620'}; color: {server.transport === 'stdio' ? '#818CF8' : '#A78BFA'};">
+													{server.transport}
 												</span>
 												{#if testResult}
 													<span class="text-[10px] px-1.5 py-0.5 rounded" style="background: {testResult.success ? '#10B98120' : '#EF444420'}; color: {testResult.success ? '#10B981' : '#EF4444'};">
@@ -1012,7 +1012,7 @@
 													</span>
 												{/if}
 											</div>
-											<p class="text-xs text-gray-500 mt-0.5 font-mono truncate">{server.command_or_url}</p>
+											<p class="text-xs text-gray-500 mt-0.5 font-mono truncate">{server.command || server.url}</p>
 											{#if testResult?.success && testResult.tool_names?.length > 0}
 												<div class="mt-2 p-2 rounded-lg bg-gray-900/50">
 													<p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">🔧 Available Tools ({testResult.tool_names.length})</p>

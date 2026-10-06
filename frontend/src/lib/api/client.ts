@@ -164,10 +164,11 @@ export const resumeTask = (agentId: string, id: string) =>
 export interface McpServer {
 	id: string;
 	name: string;
-	server_type: string;
-	command_or_url: string;
-	enabled: boolean;
-	tools: string[];
+	description: string;
+	transport: string;
+	command: string;
+	url: string;
+	is_enabled: boolean;
 }
 export interface McpTestResult {
 	success: boolean;
