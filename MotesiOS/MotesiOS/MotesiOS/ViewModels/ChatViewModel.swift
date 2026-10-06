@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 @Observable
 class ChatViewModel {
@@ -11,6 +12,8 @@ class ChatViewModel {
     var agentId = ""
     var agents: [Agent] = []
     var pendingApprovals: [Approval] = []
+    var attachedImage: UIImage?
+    var isUploadingImage = false
     let eventStream = EventStreamService()
     let speechRecognizer = SpeechRecognizerService()
     private var approvalPollingTask: Task<Void, Never>?
@@ -116,16 +119,38 @@ class ChatViewModel {
 
     func sendMessage() async {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isStreaming else { return }
+        let hasImage = attachedImage != nil
+        guard !text.isEmpty || hasImage, !isStreaming else { return }
         input = ""
-        messages.append(ChatMessage(id: UUID().uuidString, role: "user", content: text, tool_name: nil, message_type: "chat"))
+
+        var finalText = text
+
+        // Upload image if attached
+        if let image = attachedImage {
+            attachedImage = nil
+            isUploadingImage = true
+            do {
+                let imageUrl = try await uploadImage(image)
+                let prefix = "[Image attached: \(imageUrl)]"
+                finalText = finalText.isEmpty ? prefix : "\(prefix) \(finalText)"
+            } catch {
+                self.error = "Image upload failed"
+                isUploadingImage = false
+                return
+            }
+            isUploadingImage = false
+        }
+
+        guard !finalText.isEmpty else { return }
+
+        messages.append(ChatMessage(id: UUID().uuidString, role: "user", content: finalText, tool_name: nil, message_type: "chat"))
         isStreaming = true
         error = nil
 
         var assistantContent = ""
         messages.append(ChatMessage(id: UUID().uuidString, role: "assistant", content: "", tool_name: nil, message_type: "chat"))
 
-        for await event in ChatService.sendMessage(agentId: agentId, message: text, conversationId: conversationId) {
+        for await event in ChatService.sendMessage(agentId: agentId, message: finalText, conversationId: conversationId) {
             switch event {
             case .token(let t):
                 assistantContent += t
@@ -140,6 +165,21 @@ class ChatViewModel {
             }
         }
         isStreaming = false
+    }
+
+    func uploadImage(_ image: UIImage) async throws -> String {
+        guard !agentId.isEmpty else { throw URLError(.badURL) }
+        guard let data = image.jpegData(compressionQuality: 0.8) else { throw URLError(.cannotDecodeContentData) }
+        let filename = "photo_\(Int(Date().timeIntervalSince1970)).jpg"
+        let result = try await APIClient.shared.upload("/api/agents/\(agentId)/images", imageData: data, filename: filename)
+        if let url = result["url"] as? String {
+            return url
+        }
+        throw URLError(.cannotParseResponse)
+    }
+
+    func removeAttachedImage() {
+        attachedImage = nil
     }
 
     func clearThread() async {

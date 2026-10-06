@@ -77,9 +77,13 @@ struct ChatView: View {
                     text: $vm.input,
                     isStreaming: vm.isStreaming,
                     isRecording: vm.speechRecognizer.isListening,
+                    attachedImage: vm.attachedImage,
+                    isUploadingImage: vm.isUploadingImage,
                     onSend: { Task { await vm.sendMessage() } },
                     onMicStart: { vm.startDictation() },
-                    onMicStop: { vm.stopDictation() }
+                    onMicStop: { vm.stopDictation() },
+                    onImageSelected: { image in vm.attachedImage = image },
+                    onRemoveImage: { vm.removeAttachedImage() }
                 )
             }
             .toolbar {

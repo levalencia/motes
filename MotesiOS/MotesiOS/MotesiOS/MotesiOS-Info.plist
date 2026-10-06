@@ -49,6 +49,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Motes needs camera access to take photos for chat</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Motes needs photo library access to attach images to chat</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Motes needs microphone access for voice calls</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
