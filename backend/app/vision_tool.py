@@ -145,8 +145,12 @@ class VisionTool(Tool):
         msg = build_anthropic_vision_message(image_url, question)
 
         async with httpx.AsyncClient(timeout=30) as client:
+            # Strip trailing /v1 if present to avoid /v1/v1/messages
+            base = self._provider_url.rstrip("/")
+            url = f"{base}/messages" if base.endswith("/v1") else f"{base}/v1/messages"
+
             response = await client.post(
-                f"{self._provider_url}/v1/messages",
+                url,
                 headers={
                     "x-api-key": self._api_key,
                     "anthropic-version": "2023-06-01",
@@ -160,6 +164,7 @@ class VisionTool(Tool):
             )
 
         if response.status_code != 200:
+            logger.warning("vision_api_error", status=response.status_code, body=response.text[:300])
             return json.dumps({"error": f"Vision API error: {response.text[:200]}"})
 
         data = response.json()
@@ -188,6 +193,7 @@ class VisionTool(Tool):
             )
 
         if response.status_code != 200:
+            logger.warning("vision_api_error", status=response.status_code, body=response.text[:300])
             return json.dumps({"error": f"Vision API error: {response.text[:200]}"})
 
         data = response.json()
