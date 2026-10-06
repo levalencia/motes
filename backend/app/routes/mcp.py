@@ -156,7 +156,7 @@ async def test_server_connection(
 
     from sqlalchemy import select
 
-    from app.mcp_client import MCPClient, MCPServerConfig
+    from app.mcp_client import MCPServerConfig
     from app.mcp_connector import MCPServer
 
     result = await session.execute(select(MCPServer).where(MCPServer.id == server_id, MCPServer.user_id == user.id))
@@ -175,14 +175,35 @@ async def test_server_connection(
                 "transport": server.transport,
             }
         )
-        client = MCPClient()
-        tools = await client.connect(config)
-        await client.disconnect()
+
+        # Test connection using context managers properly
+        if config.transport == "http" and config.url:
+            from mcp import ClientSession
+            from mcp.client.sse import sse_client
+
+            async with sse_client(config.url) as (read, write), ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.list_tools()
+                tool_names = [t.name for t in result.tools]
+        else:
+            from mcp import ClientSession, StdioServerParameters
+            from mcp.client.stdio import stdio_client
+
+            cmd, args = config.resolved_command_args()
+            params = StdioServerParameters(
+                command=cmd,
+                args=args,
+                env=config.env if config.env else None,
+            )
+            async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.list_tools()
+                tool_names = [t.name for t in result.tools]
 
         return MCPTestResult(
             success=True,
-            tools_discovered=len(tools),
-            tool_names=[t.name for t in tools],
+            tools_discovered=len(tool_names),
+            tool_names=tool_names,
         )
     except Exception as exc:
         return MCPTestResult(success=False, error=str(exc))
