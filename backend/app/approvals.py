@@ -78,7 +78,17 @@ DEFAULT_RISK_MAP: dict[str, ActionRisk] = {
     "notes_list": ActionRisk.SAFE,
     "notes_read": ActionRisk.SAFE,
     "reminders_list": ActionRisk.SAFE,
-    # Needs approval: writes, sends, deletes
+    # MCP read-only tools are safe
+    "mcp_filesystem__read_file": ActionRisk.SAFE,
+    "mcp_filesystem__read_text_file": ActionRisk.SAFE,
+    "mcp_filesystem__read_multiple_files": ActionRisk.SAFE,
+    "mcp_filesystem__list_directory": ActionRisk.SAFE,
+    "mcp_filesystem__list_directory_with_sizes": ActionRisk.SAFE,
+    "mcp_filesystem__directory_tree": ActionRisk.SAFE,
+    "mcp_filesystem__search_files": ActionRisk.SAFE,
+    "mcp_filesystem__get_file_info": ActionRisk.SAFE,
+    "mcp_filesystem__list_allowed_directories": ActionRisk.SAFE,
+    # MCP write tools need approval (default NEEDS_APPROVAL covers these too)
     "gmail_send": ActionRisk.NEEDS_APPROVAL,
     "outlook_send_email": ActionRisk.NEEDS_APPROVAL,
     "calendar_create": ActionRisk.NEEDS_APPROVAL,
