@@ -6,6 +6,7 @@ Used by chat, voice_call, and realtime_call routes via DI.
 
 from __future__ import annotations
 
+import asyncio
 import os
 from pathlib import Path
 from typing import Any
@@ -225,7 +226,7 @@ async def build_tool_registry(session: AsyncSession, user_id: str, app_state: An
                         logger.debug("tools_mcp_http_loaded", server=srv.name, count=len(schemas))
                     continue
 
-                # Stdio MCP — direct connection
+                # Stdio MCP — direct connection with timeout
                 env = json_mod.loads(srv.env_json) if srv.env_json else {}
                 config = MCPServerConfig(
                     name=srv.name,
@@ -236,7 +237,11 @@ async def build_tool_registry(session: AsyncSession, user_id: str, app_state: An
                     transport=srv.transport,
                 )
                 client = MCPClient()
-                mcp_tools = await client.connect(config)
+                try:
+                    mcp_tools = await asyncio.wait_for(client.connect(config), timeout=10.0)
+                except TimeoutError:
+                    logger.warning("mcp_server_load_timeout", server=srv.name)
+                    mcp_tools = []
                 for mt in mcp_tools:
                     tools.register(mt)
                 if mcp_tools:
