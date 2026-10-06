@@ -192,20 +192,16 @@ class MCPClient:
         return session
 
     async def _connect_http(self, config: MCPServerConfig) -> Any:
-        """Connect via Streamable HTTP transport."""
-        try:
-            from mcp import ClientSession
-            from mcp.client.streamable_http import streamable_http_client
-        except ImportError as e:
-            raise ImportError("MCP SDK not installed. Install with: uv add mcp") from e
+        """HTTP MCP requires proper async context management.
 
-        self._http_cm = streamable_http_client(config.url or "")
-        transport = await self._http_cm.__aenter__()
-        read_stream, write_stream = transport[0], transport[1]
-        self._session_cm = ClientSession(read_stream, write_stream)
-        session = await self._session_cm.__aenter__()
-        await session.initialize()
-        return session
+        Cannot be used with manual __aenter__/__aexit__ due to anyio TaskGroup
+        cancel scope requirements. Use the test endpoint for HTTP connections.
+        For chat, HTTP MCP tools are not available — only stdio works.
+        """
+        raise NotImplementedError(
+            f"HTTP MCP server '{config.name}' cannot be loaded for chat. "
+            "Use stdio transport instead, or test via Settings."
+        )
 
     async def disconnect(self, server_name: str | None = None) -> None:
         """Disconnect from one or all MCP servers."""
