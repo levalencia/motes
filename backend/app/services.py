@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -29,7 +30,7 @@ from app.web_search_tool import WebSearchTool
 logger = structlog.get_logger()
 
 
-async def build_tool_registry(session: AsyncSession, user_id: str) -> ToolRegistry:
+async def build_tool_registry(session: AsyncSession, user_id: str, app_state: Any = None) -> ToolRegistry:
     """Build a complete tool registry with all available tools.
 
     Includes: built-in tools, file tools, web search, and
@@ -195,15 +196,36 @@ async def build_tool_registry(session: AsyncSession, user_id: str) -> ToolRegist
     # MCP servers (user-configured external tool servers)
     from app.mcp_client import MCPClient, MCPServerConfig
     from app.mcp_connector import list_mcp_servers as list_mcp_configs
+    from app.mcp_proxy import MCPProxyTool
 
     try:
         import json as json_mod
+
+        # Get proxy service from app.state (if available)
+        mcp_proxy = getattr(app_state, "mcp_proxy", None) if app_state else None
 
         mcp_servers = await list_mcp_configs(session, user_id)
         for srv in mcp_servers:
             if not srv.is_enabled:
                 continue
             try:
+                # HTTP MCP — use proxy service
+                if srv.transport == "http" and srv.url and mcp_proxy and mcp_proxy.is_connected(srv.name.strip()):
+                    schemas = mcp_proxy.get_tool_schemas(srv.name.strip())
+                    for tool_name, schema in schemas.items():
+                        tool = MCPProxyTool(
+                            tool_name=tool_name,
+                            server_name=srv.name.strip(),
+                            tool_description=schema.get("description", ""),
+                            tool_parameters=schema.get("inputSchema", {}),
+                            proxy=mcp_proxy,
+                        )
+                        tools.register(tool)
+                    if schemas:
+                        logger.debug("tools_mcp_http_loaded", server=srv.name, count=len(schemas))
+                    continue
+
+                # Stdio MCP — direct connection
                 env = json_mod.loads(srv.env_json) if srv.env_json else {}
                 config = MCPServerConfig(
                     name=srv.name,

@@ -93,10 +93,41 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from app.task_runner import run_task_scheduler
 
         task_scheduler_task = asyncio.create_task(run_task_scheduler(app.state.session_factory, app.state.event_bus))
+
+        # Start MCP proxy service for HTTP MCP servers
+        from app.mcp_proxy import MCPProxyService
+
+        mcp_proxy = MCPProxyService()
+        app.state.mcp_proxy = mcp_proxy
+
+        # Auto-connect HTTP MCP servers in background
+        async def _connect_http_mcp_servers() -> None:
+            await asyncio.sleep(3)  # wait for DB to be ready
+            try:
+                from sqlalchemy import select
+
+                from app.mcp_connector import MCPServer
+
+                async with app.state.session_factory() as session:
+                    result = await session.execute(
+                        select(MCPServer).where(MCPServer.transport == "http", MCPServer.is_enabled.is_(True))
+                    )
+                    servers = result.scalars().all()
+                    for srv in servers:
+                        if srv.url:
+                            await mcp_proxy.connect(srv.name.strip(), srv.url.strip())
+            except BaseException as exc:
+                import structlog
+
+                structlog.get_logger().warning("mcp_proxy_auto_connect_failed", error=str(exc))
+
+        asyncio.create_task(_connect_http_mcp_servers())
+
         yield
     finally:
         scanner_task.cancel()
         task_scheduler_task.cancel()
+        await mcp_proxy.disconnect_all()
         await engine.dispose()
         logger.info("motes_shutdown")
 

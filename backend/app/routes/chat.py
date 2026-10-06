@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,6 +48,7 @@ class MessageResponse(BaseModel):
 async def chat(
     agent_id: str,
     body: ChatRequest,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
@@ -113,7 +114,7 @@ async def chat(
     # Build tool registry via service layer
     from app.services import build_tool_registry
 
-    tools = await build_tool_registry(session, user.id)
+    tools = await build_tool_registry(session, user.id, app_state=request.app.state)
 
     async def event_generator():
         full_content = ""
