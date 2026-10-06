@@ -72,6 +72,26 @@ async def build_tool_registry(session: AsyncSession, user_id: str, app_state: An
     if agent_for_memory:
         tools.register(ScheduledTasksTool(session, agent_for_memory.id))
 
+    # Vision tool — image analysis using the provider's model
+    from app.vision_tool import VisionTool
+
+    provider_result = await session.execute(select(Agent).where(Agent.user_id == user_id).limit(1))
+    agent_for_vision = provider_result.scalars().first()
+    if agent_for_vision:
+        from app.models import Provider
+
+        prov_result = await session.execute(select(Provider).where(Provider.id == agent_for_vision.provider_id))
+        prov = prov_result.scalars().first()
+        if prov:
+            tools.register(
+                VisionTool(
+                    provider_url=prov.base_url,
+                    api_key=prov.api_key_encrypted,
+                    model=prov.model,
+                    api_format=getattr(prov, "api_format", "openai"),
+                )
+            )
+
     # Apple Reminders + Notes (macOS only, no API key)
     import platform
 

@@ -135,9 +135,22 @@
 		}
 	}
 
+	let attachedImageUrl = $state('');
+
 	async function sendMessage(text?: string) {
 		let msg = text || input;
-		if (!msg.trim() || streaming) return;
+		// If image is attached but no text, add a default prompt
+		if (attachedImageUrl && !msg.trim()) {
+			msg = 'Analyze this image';
+		}
+		if (!msg.trim() && !attachedImageUrl) return;
+		if (streaming) return;
+
+		// If image is attached, prepend the analyze_image instruction
+		if (attachedImageUrl) {
+			msg = `[Image attached: ${attachedImageUrl}] ${msg}`;
+			attachedImageUrl = '';
+		}
 		input = '';
 
 		// Add user message to display immediately
@@ -532,6 +545,8 @@
 		disabled={streaming}
 		onSend={() => sendMessage()}
 		onRecord={toggleRecording}
+		onImageAttach={(url) => { attachedImageUrl = url; }}
 		{recording}
+		{agentId}
 	/>
 </main>

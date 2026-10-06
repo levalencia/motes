@@ -218,6 +218,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(realtime_call_router)
     app.include_router(webhooks_router)
 
+    from app.routes.images import router as images_router
+
+    app.include_router(images_router)
+
+    # Serve uploaded images as static files
+    from starlette.staticfiles import StaticFiles
+
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
     return app
 
 
