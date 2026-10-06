@@ -199,9 +199,11 @@ class MCPClient:
         except ImportError as e:
             raise ImportError("MCP SDK not installed. Install with: uv add mcp") from e
 
-        transport = await streamable_http_client(config.url or "").__aenter__()
+        self._http_cm = streamable_http_client(config.url or "")
+        transport = await self._http_cm.__aenter__()
         read_stream, write_stream = transport[0], transport[1]
-        session = await ClientSession(read_stream, write_stream).__aenter__()
+        self._session_cm = ClientSession(read_stream, write_stream)
+        session = await self._session_cm.__aenter__()
         await session.initialize()
         return session
 
