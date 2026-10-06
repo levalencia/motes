@@ -159,7 +159,7 @@ class MCPClient:
             )
             return tools
 
-        except Exception as exc:
+        except BaseException as exc:
             logger.warning(
                 "mcp_connect_failed",
                 server=config.name,

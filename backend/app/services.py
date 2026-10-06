@@ -219,9 +219,9 @@ async def build_tool_registry(session: AsyncSession, user_id: str) -> ToolRegist
                     tools.register(mt)
                 if mcp_tools:
                     logger.debug("tools_mcp_loaded", server=srv.name, count=len(mcp_tools))
-            except Exception as exc:
+            except BaseException as exc:
                 logger.warning("mcp_server_load_failed", server=srv.name, error=str(exc))
-    except Exception as exc:
+    except BaseException as exc:
         logger.warning("mcp_servers_load_failed", error=str(exc))
 
     # Gmail (if connected, with auto-refresh)
