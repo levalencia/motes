@@ -12,7 +12,7 @@ runs on YOUR Mac, uses ANY model, and costs zero. Let me show you."
 
 ---
 
-## ACT 1: Chat + Tools (0:15 - 0:45)
+## ACT 1: Chat + Tools + Language Switch (0:15 - 0:50)
 
 **[Web browser — Motes dashboard]**
 
@@ -23,9 +23,21 @@ Let me ask it something."
 
 **[Agent responds in Spanish paisa with weather data, emoji table]**
 
-"It searched the weather API, responded in my language —
-Colombian Spanish — because I set the personality to Paisa.
-Watch — it uses real tools."
+"Colombian Spanish — because that's my personality setting.
+But watch this..."
+
+**Type:** "now tell me the same in English"
+
+**[Agent switches to English seamlessly]**
+
+**Type:** "et en français?"
+
+**[Agent switches to French]**
+
+"Three languages, one conversation, zero configuration.
+It detects your language and adapts instantly.
+
+Now let me show the tools..."
 
 **Type:** "crea un recordatorio para mañana comprar leche"
 
