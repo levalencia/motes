@@ -169,9 +169,10 @@ export interface McpServer {
 	tools: string[];
 }
 export interface McpTestResult {
-	connected: boolean;
-	tools_count: number;
-	tools: string[];
+	success: boolean;
+	tools_discovered: number;
+	tool_names: string[];
+	error: string;
 }
 export const listMcpServers = () => api<McpServer[]>('/mcp/servers');
 export const addMcpServer = (data: { name: string; server_type: string; command?: string; args?: string[]; url?: string }) =>

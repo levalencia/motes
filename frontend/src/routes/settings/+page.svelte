@@ -974,8 +974,8 @@
 													{server.server_type}
 												</span>
 												{#if testResult}
-													<span class="text-[10px] px-1.5 py-0.5 rounded" style="background: {testResult.connected ? '#10B98120' : '#EF444420'}; color: {testResult.connected ? '#10B981' : '#EF4444'};">
-														{testResult.connected ? `✓ ${testResult.tools_count} tools` : '✕ Failed'}
+													<span class="text-[10px] px-1.5 py-0.5 rounded" style="background: {testResult.success ? '#10B98120' : '#EF444420'}; color: {testResult.success ? '#10B981' : '#EF4444'};">
+														{testResult.success ? `✓ ${testResult.tools_discovered} tools` : `✕ ${testResult.error || 'Failed'}`}
 													</span>
 												{/if}
 											</div>
