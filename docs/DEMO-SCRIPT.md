@@ -83,24 +83,38 @@ adapted for voice. I say no."
 
 ---
 
-## ACT 3: Proactive + Scheduled (1:15 - 1:45)
+## ACT 3: Memory + Proactive (1:15 - 1:50)
 
-**[Switch back to web — scroll thread]**
+**[Web — chat]**
 
-"Now here's where it gets interesting. See these messages
-I didn't ask for?"
+"Now watch memory. I'll tell it something personal."
+
+**Type:** "vivo en Bruselas con mi esposa Margot y mi hija Victoria"
+
+**[Agent responds warmly AND calls memory_save in background]**
+
+"It saved that. Now days later..."
+
+**Type:** "qué clima hace hoy?"
+
+**[Agent responds with Brussels weather — WITHOUT me saying Brussels]**
+
+"I didn't say Brussels. It REMEMBERED. That's persistent memory,
+not just context window.
+
+And see these messages I didn't ask for?"
 
 **[Point to 💡 PROACTIVE messages and ⏰ SCHEDULED TASK messages]**
 
 "The 💡 ones — Motes decided ON ITS OWN to tell me about
 a transport strike in Brussels. It checked my context,
-saw I asked about weather earlier, and proactively warned me.
+saw I live here, and proactively warned me.
 
-The ⏰ ones — those are scheduled tasks I set up.
+The ⏰ ones — scheduled tasks I set up through conversation:
 'Give me Belgium and Colombia news every day at 7pm.'
-It runs automatically, results appear right here in the thread.
+It runs automatically, results appear right here.
 
-And I control it all through conversation:
+And I control it all by talking:
 'Stop sending me weather updates' — it stops.
 'Only once a day' — it adjusts. No settings page needed."
 
