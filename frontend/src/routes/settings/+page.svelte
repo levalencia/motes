@@ -218,7 +218,7 @@
 		if (!mcpName.trim()) return;
 		mcpSaving = true;
 		try {
-			const data: any = { name: mcpName, server_type: mcpType };
+			const data: any = { name: mcpName, transport: mcpType };
 			if (mcpType === 'stdio') {
 				data.command = mcpCommand;
 				data.args = mcpArgs.trim() ? mcpArgs.split(/\s+/) : [];
