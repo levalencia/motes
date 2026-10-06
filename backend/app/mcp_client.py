@@ -192,15 +192,15 @@ class MCPClient:
         return session
 
     async def _connect_http(self, config: MCPServerConfig) -> Any:
-        """Connect via HTTP/SSE transport."""
+        """Connect via Streamable HTTP transport."""
         try:
             from mcp import ClientSession
-            from mcp.client.sse import sse_client
+            from mcp.client.streamable_http import streamable_http_client
         except ImportError as e:
             raise ImportError("MCP SDK not installed. Install with: uv add mcp") from e
 
-        transport = await sse_client(config.url or "").__aenter__()
-        read_stream, write_stream = transport
+        transport = await streamable_http_client(config.url or "").__aenter__()
+        read_stream, write_stream = transport[0], transport[1]
         session = await ClientSession(read_stream, write_stream).__aenter__()
         await session.initialize()
         return session

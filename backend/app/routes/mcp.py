@@ -179,12 +179,13 @@ async def test_server_connection(
         # Test connection using context managers properly
         if config.transport == "http" and config.url:
             from mcp import ClientSession
-            from mcp.client.sse import sse_client
+            from mcp.client.streamable_http import streamable_http_client
 
-            async with sse_client(config.url) as (read, write), ClientSession(read, write) as session:
-                await session.initialize()
-                result = await session.list_tools()
-                tool_names = [t.name for t in result.tools]
+            async with streamable_http_client(config.url) as transport:  # noqa: SIM117
+                async with ClientSession(transport[0], transport[1]) as session:
+                    await session.initialize()
+                    result = await session.list_tools()
+                    tool_names = [t.name for t in result.tools]
         else:
             from mcp import ClientSession, StdioServerParameters
             from mcp.client.stdio import stdio_client
