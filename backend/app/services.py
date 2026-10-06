@@ -202,8 +202,10 @@ async def build_tool_registry(session: AsyncSession, user_id: str, app_state: An
     try:
         import json as json_mod
 
-        # Get proxy service from app.state (if available)
-        mcp_proxy = getattr(app_state, "mcp_proxy", None) if app_state else None
+        # Get proxy service singleton
+        from app.mcp_proxy import get_mcp_proxy
+
+        mcp_proxy = get_mcp_proxy()
 
         mcp_servers = await list_mcp_configs(session, user_id)
         for srv in mcp_servers:
@@ -211,7 +213,15 @@ async def build_tool_registry(session: AsyncSession, user_id: str, app_state: An
                 continue
             try:
                 # HTTP MCP — use proxy service
-                if srv.transport == "http" and srv.url and mcp_proxy and mcp_proxy.is_connected(srv.name.strip()):
+                proxy_connected = mcp_proxy.is_connected(srv.name.strip()) if mcp_proxy else False
+                logger.info(
+                    "mcp_tool_registry_check",
+                    server=srv.name,
+                    transport=srv.transport,
+                    has_proxy=mcp_proxy is not None,
+                    proxy_connected=proxy_connected,
+                )
+                if srv.transport == "http" and srv.url and mcp_proxy and proxy_connected:
                     schemas = mcp_proxy.get_tool_schemas(srv.name.strip())
                     for tool_name, schema in schemas.items():
                         tool = MCPProxyTool(

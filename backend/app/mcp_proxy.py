@@ -27,6 +27,17 @@ from app.tools import Tool
 
 logger = structlog.get_logger()
 
+# Module-level singleton — survives hot reloads
+_proxy_instance: MCPProxyService | None = None
+
+
+def get_mcp_proxy() -> MCPProxyService:
+    """Get or create the global MCP proxy service singleton."""
+    global _proxy_instance
+    if _proxy_instance is None:
+        _proxy_instance = MCPProxyService()
+    return _proxy_instance
+
 
 @dataclass
 class MCPConnection:

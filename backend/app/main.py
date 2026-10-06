@@ -95,9 +95,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         task_scheduler_task = asyncio.create_task(run_task_scheduler(app.state.session_factory, app.state.event_bus))
 
         # Start MCP proxy service for HTTP MCP servers
-        from app.mcp_proxy import MCPProxyService
+        from app.mcp_proxy import get_mcp_proxy
 
-        mcp_proxy = MCPProxyService()
+        mcp_proxy = get_mcp_proxy()
         app.state.mcp_proxy = mcp_proxy
 
         # Auto-connect HTTP MCP servers in background
