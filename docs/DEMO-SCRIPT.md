@@ -12,44 +12,48 @@ runs on YOUR Mac, uses ANY model, and costs zero. Let me show you."
 
 ---
 
-## ACT 1: Chat + Tools + Language Switch (0:15 - 0:50)
+## ACT 1: Chat + Tools + Language Switch (0:15 - 0:55)
 
 **[Web browser — Motes dashboard]**
 
 "This is Motes. One conversation thread — just like Dots.
-Let me ask it something."
+Let me show you what it can do."
 
-**Type:** "cuál es el clima en Bruselas?"
+**Type:** "qué emails nuevos tengo?"
 
-**[Agent responds in Spanish paisa with weather data, emoji table]**
+**[Agent calls gmail_read, shows email summary]**
 
-"Colombian Spanish — because that's my personality setting.
-But watch this..."
+"Real Gmail integration. Now..."
 
-**Type:** "now tell me the same in English"
+**Type:** "qué tengo en mi calendario esta semana?"
 
-**[Agent switches to English seamlessly]**
+**[Agent calls calendar_list, shows events]**
+
+"Google Calendar. Now watch the language switch..."
+
+**Type:** "what's the weather in Brussels?"
+
+**[Agent switches to English, calls weather tool]**
 
 **Type:** "et en français?"
 
 **[Agent switches to French]**
 
 "Three languages, one conversation, zero configuration.
-It detects your language and adapts instantly.
 
-Now let me show the tools..."
+Now the Mac tools..."
 
 **Type:** "crea un recordatorio para mañana comprar leche"
 
-**[Approval card appears in thread: 🔐 Create a reminder in Apple Reminders]**
+**[Approval card appears: 🔐 Create a reminder in Apple Reminders]**
 
-"See that? It asks permission before touching my data.
+"It asks permission before touching my data.
 I click Approve..."
 
 **[Click Approve — reminder created]**
 
-"...and it created a real Apple Reminder on my Mac.
-Gmail, Calendar, Notes, Reminders — all native Mac tools."
+"Real Apple Reminder — on my Mac, synced to my iPhone.
+Not a fake database entry. A REAL reminder."
 
 ---
 
