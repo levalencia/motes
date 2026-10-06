@@ -33,6 +33,7 @@ dependencies = [
     "opentelemetry-instrumentation-sqlalchemy>=0.66b0",
     "opentelemetry-instrumentation-httpx>=0.66b0",
     "croniter>=6.2.4",
+    "mcp>=2.3.0",
 ]
 
 [project.optional-dependencies]

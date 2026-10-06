@@ -40,11 +40,20 @@ class MCPServerConfig:
         return cls(
             name=data["name"],
             command=data.get("command"),
-            args=data.get("args", []),
+            args=data.get("args") or [],
             env=data.get("env", {}),
             url=data.get("url"),
             transport=transport,
         )
+
+    def resolved_command_args(self) -> tuple[str, list[str]]:
+        """Return (command, args) — splits command on spaces if args is empty."""
+        if self.args:
+            return (self.command or "", self.args)
+        parts = (self.command or "").split()
+        if len(parts) > 1:
+            return (parts[0], parts[1:])
+        return (self.command or "", [])
 
 
 def _sanitize_name(name: str) -> str:
@@ -169,9 +178,10 @@ class MCPClient:
         except ImportError as e:
             raise ImportError("MCP SDK not installed. Install with: uv add mcp") from e
 
+        cmd, args = config.resolved_command_args()
         server_params = StdioServerParameters(
-            command=config.command or "",
-            args=config.args,
+            command=cmd,
+            args=args,
             env=config.env if config.env else None,
         )
 
