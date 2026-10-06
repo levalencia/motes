@@ -41,10 +41,12 @@ def get_mcp_proxy() -> MCPProxyService:
 
 @dataclass
 class MCPConnection:
-    """A live HTTP MCP connection with its discovered tools."""
+    """A live MCP connection with its discovered tools."""
 
     server_name: str
     url: str
+    command: str = ""
+    transport_type: str = "http"  # "http" or "stdio"
     tools: dict[str, dict[str, Any]] = field(default_factory=dict)
     session: Any = None
     ready: bool = False
@@ -74,12 +76,18 @@ class MCPProxyService:
                 result[f"mcp_{name}__{tool_name}"] = schema
         return result
 
-    async def connect(self, server_name: str, url: str, timeout: float = 15.0) -> list[str]:
-        """Connect to an HTTP MCP server. Returns list of tool names."""
+    async def connect(
+        self, server_name: str, url: str = "", command: str = "",
+        transport_type: str = "http", timeout: float = 15.0,
+    ) -> list[str]:
+        """Connect to an MCP server. Returns list of tool names."""
         if self.is_connected(server_name):
             return list(self._connections[server_name].tools.keys())
 
-        conn = MCPConnection(server_name=server_name, url=url)
+        conn = MCPConnection(
+            server_name=server_name, url=url,
+            command=command, transport_type=transport_type,
+        )
         conn._task = asyncio.create_task(
             self._run_connection(conn),
             name=f"mcp_proxy_{server_name}",
@@ -108,31 +116,23 @@ class MCPProxyService:
         """Run a persistent MCP connection inside proper async with."""
         try:
             from mcp import ClientSession
-            from mcp.client.streamable_http import streamable_http_client
 
-            async with streamable_http_client(conn.url) as transport:  # noqa: SIM117
-                async with ClientSession(transport[0], transport[1]) as session:
-                    await session.initialize()
-                    conn.session = session
+            if conn.transport_type == "stdio" and conn.command:
+                from mcp import StdioServerParameters
+                from mcp.client.stdio import stdio_client
 
-                    # Discover tools
-                    result = await session.list_tools()
-                    logger.info("mcp_proxy_tools_raw", server=conn.server_name, count=len(result.tools))
-                    for t in result.tools:
-                        conn.tools[t.name] = {
-                            "name": t.name,
-                            "description": getattr(t, "description", "") or "",
-                            "inputSchema": t.inputSchema if hasattr(t, "inputSchema") else {},
-                        }
+                parts = conn.command.split()
+                cmd, args = parts[0], parts[1:] if len(parts) > 1 else []
+                params = StdioServerParameters(command=cmd, args=args)
+                async with stdio_client(params) as (read, write):  # noqa: SIM117
+                    async with ClientSession(read, write) as session:
+                        await self._init_session(conn, session)
+            else:
+                from mcp.client.streamable_http import streamable_http_client
 
-                    conn.ready = True
-
-                    # Keep alive — wait forever until cancelled
-                    try:
-                        while True:
-                            await asyncio.sleep(30)
-                    except asyncio.CancelledError:
-                        pass
+                async with streamable_http_client(conn.url) as transport:  # noqa: SIM117
+                    async with ClientSession(transport[0], transport[1]) as session:
+                        await self._init_session(conn, session)
 
         except asyncio.CancelledError:
             logger.info("mcp_proxy_disconnected", server=conn.server_name)
@@ -140,6 +140,30 @@ class MCPProxyService:
             logger.warning("mcp_proxy_error", server=conn.server_name, error=str(exc))
         finally:
             conn.session = None
+            conn.ready = False
+
+    async def _init_session(self, conn: MCPConnection, session: Any) -> None:
+        """Initialize session, discover tools, keep alive."""
+        await session.initialize()
+        conn.session = session
+
+        result = await session.list_tools()
+        logger.info("mcp_proxy_tools_raw", server=conn.server_name, count=len(result.tools))
+        for t in result.tools:
+            conn.tools[t.name] = {
+                "name": t.name,
+                "description": getattr(t, "description", "") or "",
+                "inputSchema": t.inputSchema if hasattr(t, "inputSchema") else {},
+            }
+
+        conn.ready = True
+
+        # Keep alive
+        try:
+            while True:
+                await asyncio.sleep(30)
+        except asyncio.CancelledError:
+            pass
 
     async def call_tool(self, server_name: str, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         """Call a tool on a connected HTTP MCP server."""

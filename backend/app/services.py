@@ -212,16 +212,8 @@ async def build_tool_registry(session: AsyncSession, user_id: str, app_state: An
             if not srv.is_enabled:
                 continue
             try:
-                # HTTP MCP — use proxy service
-                proxy_connected = mcp_proxy.is_connected(srv.name.strip()) if mcp_proxy else False
-                logger.info(
-                    "mcp_tool_registry_check",
-                    server=srv.name,
-                    transport=srv.transport,
-                    has_proxy=mcp_proxy is not None,
-                    proxy_connected=proxy_connected,
-                )
-                if srv.transport == "http" and srv.url and mcp_proxy and proxy_connected:
+                proxy_connected = mcp_proxy.is_connected(srv.name.strip())
+                if proxy_connected:
                     schemas = mcp_proxy.get_tool_schemas(srv.name.strip())
                     for tool_name, schema in schemas.items():
                         params = schema.get("inputSchema", {})
@@ -236,7 +228,7 @@ async def build_tool_registry(session: AsyncSession, user_id: str, app_state: An
                         )
                         tools.register(tool)
                     if schemas:
-                        logger.debug("tools_mcp_http_loaded", server=srv.name, count=len(schemas))
+                        logger.info("tools_mcp_loaded", server=srv.name, count=len(schemas))
                     continue
 
                 # Stdio MCP — direct connection with timeout

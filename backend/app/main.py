@@ -114,8 +114,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     )
                     servers = result.scalars().all()
                     for srv in servers:
-                        if srv.url:
-                            await mcp_proxy.connect(srv.name.strip(), srv.url.strip())
+                        if srv.transport == "http" and srv.url:
+                            await mcp_proxy.connect(srv.name.strip(), url=srv.url.strip(), transport_type="http")
+                        elif srv.transport == "stdio" and srv.command:
+                            await mcp_proxy.connect(
+                                srv.name.strip(), command=srv.command.strip(),
+                                transport_type="stdio",
+                            )
             except BaseException as exc:
                 import structlog
 
