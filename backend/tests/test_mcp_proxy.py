@@ -63,6 +63,7 @@ class TestMCPProxyServiceConnection:
         service = MCPProxyService()
         conn = MCPConnection(server_name="test", url="https://example.com")
         conn.session = MagicMock()  # simulate active session
+        conn.ready = True  # simulate tools discovered
         conn.tools = {"read": {"name": "read", "description": "Read"}}
         service._connections["test"] = conn
         assert service.is_connected("test") is True

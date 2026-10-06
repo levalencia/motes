@@ -47,6 +47,7 @@ class MCPConnection:
     url: str
     tools: dict[str, dict[str, Any]] = field(default_factory=dict)
     session: Any = None
+    ready: bool = False
     _task: asyncio.Task | None = None
 
 
@@ -58,7 +59,7 @@ class MCPProxyService:
 
     def is_connected(self, server_name: str) -> bool:
         conn = self._connections.get(server_name)
-        return conn is not None and conn.session is not None
+        return conn is not None and conn.ready
 
     def get_tool_schemas(self, server_name: str) -> dict[str, dict[str, Any]]:
         """Return discovered tool schemas for a connected server."""
@@ -89,7 +90,7 @@ class MCPProxyService:
         while elapsed < timeout:
             await asyncio.sleep(0.5)
             elapsed += 0.5
-            if conn.session is not None:
+            if conn.ready:
                 self._connections[server_name] = conn
                 logger.info(
                     "mcp_proxy_connected",
@@ -116,12 +117,15 @@ class MCPProxyService:
 
                     # Discover tools
                     result = await session.list_tools()
+                    logger.info("mcp_proxy_tools_raw", server=conn.server_name, count=len(result.tools))
                     for t in result.tools:
                         conn.tools[t.name] = {
                             "name": t.name,
                             "description": getattr(t, "description", "") or "",
                             "inputSchema": t.inputSchema if hasattr(t, "inputSchema") else {},
                         }
+
+                    conn.ready = True
 
                     # Keep alive — wait forever until cancelled
                     try:
