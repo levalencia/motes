@@ -265,6 +265,39 @@
 		}
 	}
 
+	function getToolExample(serverName: string, toolName: string): string {
+		const examples: Record<string, string> = {
+			// Filesystem
+			'read_file': 'Try: "read the README.md file"',
+			'read_text_file': 'Try: "show me the content of package.json"',
+			'read_media_file': 'Try: "read the logo image"',
+			'read_multiple_files': 'Try: "read all .ts files in src/"',
+			'write_file': 'Try: "create a file called notes.txt" ⚠️ approval',
+			'edit_file': 'Try: "add a line to README.md" ⚠️ approval',
+			'create_directory': 'Try: "create a folder called docs" ⚠️ approval',
+			'list_directory': 'Try: "list the files in the project root"',
+			'list_directory_with_sizes': 'Try: "show files with their sizes"',
+			'directory_tree': 'Try: "show me the directory tree"',
+			'move_file': 'Try: "rename old.txt to new.txt" ⚠️ approval',
+			'search_files': 'Try: "search for files containing TODO"',
+			'get_file_info': 'Try: "get info about the README file"',
+			'list_allowed_directories': 'Try: "what directories can you access?"',
+			// ship.page
+			'deploy_html': 'Try: "deploy a page that says Hello World"',
+			'deploy_files': 'Try: "deploy a site with index.html and style.css"',
+			'append_files': 'Try: "add a new page to my site"',
+			'list_drops': 'Try: "show me my deployed pages"',
+			'claim_drop': 'Try: "claim a custom name for my page"',
+			'restore_drop': 'Try: "restore my deleted page"',
+			'delete_drop': 'Try: "delete my test page" ⚠️ approval',
+			'set_drop_password': 'Try: "password protect my page"',
+			'remove_drop_password': 'Try: "remove password from my page"',
+			'get_limits': 'Try: "what are my usage limits?"',
+			'get_account': 'Try: "show my account info"',
+		};
+		return examples[toolName] || `Try asking the agent to use ${toolName}`;
+	}
+
 	async function savePersonality() {
 		personalitySaving = true;
 		personalitySaved = false;
@@ -980,7 +1013,19 @@
 												{/if}
 											</div>
 											<p class="text-xs text-gray-500 mt-0.5 font-mono truncate">{server.command_or_url}</p>
-											{#if (server.tools?.length ?? 0) > 0}
+											{#if testResult?.success && testResult.tool_names?.length > 0}
+												<div class="mt-2 p-2 rounded-lg bg-gray-900/50">
+													<p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">🔧 Available Tools ({testResult.tool_names.length})</p>
+													<div class="space-y-1">
+														{#each testResult.tool_names as tool}
+															<div class="flex items-start gap-2">
+																<span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-300 font-mono shrink-0">{tool}</span>
+																<span class="text-[10px] text-gray-500 italic">{getToolExample(server.name, tool)}</span>
+															</div>
+														{/each}
+													</div>
+												</div>
+											{:else if (server.tools?.length ?? 0) > 0}
 												<div class="flex flex-wrap gap-1 mt-1">
 													{#each (server.tools ?? []).slice(0, 5) as tool}
 														<span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-400">{tool}</span>
