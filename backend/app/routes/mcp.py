@@ -166,13 +166,14 @@ async def test_server_connection(
 
     try:
         env = json_mod.loads(server.env_json) if server.env_json else {}
-        config = MCPServerConfig(
-            name=server.name,
-            command=server.command or None,
-            args=server.command.split()[1:] if server.command and " " in server.command else [],
-            env=env,
-            url=server.url or None,
-            transport=server.transport,
+        config = MCPServerConfig.from_dict(
+            {
+                "name": server.name,
+                "command": server.command or "",
+                "env": env,
+                "url": server.url or None,
+                "transport": server.transport,
+            }
         )
         client = MCPClient()
         tools = await client.connect(config)
