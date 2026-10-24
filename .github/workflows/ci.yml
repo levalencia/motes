@@ -26,11 +26,11 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --extra dev
       - name: Ruff check
-        run: uv run ruff check .
+        run: uv run python -m ruff check .
       - name: Ruff format check
-        run: uv run ruff format --check .
+        run: uv run python -m ruff format --check .
 
   backend-test:
     name: Backend Tests (pytest)
@@ -47,7 +47,7 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --extra dev
       - name: Run unit tests
         run: uv run pytest -m unit --tb=short -q
         env:
@@ -71,7 +71,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Svelte check
-        run: npx svelte-check --fail-on-warnings=false --threshold error --ignore "src/lib/**/*.test.ts"
+        run: npx svelte-check --fail-on-warnings=false --threshold error
       - name: Vitest
         run: npx vitest run
       - name: Build
