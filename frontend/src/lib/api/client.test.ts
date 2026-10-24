@@ -6,11 +6,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+(globalThis as Record<string, unknown>).fetch = mockFetch;
 
 // Mock localStorage for auth token
 const mockStorage: Record<string, string> = { motes_token: 'test-token-123' };
-global.localStorage = {
+(globalThis as Record<string, unknown>).localStorage = {
 	getItem: (key: string) => mockStorage[key] ?? null,
 	setItem: (key: string, val: string) => { mockStorage[key] = val; },
 	removeItem: (key: string) => { delete mockStorage[key]; },
@@ -21,7 +21,7 @@ global.localStorage = {
 
 // Mock window.location for 401 redirect
 const mockLocation = { href: '' };
-Object.defineProperty(global, 'window', {
+Object.defineProperty(globalThis, 'window', {
 	value: { location: mockLocation },
 	writable: true,
 });
