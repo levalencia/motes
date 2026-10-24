@@ -1,0 +1,1 @@
+# Screenshots\n\nPlace screenshots here:\n- web-chat.png — Web chat UI\n- ios-chat.png — iOS chat view\n- ios-call.png — iOS voice call view\n- ios-services.png — iOS services view\n- demo-thumbnail.png — YouTube demo video thumbnail

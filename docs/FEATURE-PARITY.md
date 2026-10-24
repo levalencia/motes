@@ -10,14 +10,14 @@
 | Feature | Dots | Motes | Status |
 |---------|------|-------|--------|
 | Always-on AI agent | ✓ | ✅ | Agent persists across sessions |
-| Model-agnostic (any LLM) | ✗ (GPT-6 only) | ✅ | OpenAI + Anthropic + any compatible |
+| Model-agnostic (any LLM) | ✗ (GPT only) | ✅ | OpenAI + Anthropic + Azure + local |
 | Self-hosted | ✗ | ✅ | Docker Compose one-command setup |
 | EU/UK available | ✗ | ✅ | Works everywhere |
 | ReAct tool-calling loop | ✓ | ✅ | With streaming SSE |
 | Streaming responses | ✓ | ✅ | Token-by-token SSE |
-| Agent naming/identity | ✓ | ✅ | Name + system prompt |
+| Agent naming/identity | ✓ | ✅ | Name + system prompt + personality |
 | Agent avatar/character | ✓ | ❌ | Dots has 3D blob characters |
-| Multiple agents per user | Future | ✅ | Unlimited agents now |
+| Multiple agents per user | Future | ✅ | Unlimited agents |
 
 ## Memory & Learning
 | Feature | Dots | Motes | Status |
@@ -26,26 +26,31 @@
 | Cross-session memory | ✓ | ✅ | Injected into system prompt |
 | Memory from feedback | ✓ | ❌ | Auto-extract from conversations |
 | View/edit individual memories | ✗ (Dots can't!) | ✅ | Full CRUD — we're ahead here |
+| Memory categories | ✓ | ✅ | personal, work, preference, family, health |
 
 ## Connected Services
 | Feature | Dots | Motes | Status |
 |---------|------|-------|--------|
-| Gmail (read/send) | ✓ (plugin) | ✅ | OAuth + direct API tools |
-| Google Calendar | ✓ (plugin) | ✅ | OAuth + direct API tools |
-| GitHub | ✓ (plugin) | 🟡 | OAuth setup ready, tools not wired |
-| Slack | ✓ (plugin) | 🟡 | OAuth setup ready, tools not wired |
-| 4,000+ plugins | ✓ | ❌ | MCP catalog has 6, growing |
+| Gmail (read/send) | ✓ | ✅ | OAuth + auto-refresh |
+| Google Calendar | ✓ | ✅ | OAuth + auto-refresh |
+| GitHub | ✓ | ✅ | API key tools |
+| Slack | ✓ | ✅ | API key tools |
+| Weather, Maps, News, Web Search | ✓ | ✅ | Built-in, no API key needed |
+| Apple Reminders, Notes | ✗ | ✅ | AppleScript integration (macOS) |
+| Todoist, Notion, Spotify | ✓ | ✅ | API key tools |
+| Home Assistant | ✗ | ✅ | API key tools |
+| Flights & Hotels | ✓ | ✅ | Amadeus API |
+| MCP protocol support | ✗ | ✅ | stdio + HTTP transports |
+| 4,000+ plugins | ✓ | ❌ | MCP ecosystem growing |
 | OAuth consent screen flow | ✓ | ✅ | Google, GitHub, Slack |
-| Service setup guides | ✓ | ✅ | Step-by-step with links |
 
 ## Approval System
 | Feature | Dots | Motes | Status |
 |---------|------|-------|--------|
 | Action classification | ✓ | ✅ | safe / needs_approval / forbidden |
 | Custom rules per tool | ✓ | ✅ | Per-agent, per-tool policies |
-| Auto-review before actions | ✓ | 🟡 | Classification exists, not inline in loop yet |
+| Real-time approval UI | ✓ | ✅ | Web + iOS approval views |
 | 4-level permission model | ✓ | ❌ | Dots: act freely / if asked / ask first / hand off |
-| Mandatory approval (passwords, money) | ✓ | ❌ | Hard-coded sensitive action tiers |
 
 ## Scheduling
 | Feature | Dots | Motes | Status |
@@ -53,66 +58,71 @@
 | Scheduled/recurring tasks | ✓ | ✅ | Cron expressions + CRUD |
 | Task run history | ✓ | ✅ | Per-task run records |
 | Pause/resume tasks | ✓ | ✅ | Full lifecycle |
-| Background execution | ✓ | ❌ | Task runner not implemented yet |
+| Background execution | ✓ | ✅ | Task runner with result delivery |
 
 ## Voice
 | Feature | Dots | Motes | Status |
 |---------|------|-------|--------|
-| Voice input (STT) | ✓ | ✅ | Mic button in chat |
-| Voice output (TTS) | ✓ | ✅ | Listen button on responses |
-| Voice provider settings | ✓ | ✅ | Settings page with presets |
-| Voice calls | ✓ | ❌ | Real-time voice conversation |
-| Provider-agnostic voice | ✗ (OpenAI only) | ✅ | Any OpenAI-compatible + Edge (free) |
-| Free local TTS (Edge) | ✗ | ❌ | Can add edge-tts (free, no API key) |
-| Free local STT (Whisper) | ✗ | ❌ | Can add faster-whisper (local) |
+| Voice calls (real-time) | ✓ | ✅ | Azure OpenAI Realtime API |
+| Semantic VAD | ✓ | ✅ | Knows when you stop talking |
+| Echo cancellation | ✓ | ✅ | AVAudioEngine on iOS |
+| Voice personality | ✓ | ✅ | Configurable per user |
+| Voice input (STT) | ✓ | ✅ | faster-whisper (local, free) |
+| Voice output (TTS) | ✓ | ✅ | Edge TTS (free) + Azure |
+| Live captions | ✓ | ✅ | Real-time transcription in call |
+
+## Native Apps
+| Feature | Dots | Motes | Status |
+|---------|------|-------|--------|
+| iOS app | ✗ | ✅ | Native SwiftUI — no WebView |
+| iOS voice calls | ✗ | ✅ | AVAudioEngine + WebSocket |
+| iOS image/vision | ✗ | ✅ | Camera + photo library |
+| Android app | ✗ | ❌ | Planned |
 
 ## UI / Web App
 | Feature | Dots | Motes | Status |
 |---------|------|-------|--------|
-| Dashboard with stats | ✓ | ✅ | Agents, providers, services, status |
 | Chat with streaming | ✓ | ✅ | Real-time token streaming |
-| Markdown rendering | ✓ | ✅ | Bold, lists, code, headers |
+| Markdown rendering | ✓ | ✅ | Bold, lists, code, tables |
 | Provider management | ✓ | ✅ | Add/test/delete with validation |
-| Agent management | ✓ | ✅ | Create/list/delete |
+| Agent management | ✓ | ✅ | Create/list/configure |
 | Service connection UI | ✓ | ✅ | OAuth flow + setup guides |
-| Voice settings | ✓ | ✅ | Voice provider CRUD |
+| MCP server management | ✗ | ✅ | Add/remove/enable MCP servers |
+| Voice settings | ✓ | ✅ | Voice provider + personality |
 | Activity view (watch agent work) | ✓ | ❌ | See what agent is doing live |
-| Agent profile page | ✓ | ❌ | In progress / scheduled / completed |
-| Approval inbox | ✓ | ❌ | Pending approvals dashboard |
 
-## Multi-Channel
+## Proactive Intelligence
 | Feature | Dots | Motes | Status |
 |---------|------|-------|--------|
-| Web UI | ✓ | ✅ | SvelteKit frontend |
-| Slack bot | ✓ | ❌ | Planned Phase 2.4 |
-| Telegram bot | ✗ | ❌ | Planned Phase 2.4 |
-| Discord bot | ✗ | ❌ | Planned Phase 2.4 |
-| Microsoft Teams | ✓ | ❌ | Planned Phase 2.4 |
-| SMS/iMessage | ✓ (beta) | ❌ | Not planned |
-| Email gateway | ✗ | ❌ | Planned Phase 2.4 |
+| Background monitoring | ✓ | ✅ | Gmail/Calendar scanner every 60s |
+| Proactive notifications | ✓ | ✅ | In chat + voice calls via SSE |
+| Pattern learning | ✓ | ✅ | Time-based habit detection |
+
+## Vision
+| Feature | Dots | Motes | Status |
+|---------|------|-------|--------|
+| Image understanding | ✓ | ✅ | Upload + analyze + respond |
+| Camera capture (iOS) | ✗ | ✅ | PhotosPicker + camera |
 
 ## Advanced Features
 | Feature | Dots | Motes | Status |
 |---------|------|-------|--------|
 | Cloud VM per agent | ✓ | ❌ | Sandboxed execution environment |
-| Local computer access | ✓ | ❌ | Desktop app integration |
-| Proactive research mode | ✓ | ❌ | Background monitoring of services |
+| Proactive research mode | ✓ | 🟡 | Background scanning implemented |
 | Multi-agent delegation | Future | ❌ | Agent-to-agent work sharing |
-| Collaborative documents (Pages) | ✓ | ❌ | Real-time human+agent editing |
-| Shared workspaces (Space) | ✓ | ❌ | Team + agent shared context |
-| Specialist agents (enterprise) | ✓ | ❌ | Org-identity agents |
+| Collaborative documents | ✓ | ❌ | Real-time human+agent editing |
 
 ## Security
 | Feature | Dots | Motes | Status |
 |---------|------|-------|--------|
 | JWT authentication | ✓ | ✅ | Scrypt + JWT |
 | OAuth for services | ✓ | ✅ | Google, GitHub, Slack |
-| CORS protection | ✓ | ✅ | Configured |
-| Audit trail (run ledger) | ✓ | 🟡 | Messages saved, no full run ledger |
-| Encrypted token storage | ✓ | 🟡 | Stored but not yet encrypted at rest |
+| CORS protection | ✓ | ✅ | Configured per environment |
+| Audit trail | ✓ | ✅ | Messages + tool calls logged |
+| Token auto-refresh | ✓ | ✅ | Google OAuth automatic refresh |
 
 ## Scorecard
-- **Implemented**: 30 features
-- **Partially**: 4 features
-- **Not yet**: 22 features
-- **Motes advantages**: Model-agnostic, self-hosted, EU/UK, editable memory, unlimited agents, provider-agnostic voice, free local voice options
+- **Implemented**: 48 features
+- **Partially**: 1 feature
+- **Not yet**: 7 features
+- **Motes advantages**: Model-agnostic, self-hosted, EU/UK, native iOS app, editable memory, free local voice, MCP connectors, 20 integrations out of the box

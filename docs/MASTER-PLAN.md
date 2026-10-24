@@ -1,217 +1,202 @@
 # Motes — Development Master Plan
-# Open-source, model-agnostic alternative to OpenAI Dots
 
 ## Vision
 
 Motes is an open-source platform for always-on personal AI agents that connect
 to your services (email, calendar, GitHub, maps, etc.) and work autonomously on
-your behalf. Unlike OpenAI Dots ($100+/mo, GPT-6 only, blocked in EU/UK), Motes
+your behalf. Unlike OpenAI Dots ($200/mo, GPT only, blocked in EU/UK), Motes
 is self-hosted, model-agnostic, and works everywhere.
 
-## Target users
+## Target Users
 
 1. Developers who want a self-hosted Dots-like experience with model choice
 2. EU/UK users locked out of OpenAI Dots
 3. Privacy-conscious users who want agents on their own infrastructure
 4. Teams who need customizable agent workflows without vendor lock-in
 
-## Competitive landscape
+## Competitive Landscape
 
-| Feature              | OpenAI Dots    | Meta Muse      | Open Dots      | Motes (ours)     |
-|----------------------|----------------|----------------|----------------|------------------|
-| Price                | $100+/mo       | Free tier      | Free           | Free (self-host) |
-| Model                | GPT-6 only     | Llama only     | Any (Responses)| Any provider     |
-| EU/UK available      | No (personal)  | Yes            | Yes            | Yes              |
-| Self-hosted          | No             | No             | Yes            | Yes              |
-| Connectors           | 4,000+ plugins | Limited        | ~2 (Composio)  | MCP ecosystem    |
-| Memory               | Yes            | Yes            | No             | Yes              |
-| Scheduled tasks      | Limited        | Unknown        | No             | Cron-based       |
-| Multi-channel        | ChatGPT/Slack  | Messenger      | Web only       | Web/TG/Discord/+ |
-| Approval system      | Auto-review    | Unknown        | Basic          | Policy engine    |
-| Multi-agent          | Future         | No             | No             | Phase 2          |
-| Production-ready     | Yes            | Yes            | No (prototype) | Goal             |
+| Feature              | OpenAI Dots    | Meta Muse      | Open Dots      | Motes          |
+|----------------------|----------------|----------------|----------------|----------------|
+| Price                | $200/mo        | Free tier      | Free           | Free (self-host) |
+| Model                | GPT only       | Llama only     | Any (Responses)| Any provider   |
+| EU/UK available      | No (personal)  | Yes            | Yes            | Yes            |
+| Self-hosted          | No             | No             | Yes            | Yes            |
+| Connectors           | 4,000+ plugins | Limited        | ~2 (Composio)  | 20 + MCP       |
+| Memory               | Yes            | Yes            | No             | Yes            |
+| Scheduled tasks      | Limited        | Unknown        | No             | Cron-based     |
+| Voice calls          | Yes            | No             | No             | Yes (Azure RT) |
+| Native iOS app       | No             | No             | No             | Yes (SwiftUI)  |
+| Multi-channel        | ChatGPT/Slack  | Messenger      | Web only       | Web + planned  |
+| Approval system      | Auto-review    | Unknown        | Basic          | Auto/Manual/Never |
+| Production-ready     | Yes            | Yes            | No (prototype) | Goal           |
 
-## Architecture (from Cogentrex)
+## Architecture Heritage
+
+Motes evolved from **Cogentrex**, an AI agent governance framework designed for
+enterprise orchestration. The production patterns that carry forward:
+
+| Pattern | Origin (Cogentrex) | Implementation (Motes) |
+|---------|-------------------|----------------------|
+| Policy engine | Deterministic action rules | Approval system (auto/manual/never) |
+| Tool registry | Schema + permissions + sandbox | 20 built-in tools + MCP proxy |
+| Approval broker | Human-in-the-loop review | iOS + web approval UI |
+| Run ledger | Append-only audit trail | PostgreSQL message/tool history |
+| Event sink | Real-time activity streaming | SSE event bus + proactive push |
+| Structured logging | structlog + OTEL | JSON logs + Jaeger traces |
+| Provider adapter | Multi-model orchestration | OpenAI/Anthropic/Azure/local |
+| TDD discipline | 1200+ tests | 229 tests (pytest + vitest + XCTest) |
 
 ```
-User → Web UI / Telegram / Discord / Slack / Email
+User → Web UI / iOS App / API Client
   ↓
-API Gateway (FastAPI)
+API Gateway (FastAPI :8001)
   ↓
 Agent Orchestrator
-  ├── PolicyEngine (deterministic action rules)
+  ├── ProviderAdapter (OpenAI / Anthropic / Azure / local)
   ├── ApprovalBroker (auto / manual / never per action)
-  ├── ProviderAdapter (OpenAI / Anthropic / local / any)
-  ├── SecureToolRegistry (MCP tools + built-in tools)
-  ├── MemoryService (persistent, scoped, encrypted)
+  ├── SecureToolRegistry (20 built-in + MCP connectors)
+  ├── MemoryService (persistent, categorized, recall-on-demand)
   ├── SchedulerService (cron-based autonomous tasks)
-  ├── RunLedger (append-only audit trail)
-  └── EventSink → SSE → Frontend (live activity view)
+  ├── ProactiveScanner (Gmail/Calendar every 60s)
+  └── EventBus → SSE → Clients (real-time notifications)
 ```
 
-## Phase 1 — MVP (4-6 weeks)
+## Phase 1 — MVP ✅
 
-### 1.1 Core Agent Loop
-- [ ] Model-agnostic provider adapter (OpenAI, Anthropic, local via base_url)
-- [ ] ReAct-style reasoning loop with tool calling
-- [ ] Streaming responses via SSE
-- [ ] Configurable system prompts per agent
+### 1.1 Core Agent Loop ✅
+- [x] Model-agnostic provider adapter (OpenAI, Anthropic, local via base_url)
+- [x] ReAct-style reasoning loop with tool calling
+- [x] Streaming responses via SSE
+- [x] Configurable system prompts per agent
 
-### 1.2 Persistent Memory
-- [ ] Cross-session memory store (PostgreSQL-backed)
-- [ ] Scoped memory (per-agent, per-user)
-- [ ] Memory retrieval during agent reasoning
-- [ ] Memory management API (view, edit, delete)
+### 1.2 Persistent Memory ✅
+- [x] Cross-session memory store (PostgreSQL-backed)
+- [x] Scoped memory (per-agent, per-user)
+- [x] Memory retrieval during agent reasoning
+- [x] Memory management API (view, edit, delete)
+- [x] Memory categories: personal, work, preference, family, health
 
-### 1.3 Core Connectors (MCP-based)
-- [ ] Gmail (read, send, search, label)
-- [ ] Google Calendar (read, create, update events)
-- [ ] GitHub (issues, PRs, repos, notifications)
-- [ ] Google Maps (directions, places, geocoding)
-- [ ] Slack (read/send messages, channels)
+### 1.3 Integrations ✅ (20 services)
+- [x] Gmail (read, send, search) — OAuth
+- [x] Google Calendar (list, create events) — OAuth
+- [x] GitHub (issues, PRs, repos)
+- [x] Maps (directions, places, geocoding)
+- [x] Slack (read/send messages)
+- [x] Weather, Web Search, News — built-in
+- [x] Apple Reminders, Apple Notes — AppleScript
+- [x] Todoist, Notion, Spotify, Home Assistant, Outlook
+- [x] Flights & Hotels (Amadeus), Telegram
+- [x] Local file system access
+- [x] MCP protocol support (stdio + HTTP transports)
 
-### 1.4 Approval System
-- [ ] Action classification (safe / needs-approval / forbidden)
-- [ ] Per-connector permission config
-- [ ] Real-time approval requests via WebSocket
-- [ ] Approval history and audit log
+### 1.4 Approval System ✅
+- [x] Action classification (safe / needs-approval / forbidden)
+- [x] Per-tool permission configuration
+- [x] Real-time approval requests (web + iOS)
+- [x] Approval history
 
-### 1.5 Web UI
-- [ ] Agent creation and configuration
-- [ ] Chat interface with streaming
-- [ ] Live activity view (watch the agent work)
-- [ ] Connector setup (OAuth flows)
-- [ ] Approval management dashboard
-- [ ] Memory viewer
+### 1.5 Web UI ✅ (SvelteKit)
+- [x] Chat interface with SSE streaming
+- [x] Agent creation and configuration
+- [x] Service connection UI (OAuth flows + API keys)
+- [x] Approval management
+- [x] Memory viewer
+- [x] Provider settings (LLM + voice)
+- [x] MCP server management
 
-### 1.6 Infrastructure
-- [ ] Docker Compose (PostgreSQL, Redis, backend, frontend)
-- [ ] One-command setup: `docker compose up`
-- [ ] Environment configuration via .env
-- [ ] Health check endpoints
-- [ ] API documentation (auto-generated)
+### 1.6 Infrastructure ✅
+- [x] Docker Compose (PostgreSQL, Redis, Jaeger)
+- [x] Environment configuration via .env
+- [x] Auto-generated API docs (/docs)
+- [x] structlog JSON logging + OTEL tracing
 
-### 1.7 Scheduled Tasks
-- [ ] Cron-based task scheduler
-- [ ] Agent can create/manage its own schedules
-- [ ] Background execution with result delivery
-- [ ] Schedule management UI
+### 1.7 Scheduled Tasks ✅
+- [x] Cron-based task scheduler
+- [x] Background execution with result delivery
+- [x] Schedule management UI
 
-### 1.8 Voice I/O
-- [ ] Speech-to-text: user speaks, audio transcribed, sent as message
-- [ ] Text-to-speech: agent response converted to audio, playable in UI
-- [ ] Provider-agnostic voice providers (OpenAI Whisper/TTS, ElevenLabs, Azure Speech, Edge TTS, local Whisper)
-- [ ] Voice provider CRUD (same pattern as LLM providers: add, test, save)
-- [ ] Streaming TTS for long responses
+### 1.8 Voice ✅
+- [x] Real-time voice calls (Azure OpenAI Realtime API)
+- [x] Semantic VAD (voice activity detection)
+- [x] Echo cancellation on iOS (AVAudioEngine)
+- [x] Configurable voice personality
+- [x] Edge TTS for text-to-speech
+- [x] Local STT via faster-whisper
 
-## Phase 2 — Differentiation (4 weeks)
+### 1.9 iOS Native App ✅
+- [x] Pure SwiftUI — no WebView
+- [x] Chat with SSE streaming
+- [x] Voice calls with AVAudioEngine
+- [x] Service management, settings, personality presets
+- [x] Tailscale HTTPS connectivity
+- [x] Image capture and vision analysis
+
+### 1.10 Proactive Intelligence ✅
+- [x] Background scanner (Gmail/Calendar every 60s)
+- [x] Pattern learning — time-based habit detection
+- [x] Proactive notifications in chat and voice calls
+- [x] SSE event bus for real-time push
+
+### 1.11 Vision ✅
+- [x] Image upload from camera or photo library
+- [x] Vision analysis and contextual responses
+
+## Phase 2 — Differentiation (Planned)
 
 ### 2.1 Multi-Agent
 - [ ] Specialist agents with different roles/permissions/models
 - [ ] Agent-to-agent delegation
 - [ ] Team management UI
 
-### 2.2 Proactive Mode
-- [ ] Background monitoring of connected services
-- [ ] Configurable triggers (new email from X, calendar conflict, etc.)
-- [ ] Notification system for proactive suggestions
+### 2.2 More Integrations
+- [ ] Microsoft Graph OAuth (Outlook, Teams, OneDrive)
+- [ ] Linear, Jira, Trello
+- [ ] Financial data APIs
 
-### 2.3 More Connectors
-- [ ] Microsoft 365 (Outlook, Teams, OneDrive)
-- [ ] Notion
-- [ ] Linear
-- [ ] Jira
-- [ ] Trello
-- [ ] Todoist
-- [ ] Weather APIs
-- [ ] News APIs
-- [ ] Financial data (stock prices, crypto)
-
-### 2.4 Multi-Channel
+### 2.3 Multi-Channel
 - [ ] Telegram bot gateway
 - [ ] Discord bot gateway
-- [ ] Email gateway (inbound/outbound)
-- [ ] Voice interaction (STT/TTS)
 - [ ] WhatsApp gateway
 
-### 2.5 Enhanced Memory
-- [ ] Semantic search over memory (embeddings)
+### 2.4 Enhanced Memory
+- [ ] Semantic search over memory (embeddings via pgvector)
 - [ ] Automatic memory extraction from conversations
-- [ ] Memory categories and tagging
 - [ ] Import/export
 
-## Phase 3 — Community & Growth (ongoing)
+## Phase 3 — Community & Growth (Future)
 
-### 3.1 Connector Marketplace
-- [ ] Community MCP server registry
-- [ ] One-click connector installation
-- [ ] Connector development SDK and docs
-- [ ] Rating/review system
-
-### 3.2 Deployment
-- [ ] One-click deploy to Railway
-- [ ] One-click deploy to Fly.io
-- [ ] Helm chart for Kubernetes
+### 3.1 Deployment
+- [ ] Production Docker image (all-in-one)
+- [ ] One-click deploy to Railway / Fly.io
 - [ ] ARM support (Raspberry Pi)
 
-### 3.3 Enterprise
+### 3.2 Enterprise
 - [ ] Multi-user with RBAC
 - [ ] SSO (SAML, OIDC)
-- [ ] Team workspaces
-- [ ] Compliance and data retention policies
-- [ ] Usage analytics dashboard
+- [ ] End-to-end encryption
 
-### 3.4 Polish
-- [ ] Mobile-friendly PWA
-- [ ] Browser extension
-- [ ] Desktop app (Electron/Tauri)
-- [ ] Comprehensive documentation
-- [ ] Video tutorials
+### 3.3 Platform
+- [ ] Android app
+- [ ] Plugin/connector marketplace
+- [ ] Community MCP server registry
 
-## Reuse from Cogentrex
+## Key Differentiators vs Alternatives
 
-These modules can be extracted/adapted directly:
+1. **Full-stack production architecture** — not a weekend prototype
+2. **Native iOS app** with voice calls — no other OSS alternative has this
+3. **Real persistent memory** with categories and recall
+4. **Proactive intelligence** — background scanning with pattern learning
+5. **20 service integrations** out of the box
+6. **MCP-based connectors** — community-extensible, not hardcoded
+7. **Configurable approval system** — auto/manual/never per action
+8. **Built on proven architecture patterns** from production AI governance work
 
-| Cogentrex Module       | Motes Usage                        |
-|------------------------|------------------------------------|
-| backend/app/agents/    | Agent loop, provider adapters      |
-| backend/app/runtime/   | Typed runtime, events, budgets     |
-| backend/app/tools/     | Tool registry, sandbox             |
-| backend/app/mcp/       | MCP client, inventory              |
-| backend/app/security/  | Policy engine, approvals           |
-| backend/app/memory/    | Persistent, encrypted memory       |
-| backend/app/services/  | Run ledger, effect ledger          |
-| backend/app/routes/    | API route patterns                 |
-| frontend/              | SvelteKit patterns, components     |
+## Client Strategy
 
-## Key differentiators vs Open Dots (existing OSS clone)
+1. ✅ **SvelteKit web UI** — responsive, full-featured
+2. ✅ **Native iOS app** (SwiftUI) — chat, voice calls, services, settings
+3. 🔜 **Android app** (Kotlin) — planned
+4. 🔜 **Desktop app** (Tauri) — future
 
-1. Production architecture (not a weekend prototype)
-2. Real persistent memory (not just SQLite chat logs)
-3. Policy engine with configurable approval tiers
-4. MCP-based connectors (community-extensible, not hardcoded)
-5. Multi-channel from day 1 (not web-only)
-6. Cron scheduler for autonomous background work
-7. Built on proven patterns from Cogentrex (1200+ tests)
-
-## Success metrics
-
-- Phase 1: Working self-hosted agent that can read Gmail, manage calendar,
-  interact with GitHub, with approval system and persistent memory
-- Phase 2: 10+ connectors, multi-agent support, 2+ chat channels
-- Phase 3: Active community contributions, 1000+ GitHub stars
-
-## Client strategy
-
-1. **Phase 1 (MVP)**: SvelteKit web UI — mobile-responsive, installable as PWA on iOS/Android
-2. **Phase 2**: Native iOS app (Swift/SwiftUI) — push notifications, Siri Shortcuts, background refresh
-3. **Future**: Android app (Kotlin), desktop app (Tauri)
-
-The backend is API-first: every client (web, iOS, Android, CLI) talks to the same FastAPI REST + WebSocket API. The iOS app is a thin SwiftUI client, not a separate product.
-
-## Non-goals (for now)
-
-- Managed cloud hosting (SaaS)
-- Voice-first interface
-- Payments/transactions
-- Enterprise sales
+The backend is API-first: every client talks to the same FastAPI REST + WebSocket API.

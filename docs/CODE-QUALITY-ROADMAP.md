@@ -1,80 +1,52 @@
 # Code Quality Roadmap — Motes
 
-## Current State (audit results)
+## Engineering Standards
 
-| Metric | Value | Target |
-|--------|-------|--------|
-| print() statements | 18 | 0 |
-| Files using structlog | 4/42 | 42/42 |
-| Test coverage (files) | 10/42 (24%) | 42/42 (100%) |
-| OTEL spans instrumented | 0 | All routes + LLM + tools |
-| Inline imports in handlers | 63 | 0 (use DI) |
-| Security findings | 8 | 0 |
+Motes follows production-grade engineering practices inherited from our Cogentrex architecture:
 
-## Phase Q1: Observability (logging + tracing)
+### Observability
+- **Structured logging** via structlog — JSON format with correlation IDs, no `print()`
+- **Distributed tracing** via OpenTelemetry — every LLM call, tool execution, and API request is traced
+- **Jaeger integration** for trace visualization and performance analysis
+- **Redaction processor** — automatic PII and token scrubbing in logs
 
-### 1. Replace all print() with structlog
-- Module-level `logger = structlog.get_logger()` in every file
-- Event-style: `logger.info("realtime_call_connected", user_id=uid, url=url[:50])`
-- Never string interpolation in log messages
+### Architecture Patterns
+- **Dependency Injection** — tool registry, LLM provider, and service layer injected via FastAPI `Depends()`
+- **Event-driven** — SSE event bus for real-time proactive notifications
+- **Async-first** — SQLAlchemy async sessions, httpx async clients, asyncio throughout
+- **ContextVar correlation IDs** — trace a request across service boundaries
 
-### 2. Logging pipeline (from Archon)
-- ContextVar-based correlation IDs
-- CorrelationIdMiddleware on every request
-- Redaction processor (passwords, tokens, PII)
-- JSON renderer in prod, colored console in dev
+### Testing Strategy
 
-### 3. OTEL instrumentation
-- FastAPI auto-instrumentation (`opentelemetry-instrumentation-fastapi`)
-- SQLAlchemy instrumentation
-- Custom spans: `trace_llm_call()`, `trace_tool_call()`, `trace_agent_run()`
-- GenAI semantic conventions for LLM calls
+| Layer | Framework | Focus |
+|-------|-----------|-------|
+| Backend unit | pytest (`@pytest.mark.unit`) | Business logic, tool execution |
+| Backend integration | pytest + httpx | API endpoints, database |
+| Frontend | vitest + @testing-library/svelte | Component rendering, API mocking |
+| iOS | XCTest | ViewModel logic, URL consistency |
 
-## Phase Q2: Dependency Injection
+Test patterns:
+- Minimal FastAPI app per test file — only required `app.state` attributes
+- External services mocked (httpx, WebSocket, LLM providers)
+- TDD cycle: write test → red → implement → green → refactor
 
-### 1. Tool registry as DI
-- `ToolRegistry` built in lifespan, stored on `app.state.tools`
-- Route handlers get it via `Depends(get_tool_registry)`
-- No more inline tool construction in chat/voice routes
+### Security Practices
+- JWT authentication with configurable secret key
+- OAuth2 flows with automatic token refresh
+- No secrets in code, logs, or commits
+- Path validation for file system access tools
+- CORS configuration per deployment environment
 
-### 2. Service layer
-- `get_google_tools(session, user_id)` → returns list of tools
-- `get_voice_config(session)` → returns realtime URL/key
-- All injected via `Depends()`, not inline imports
+## Improvement Roadmap
 
-### 3. Provider factory as DI
-- LLM provider selection via `Depends(get_llm_provider)`
-- Voice provider via `Depends(get_voice_provider)`
+### Done
+- [x] structlog migration (all modules)
+- [x] OTEL instrumentation (FastAPI, SQLAlchemy, custom spans)
+- [x] Correlation ID middleware
+- [x] DI-based tool registry
 
-## Phase Q3: Testing
-
-### 1. Priority test targets (by risk)
-- routes/chat.py — core feature
-- routes/realtime_call.py — complex WebSocket
-- agent_loop.py + agent_loop_anthropic.py — LLM integration
-- proactive.py — pattern extraction
-- google_tools.py — external API
-- file_tools.py — filesystem access (security-sensitive)
-
-### 2. Test patterns (from Archon)
-- Minimal FastAPI app per test file
-- Only set required `app.state` attributes
-- Mock external services (httpx, WebSocket)
-- `@pytest.mark.unit` / `@pytest.mark.integration`
-
-## Phase Q4: Security
-
-### 1. Critical
-- [ ] Remove hardcoded JWT secret default (require MOTES_SECRET_KEY env)
-- [ ] Auth on /api/providers/test endpoint
-- [ ] Rate limiting middleware (login, API endpoints)
-
-### 2. Important
-- [ ] Symlink-safe path validation for file tools
-- [ ] WebSocket auth before accept (not after)
-- [ ] SecretStr for sensitive config fields
-
-### 3. Nice to have
-- [ ] CSRF protection
+### In Progress
+- [ ] Increase backend test coverage to 80%+
+- [ ] CSRF protection for web frontend
 - [ ] API key rotation support
-- [ ] Audit log for security events
+- [ ] Audit log for security-sensitive events

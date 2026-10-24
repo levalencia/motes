@@ -34,3 +34,6 @@ pgdata/
 # OS
 .DS_Store
 Thumbs.db
+
+# Private docs (personal info, internal plans)
+.private-docs/
