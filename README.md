@@ -48,7 +48,7 @@
 
 ## Why I Built This
 
-When OpenAI launched **Dots** in June 2025 — always-on AI agents that manage your email, calendar, and services — I wanted exactly that. But with my own model choice, on my own server, and available in the EU where I live.
+When OpenAI launched **Dots** in September 2026 — always-on AI agents that manage your email, calendar, and services — I wanted exactly that. But with my own model choice, on my own server, and available in the EU where I live.
 
 As a software engineer with **20+ years in tech** and an **11x Microsoft MVP**, I had the architecture patterns ready from my earlier project **Cogentrex**, an AI agent governance framework I'd built for enterprise orchestration. The production patterns — structured logging, OpenTelemetry tracing, async SQLAlchemy, tool registry, approval system, and TDD discipline — carried forward directly into Motes.
 
